@@ -201,7 +201,7 @@ export default function EditPasswordPage() {
               <div className="flex items-center gap-4">
                 <Button
                   type="submit"
-                  className="bg-emerald-500 hover:bg-emerald-600"
+                  className="bg-primary hover:bg-primary/90 cursor-pointer"
                   disabled={changePasswordMutation.isPending}
                 >
                   {changePasswordMutation.isPending ? (

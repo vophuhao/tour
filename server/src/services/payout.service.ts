@@ -1,6 +1,6 @@
 import { BookingModel } from "@/models";
 import PayoutModel from "@/models/payout.model";
-import HostModel from "@/models/host.modal";
+import HostModel from "@/models/host.model";
 import mongoose from "mongoose";
 
 const PLATFORM_FEE_RATE = 0.05; // 5%

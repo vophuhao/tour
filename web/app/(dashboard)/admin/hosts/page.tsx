@@ -95,12 +95,43 @@ interface PropertyWithSites {
   slug: string;
   status: "active" | "inactive" | "blocked" | "suspended";
   isActive: boolean;
-  location: { address: string; city: string; state: string };
-  photos?: Array<{ url: string; isCover: boolean }>;
-  stats?: { totalBookings: number; averageRating: number; totalReviews: number };
+  location: {
+    address: string;
+    city: string;
+    state: string;
+    country?: string;
+    directions?: string;
+    parkingInstructions?: string;
+  };
+  photos?: Array<{ url: string; isCover: boolean; caption?: string }>;
+  stats?: {
+    totalBookings: number;
+    averageRating: number;
+    totalReviews: number;
+    ratings?: { location: number; communication: number; value: number };
+  };
   propertyType: string;
   createdAt: string;
   sites: SiteInfo[];
+  description?: string;
+  tagline?: string;
+  landSize?: { value: number; unit: string };
+  nearbyAttractions?: Array<{ name: string; distance: number; type: string }>;
+  rules?: Array<{ text: string; category: string; order: number }>;
+  checkInInstructions?: string;
+  checkOutInstructions?: string;
+  cancellationPolicy?: {
+    type: "flexible" | "moderate" | "strict";
+    description?: string;
+    refundRules?: Array<{ daysBeforeCheckIn: number; refundPercentage: number }>;
+  };
+  settings?: {
+    instantBookEnabled: boolean;
+    requireApproval: boolean;
+    minimumAdvanceNotice: number;
+    bookingWindow: number;
+    allowWholePropertyBooking: boolean;
+  };
 }
 
 interface SiteInfo {
@@ -110,10 +141,44 @@ interface SiteInfo {
   status: "active" | "inactive" | "blocked" | "suspended";
   isActive: boolean;
   accommodationType: string;
-  pricing?: { basePrice: number };
-  capacity?: { maxGuests: number };
+  siteClass?: "basic" | "vip";
+  pricing?: {
+    basePrice: number;
+    weekendPrice?: number;
+    weeklyDiscount?: number;
+    monthlyDiscount?: number;
+    additionalGuestFee?: number;
+    petFee?: number;
+    vehicleFee?: number;
+    cleaningFee?: number;
+    depositAmount?: number;
+    currency?: string;
+  };
+  capacity?: {
+    maxGuests: number;
+    maxAdults?: number;
+    maxChildren?: number;
+    maxInfants?: number;
+    maxPets?: number;
+    maxVehicles?: number;
+    maxTents?: number;
+    maxRVs?: number;
+    rvMaxLength?: number;
+  };
   stats?: { totalBookings: number; averageRating: number };
-  photos?: Array<{ url: string; isCover: boolean }>;
+  photos?: Array<{ url: string; isCover: boolean; caption?: string }>;
+  description?: string;
+  bookingSettings?: {
+    minimumNights: number;
+    maximumNights?: number;
+    checkInTime: string;
+    checkOutTime: string;
+    instantBook: boolean;
+    advanceNotice: number;
+  };
+  amenities?: Array<{ _id: string; name: string; icon?: string; category?: string }>;
+  guestsShouldBring?: string[];
+  siteSpecificRules?: string[];
 }
 
 const fmt = (n: number) => new Intl.NumberFormat("vi-VN").format(n);
@@ -158,6 +223,10 @@ export default function AdminHostsPage() {
   const [approveDialog, setApproveDialog] = useState<{
     open: boolean; type: "property" | "site"; id: string; name: string;
   } | null>(null);
+
+  // Detail inspection state
+  const [selectedPropertyDetail, setSelectedPropertyDetail] = useState<PropertyWithSites | null>(null);
+  const [selectedSiteDetail, setSelectedSiteDetail] = useState<SiteInfo | null>(null);
 
   const queryClient = useQueryClient();
 
@@ -288,19 +357,17 @@ export default function AdminHostsPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-2rem)] flex flex-col gap-4">
+    <div className="h-[calc(100vh-2rem)] max-w-7xl mx-auto w-full flex flex-col gap-4">
       {/* Header + Stats */}
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-primary">
+        <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
           Quản lý Host & Địa điểm
         </h1>
-        <p className="text-sm text-slate-500 mt-0.5">
-          Xem thông tin host, quản lý property và site, khóa/mở khi vi phạm.
-        </p>
+
       </div>
 
       {/* Stats bar */}
-      <div className="grid grid-cols-4 gap-3">
+      {/* <div className="grid grid-cols-4 gap-3">
         {[
           { label: "Tổng Host", value: stats.total, icon: Shield, color: "text-primary bg-primary/10" },
           { label: "Đang hoạt động", value: stats.active, icon: Activity, color: "text-emerald-600 bg-emerald-50" },
@@ -319,7 +386,7 @@ export default function AdminHostsPage() {
             </CardContent>
           </Card>
         ))}
-      </div>
+      </div> */}
 
       {/* Split View */}
       <div className="flex gap-4 flex-1 min-h-0">
@@ -342,11 +409,10 @@ export default function AdminHostsPage() {
                 <button
                   key={host._id}
                   onClick={() => handleSelectHost(host)}
-                  className={`w-full text-left p-3 rounded-xl border transition-all ${
-                    selectedHost?._id === host._id
-                      ? "bg-primary/10 border-primary/20 shadow-sm text-primary"
-                      : "bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50"
-                  }`}
+                  className={`w-full text-left p-3 rounded-xl border transition-all ${selectedHost?._id === host._id
+                    ? "bg-primary/10 border-primary/20 shadow-sm text-primary"
+                    : "bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50"
+                    }`}
                 >
                   <div className="flex items-center gap-2.5">
                     <Avatar className="h-9 w-9 flex-shrink-0">
@@ -399,16 +465,14 @@ export default function AdminHostsPage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h2 className="font-bold text-lg text-slate-800">{selectedHost.username}</h2>
-                        <Badge variant="outline" className="text-xs bg-primary text-white border-primary">
-                          <Shield className="w-3 h-3 mr-1" /> Host
-                        </Badge>
+
                         {selectedHost.isBlocked ? (
                           <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
                             <Ban className="w-3 h-3 mr-1" /> Tài khoản bị khóa
                           </Badge>
                         ) : (
                           <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
-                            <Activity className="w-3 h-3 mr-1" /> Đang hoạt động
+                            Đang hoạt động
                           </Badge>
                         )}
                         {/* pendingCount removed */}
@@ -609,6 +673,14 @@ export default function AdminHostsPage() {
                                         <Lock className="w-3 h-3 mr-1" /> Khóa
                                       </Button>
                                     )}
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-7 text-xs text-primary border-primary/20 hover:bg-primary/5 flex items-center gap-1"
+                                      onClick={() => setSelectedPropertyDetail(property)}
+                                    >
+                                      <Eye className="w-3 h-3" /> Chi tiết
+                                    </Button>
                                     <span className="text-[10px] text-slate-400 ml-auto">
                                       {fmtDate(property.createdAt)}
                                     </span>
@@ -680,6 +752,14 @@ export default function AdminHostsPage() {
                                           </div>
                                         </div>
                                         <div className="flex items-center gap-1.5 flex-shrink-0">
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="h-7 text-xs text-primary border-primary/20 hover:bg-primary/5 flex items-center gap-1"
+                                            onClick={() => setSelectedSiteDetail(site)}
+                                          >
+                                            <Eye className="w-3 h-3" /> Chi tiết
+                                          </Button>
                                           {isSiteBlocked ? (
                                             <Button
                                               size="sm"
@@ -749,9 +829,9 @@ export default function AdminHostsPage() {
               />
             </div>
             <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
-                                          <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                                          Sau khi bị khóa, chỉ có Admin mới có quyền mở khóa để chuyển trạng thái từ Đã khóa sang Hoạt động.
-                                        </div>
+              <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+              Sau khi bị khóa, chỉ có Admin mới có quyền mở khóa để chuyển trạng thái từ Đã khóa sang Hoạt động.
+            </div>
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setLockDialog(null)}>Hủy</Button>
@@ -794,6 +874,493 @@ export default function AdminHostsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Dialog: Property Detail Inspection */}
+      <Dialog open={!!selectedPropertyDetail} onOpenChange={(o) => !o && setSelectedPropertyDetail(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-6 rounded-2xl">
+          {selectedPropertyDetail && (
+            <>
+              <DialogHeader className="border-b pb-4 mb-4">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div>
+                    <DialogTitle className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <Building2 className="w-5 h-5 text-primary" />
+                      {selectedPropertyDetail.name}
+                    </DialogTitle>
+                    {selectedPropertyDetail.tagline && (
+                      <p className="text-xs text-slate-500 mt-1 italic">"{selectedPropertyDetail.tagline}"</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <StatusBadge status={selectedPropertyDetail.status} />
+                    {/* <Badge variant={selectedPropertyDetail.isActive ? "default" : "secondary"}>
+                      {selectedPropertyDetail.isActive ? "Hoạt động" : "Tạm ẩn"}
+                    </Badge> */}
+                  </div>
+                </div>
+              </DialogHeader>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Main Info */}
+                <div className="md:col-span-2 space-y-4">
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-1.5 flex items-center gap-1.5">
+                      <Info className="w-4 h-4 text-primary" /> Giới thiệu
+                    </h4>
+                    <p className="text-xs text-slate-650 dark:text-slate-350 whitespace-pre-line bg-slate-50 dark:bg-slate-950 p-3.5 rounded-xl border border-slate-150 dark:border-slate-850 leading-relaxed">
+                      {selectedPropertyDetail.description || "Chưa có mô tả."}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-150 dark:border-slate-850">
+                      <span className="text-[10px] text-slate-400 font-semibold block">Loại khu đất</span>
+                      <p className="text-xs font-bold text-slate-700 dark:text-slate-200 capitalize mt-1">
+                        {selectedPropertyDetail.propertyType?.replace(/_/g, ' ')}
+                      </p>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-150 dark:border-slate-850">
+                      <span className="text-[10px] text-slate-400 font-semibold block">Diện tích đất</span>
+                      <p className="text-xs font-bold text-slate-700 dark:text-slate-200 mt-1">
+                        {selectedPropertyDetail.landSize?.value
+                          ? `${selectedPropertyDetail.landSize.value} ${selectedPropertyDetail.landSize.unit === 'acres' ? 'acres (mẫu)' :
+                            selectedPropertyDetail.landSize.unit === 'hectares' ? 'hectares (ha)' : 'm²'
+                          }`
+                          : "Không xác định"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {selectedPropertyDetail.nearbyAttractions && selectedPropertyDetail.nearbyAttractions.length > 0 && (
+                    <div>
+                      <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-1.5 flex items-center gap-1.5">
+                        <MapPin className="w-4 h-4 text-primary" /> Điểm tham quan lân cận
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-155 dark:border-slate-850">
+                        {selectedPropertyDetail.nearbyAttractions.map((att, idx) => (
+                          <div key={idx} className="flex justify-between items-center text-xs text-slate-650 dark:text-slate-400 bg-white dark:bg-slate-900/60 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 shadow-2xs">
+                            <span className="font-semibold text-slate-750 dark:text-slate-200 truncate mr-2">{att.name}</span>
+                            <span className="text-[10px] text-slate-400 flex-shrink-0">{att.distance} km ({att.type})</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedPropertyDetail.rules && selectedPropertyDetail.rules.length > 0 && (
+                    <div>
+                      <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-1.5 flex items-center gap-1.5">
+                        <AlertTriangle className="w-4 h-4 text-primary" /> Nội quy khu cắm trại
+                      </h4>
+                      <div className="space-y-1.5 max-h-48 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-3.5 rounded-xl border border-slate-155 dark:border-slate-850">
+                        {selectedPropertyDetail.rules
+                          .sort((a, b) => (a.order || 0) - (b.order || 0))
+                          .map((rule, idx) => (
+                            <div key={idx} className="flex gap-2 text-xs text-slate-650 dark:text-slate-350">
+                              <span className="text-primary font-bold">•</span>
+                              <div>
+                                <Badge variant="outline" className="text-[9px] uppercase px-1 py-0 h-4 mr-1.5 text-slate-500 font-semibold bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                                  {rule.category}
+                                </Badge>
+                                <span>{rule.text}</span>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Column: details */}
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-1.5 flex items-center gap-1.5">
+                      <MapPinned className="w-4 h-4 text-primary" /> Vị trí & Hướng dẫn
+                    </h4>
+                    <div className="text-xs text-slate-650 dark:text-slate-400 bg-slate-50 dark:bg-slate-950 p-3.5 rounded-xl border border-slate-155 dark:border-slate-850 space-y-2 leading-relaxed">
+                      <p><strong>Địa chỉ:</strong> {selectedPropertyDetail.location?.address}, {selectedPropertyDetail.location?.city}, {selectedPropertyDetail.location?.state}, {selectedPropertyDetail.location?.country || "Việt Nam"}</p>
+                      {selectedPropertyDetail.location?.directions && (
+                        <p><strong>Chỉ đường:</strong> {selectedPropertyDetail.location.directions}</p>
+                      )}
+                      {selectedPropertyDetail.location?.parkingInstructions && (
+                        <p><strong>Đỗ xe:</strong> {selectedPropertyDetail.location.parkingInstructions}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-1.5 flex items-center gap-1.5">
+                      <Lock className="w-4 h-4 text-primary" /> Chính sách hủy phòng
+                    </h4>
+                    <div className="text-xs text-slate-650 dark:text-slate-400 bg-slate-50 dark:bg-slate-950 p-3.5 rounded-xl border border-slate-155 dark:border-slate-850 space-y-2 leading-relaxed">
+                      <p>
+                        <strong>Loại hình: </strong>
+                        <Badge className="bg-primary hover:bg-primary/95 text-white uppercase text-[10px] font-bold px-1.5 py-0 h-4.5 rounded">
+                          {selectedPropertyDetail.cancellationPolicy?.type || "moderate"}
+                        </Badge>
+                      </p>
+                      {selectedPropertyDetail.cancellationPolicy?.description && (
+                        <p className="text-slate-400 italic">"{selectedPropertyDetail.cancellationPolicy.description}"</p>
+                      )}
+                      {selectedPropertyDetail.cancellationPolicy?.refundRules && selectedPropertyDetail.cancellationPolicy.refundRules.length > 0 && (
+                        <div className="pt-2 border-t border-slate-200/50 dark:border-slate-800 space-y-1">
+                          {selectedPropertyDetail.cancellationPolicy.refundRules.map((rule, idx) => (
+                            <div key={idx} className="flex justify-between">
+                              <span>Trước {rule.daysBeforeCheckIn} ngày:</span>
+                              <span className="font-semibold text-emerald-600">Hoàn {rule.refundPercentage}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-1.5 flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-primary" /> Cài đặt đặt phòng
+                    </h4>
+                    <div className="text-xs text-slate-650 dark:text-slate-400 bg-slate-50 dark:bg-slate-950 p-3.5 rounded-xl border border-slate-155 dark:border-slate-850 space-y-2">
+                      <div className="flex justify-between">
+                        <span>Đặt phòng nhanh:</span>
+                        <span className="font-semibold">{selectedPropertyDetail.settings?.instantBookEnabled ? "Có" : "Không"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Yêu cầu Admin duyệt:</span>
+                        <span className="font-semibold">{selectedPropertyDetail.settings?.requireApproval ? "Có" : "Không"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Báo trước tối thiểu:</span>
+                        <span className="font-semibold">{selectedPropertyDetail.settings?.minimumAdvanceNotice || 24} giờ</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Hạn đặt trước tối đa:</span>
+                        <span className="font-semibold">{selectedPropertyDetail.settings?.bookingWindow || 365} ngày</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Photos Gallery */}
+              {selectedPropertyDetail.photos && selectedPropertyDetail.photos.length > 0 && (
+                <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-850">
+                  <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-1.5">
+                    <Eye className="w-4 h-4 text-primary" /> Hình ảnh khu cắm trại ({selectedPropertyDetail.photos.length})
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+                    {selectedPropertyDetail.photos
+                      .sort((a, b) => (b.isCover ? 1 : 0) - (a.isCover ? 1 : 0))
+                      .map((photo, idx) => (
+                        <div key={idx} className="relative aspect-video rounded-xl bg-slate-100 dark:bg-slate-900 overflow-hidden border border-slate-200/80 dark:border-slate-800 group">
+                          <img src={photo.url} alt={photo.caption || "Ảnh property"} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
+                          {photo.isCover && (
+                            <span className="absolute top-1 left-1 bg-primary text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md shadow-sm">
+                              Bìa
+                            </span>
+                          )}
+                          {photo.caption && (
+                            <div className="absolute inset-x-0 bottom-0 bg-black/60 p-1 text-[9px] text-white truncate text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              {photo.caption}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              <DialogFooter className="border-t pt-4 mt-6">
+                <Button variant="outline" onClick={() => setSelectedPropertyDetail(null)}>Đóng</Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Site Detail Inspection */}
+      <Dialog open={!!selectedSiteDetail} onOpenChange={(o) => !o && setSelectedSiteDetail(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-6 rounded-2xl">
+          {selectedSiteDetail && (
+            <>
+              <DialogHeader className="border-b pb-4 mb-4">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div>
+                    <DialogTitle className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <Tent className="w-5 h-5 text-primary" />
+                      {selectedSiteDetail.name}
+                    </DialogTitle>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="outline" className="text-[10px] capitalize bg-slate-50 dark:bg-slate-900 font-semibold px-2 py-0">
+                        Loại hình: {selectedSiteDetail.accommodationType}
+                      </Badge>
+                      {selectedSiteDetail.siteClass && (
+                        <Badge variant={selectedSiteDetail.siteClass === 'vip' ? "default" : "secondary"} className="text-[10px] uppercase font-bold px-2 py-0">
+                          {selectedSiteDetail.siteClass}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <StatusBadge status={selectedSiteDetail.status} />
+                    {/* <Badge variant={selectedSiteDetail.isActive ? "default" : "secondary"}>
+                      {selectedSiteDetail.isActive ? "Hoạt động" : "Tạm ẩn"}
+                    </Badge> */}
+                  </div>
+                </div>
+              </DialogHeader>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Main Info */}
+                <div className="md:col-span-2 space-y-4">
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-1.5 flex items-center gap-1.5">
+                      <Info className="w-4 h-4 text-primary" /> Mô tả site
+                    </h4>
+                    <p className="text-xs text-slate-650 dark:text-slate-350 whitespace-pre-line bg-slate-50 dark:bg-slate-950 p-3.5 rounded-xl border border-slate-155 dark:border-slate-850 leading-relaxed">
+                      {selectedSiteDetail.description || "Không có mô tả chi tiết."}
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-1.5 flex items-center gap-1.5">
+                      <Users className="w-4 h-4 text-primary" /> Sức chứa giới hạn
+                    </h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-155 dark:border-slate-850 text-xs leading-relaxed">
+                      <div>
+                        <span className="text-slate-400">Khách tối đa:</span>
+                        <p className="font-bold text-slate-700 dark:text-slate-200">{selectedSiteDetail.capacity?.maxGuests || 1} khách</p>
+                      </div>
+                      {selectedSiteDetail.capacity?.maxAdults !== undefined && (
+                        <div>
+                          <span className="text-slate-400">Người lớn tối đa:</span>
+                          <p className="font-bold text-slate-700 dark:text-slate-200">{selectedSiteDetail.capacity.maxAdults} người</p>
+                        </div>
+                      )}
+                      {selectedSiteDetail.capacity?.maxChildren !== undefined && (
+                        <div>
+                          <span className="text-slate-400">Trẻ em tối đa:</span>
+                          <p className="font-bold text-slate-700 dark:text-slate-200">{selectedSiteDetail.capacity.maxChildren} người</p>
+                        </div>
+                      )}
+                      {selectedSiteDetail.capacity?.maxPets !== undefined && (
+                        <div>
+                          <span className="text-slate-400">Thú cưng tối đa:</span>
+                          <p className="font-bold text-slate-700 dark:text-slate-200">{selectedSiteDetail.capacity.maxPets} con</p>
+                        </div>
+                      )}
+                      {selectedSiteDetail.capacity?.maxVehicles !== undefined && (
+                        <div>
+                          <span className="text-slate-400">Xe cộ tối đa:</span>
+                          <p className="font-bold text-slate-700 dark:text-slate-200">{selectedSiteDetail.capacity.maxVehicles} chiếc</p>
+                        </div>
+                      )}
+                      {selectedSiteDetail.capacity?.maxTents !== undefined && (
+                        <div>
+                          <span className="text-slate-400">Lều trại tối đa:</span>
+                          <p className="font-bold text-slate-700 dark:text-slate-200">{selectedSiteDetail.capacity.maxTents} lều</p>
+                        </div>
+                      )}
+                      {selectedSiteDetail.capacity?.maxRVs !== undefined && (
+                        <div>
+                          <span className="text-slate-400">Xe RV tối đa:</span>
+                          <p className="font-bold text-slate-700 dark:text-slate-200">{selectedSiteDetail.capacity.maxRVs} xe</p>
+                        </div>
+                      )}
+                      {selectedSiteDetail.capacity?.rvMaxLength !== undefined && (
+                        <div>
+                          <span className="text-slate-400">Độ dài RV tối đa:</span>
+                          <p className="font-bold text-slate-700 dark:text-slate-200">{selectedSiteDetail.capacity.rvMaxLength} feet</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-1.5 flex items-center gap-1.5">
+                      <Home className="w-4 h-4 text-primary" /> Tiện nghi tại site ({selectedSiteDetail.amenities?.length || 0})
+                    </h4>
+                    <div className="flex flex-wrap gap-1.5 bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-155 dark:border-slate-850">
+                      {selectedSiteDetail.amenities && selectedSiteDetail.amenities.length > 0 ? (
+                        selectedSiteDetail.amenities.map((amenity) => (
+                          <Badge key={amenity._id} variant="outline" className="px-2 py-0.5 text-xs bg-white dark:bg-slate-900 font-medium text-slate-700 dark:text-slate-350 border-slate-200 dark:border-slate-800 flex items-center gap-1">
+                            {amenity.name}
+                            {amenity.category && (
+                              <span className="text-[9px] text-slate-400 font-normal">({amenity.category})</span>
+                            )}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-xs text-slate-400 italic">Không có tiện nghi đặc biệt nào.</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-1.5 flex items-center gap-1.5">
+                        <AlertTriangle className="w-4 h-4 text-primary" /> Quy tắc của site
+                      </h4>
+                      <div className="space-y-1 bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-155 dark:border-slate-850 text-xs text-slate-600 dark:text-slate-350 max-h-36 overflow-y-auto leading-relaxed">
+                        {selectedSiteDetail.siteSpecificRules && selectedSiteDetail.siteSpecificRules.length > 0 ? (
+                          selectedSiteDetail.siteSpecificRules.map((rule, idx) => (
+                            <div key={idx} className="flex gap-1.5">
+                              <span className="text-primary font-bold">•</span>
+                              <span>{rule}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <span className="italic text-slate-400">Không có quy tắc bổ sung nào.</span>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-1.5 flex items-center gap-1.5">
+                        <Tent className="w-4 h-4 text-primary" /> Khách tự chuẩn bị
+                      </h4>
+                      <div className="space-y-1 bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-155 dark:border-slate-850 text-xs text-slate-600 dark:text-slate-350 max-h-36 overflow-y-auto leading-relaxed">
+                        {selectedSiteDetail.guestsShouldBring && selectedSiteDetail.guestsShouldBring.length > 0 ? (
+                          selectedSiteDetail.guestsShouldBring.map((item, idx) => (
+                            <div key={idx} className="flex gap-1.5">
+                              <span className="text-primary font-bold">•</span>
+                              <span className="capitalize">{item.replace(/_/g, ' ')}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <span className="italic text-slate-400">Không yêu cầu chuẩn bị đặc biệt.</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column: Pricing & settings */}
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-1.5 flex items-center gap-1.5">
+                      <DollarSign className="w-4 h-4 text-primary" /> Giá thuê & Phí dịch vụ
+                    </h4>
+                    <div className="text-xs text-slate-650 dark:text-slate-400 bg-slate-50 dark:bg-slate-950 p-3.5 rounded-xl border border-slate-155 dark:border-slate-850 space-y-2">
+                      <div className="flex justify-between border-b pb-1.5 border-slate-200/60 dark:border-slate-800">
+                        <span>Giá cơ bản:</span>
+                        <span className="font-bold text-emerald-600 text-sm">{fmt(selectedSiteDetail.pricing?.basePrice || 0)}₫/đêm</span>
+                      </div>
+                      {selectedSiteDetail.pricing?.weekendPrice !== undefined && (
+                        <div className="flex justify-between">
+                          <span>Giá cuối tuần:</span>
+                          <span className="font-bold text-emerald-600">{fmt(selectedSiteDetail.pricing.weekendPrice)}₫/đêm</span>
+                        </div>
+                      )}
+                      {selectedSiteDetail.pricing?.weeklyDiscount !== undefined && (
+                        <div className="flex justify-between">
+                          <span>Giảm giá tuần (7đ+):</span>
+                          <span className="font-semibold text-emerald-600">-{selectedSiteDetail.pricing.weeklyDiscount}%</span>
+                        </div>
+                      )}
+                      {selectedSiteDetail.pricing?.monthlyDiscount !== undefined && (
+                        <div className="flex justify-between">
+                          <span>Giảm giá tháng (30đ+):</span>
+                          <span className="font-semibold text-emerald-600">-{selectedSiteDetail.pricing.monthlyDiscount}%</span>
+                        </div>
+                      )}
+                      {selectedSiteDetail.pricing?.additionalGuestFee !== undefined && (
+                        <div className="flex justify-between">
+                          <span>Phí thêm người:</span>
+                          <span className="font-semibold">{fmt(selectedSiteDetail.pricing.additionalGuestFee)}₫/khách</span>
+                        </div>
+                      )}
+                      {selectedSiteDetail.pricing?.petFee !== undefined && (
+                        <div className="flex justify-between">
+                          <span>Phí thú cưng:</span>
+                          <span className="font-semibold">{fmt(selectedSiteDetail.pricing.petFee)}₫/đêm</span>
+                        </div>
+                      )}
+                      {selectedSiteDetail.pricing?.vehicleFee !== undefined && (
+                        <div className="flex justify-between">
+                          <span>Phí xe cộ:</span>
+                          <span className="font-semibold">{fmt(selectedSiteDetail.pricing.vehicleFee)}₫/đêm</span>
+                        </div>
+                      )}
+                      {selectedSiteDetail.pricing?.cleaningFee !== undefined && (
+                        <div className="flex justify-between">
+                          <span>Phí dọn dẹp:</span>
+                          <span className="font-semibold">{fmt(selectedSiteDetail.pricing.cleaningFee)}₫</span>
+                        </div>
+                      )}
+                      {selectedSiteDetail.pricing?.depositAmount !== undefined && (
+                        <div className="flex justify-between border-t pt-1.5 border-slate-200/60 dark:border-slate-800">
+                          <span>Đặt cọc thế chân:</span>
+                          <span className="font-bold text-slate-700 dark:text-slate-350">{fmt(selectedSiteDetail.pricing.depositAmount)}₫</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-1.5 flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-primary" /> Thiết lập lịch & giờ giấc
+                    </h4>
+                    <div className="text-xs text-slate-650 dark:text-slate-400 bg-slate-50 dark:bg-slate-950 p-3.5 rounded-xl border border-slate-155 dark:border-slate-850 space-y-2">
+                      <div className="flex justify-between">
+                        <span>Giờ nhận phòng:</span>
+                        <span className="font-semibold">{selectedSiteDetail.bookingSettings?.checkInTime || "14:00"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Giờ trả phòng:</span>
+                        <span className="font-semibold">{selectedSiteDetail.bookingSettings?.checkOutTime || "11:00"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Đêm cắm trại tối thiểu:</span>
+                        <span className="font-semibold">{selectedSiteDetail.bookingSettings?.minimumNights || 1} đêm</span>
+                      </div>
+                      {selectedSiteDetail.bookingSettings?.maximumNights && (
+                        <div className="flex justify-between">
+                          <span>Đêm cắm trại tối đa:</span>
+                          <span className="font-semibold">{selectedSiteDetail.bookingSettings.maximumNights} đêm</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span>Đặt phòng nhanh:</span>
+                        <span className="font-semibold">{selectedSiteDetail.bookingSettings?.instantBook ? "Có" : "Không"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Báo trước tối thiểu:</span>
+                        <span className="font-semibold">{selectedSiteDetail.bookingSettings?.advanceNotice || 24} giờ</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Photos Gallery */}
+              {selectedSiteDetail.photos && selectedSiteDetail.photos.length > 0 && (
+                <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-850">
+                  <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-1.5">
+                    <Eye className="w-4 h-4 text-primary" /> Thư viện hình ảnh Site ({selectedSiteDetail.photos.length})
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+                    {selectedSiteDetail.photos
+                      .sort((a, b) => (b.isCover ? 1 : 0) - (a.isCover ? 1 : 0))
+                      .map((photo, idx) => (
+                        <div key={idx} className="relative aspect-video rounded-xl bg-slate-100 dark:bg-slate-900 overflow-hidden border border-slate-200/80 dark:border-slate-800 group">
+                          <img src={photo.url} alt={photo.caption || "Ảnh site"} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
+                          {photo.isCover && (
+                            <span className="absolute top-1 left-1 bg-primary text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md shadow-sm">
+                              Bìa
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              <DialogFooter className="border-t pt-4 mt-6">
+                <Button variant="outline" onClick={() => setSelectedSiteDetail(null)}>Đóng</Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

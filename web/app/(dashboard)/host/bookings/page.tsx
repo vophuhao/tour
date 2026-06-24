@@ -26,6 +26,7 @@ import { getMyBookings } from '@/lib/client-actions';
 import { getMyProperties } from '@/lib/property-site-api';
 import API from '@/lib/api-client';
 import QRCode from 'qrcode';
+import * as XLSX from 'xlsx';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
   pending: { label: 'Chờ xác nhận', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300', dot: 'bg-amber-500' },
@@ -178,6 +179,64 @@ export default function BookingsPage() {
   const formatPrice = (price: number) => new Intl.NumberFormat('vi-VN').format(price);
   const formatDate = (date: string) => new Date(date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
+  const handleExportReport = () => {
+    try {
+      if (filteredBookings.length === 0) {
+        toast.error('Không có dữ liệu để xuất');
+        return;
+      }
+
+      const data = filteredBookings.map((b, idx) => {
+        const guestName = b.fullnameGuest || b.guest?.name || '—';
+        const guestEmail = b.email || b.guest?.email || '—';
+        const guestPhone = b.phone || b.guest?.phone || b.guest?.phoneNumber || '—';
+        const statusText = STATUS_CONFIG[b.status]?.label || b.status;
+        const paymentStatusText = PAYMENT_CONFIG[b.paymentStatus]?.label || b.paymentStatus || '—';
+
+        return {
+          'STT': idx + 1,
+          'Mã đặt phòng': b.code || b._id || '',
+          'Khách hàng': guestName,
+          'Số điện thoại': guestPhone,
+          'Email': guestEmail,
+          'Khu cắm trại': b.property?.name || 'Khu cắm trại',
+          'Vị trí/Site': b.site?.name || 'Vị trí',
+          'Check-in': b.checkIn ? new Date(b.checkIn).toLocaleDateString('vi-VN') : '—',
+          'Check-out': b.checkOut ? new Date(b.checkOut).toLocaleDateString('vi-VN') : '—',
+          'Tổng tiền (VND)': b.pricing?.total || 0,
+          'Tiền cọc (VND)': b.pricing?.deposit || 0,
+          'Thanh toán': paymentStatusText,
+          'Trạng thái': statusText,
+          'Ngày đặt': b.createdAt ? new Date(b.createdAt).toLocaleDateString('vi-VN') : '—',
+        };
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Danh sách Booking');
+
+      const maxLens = data.reduce((acc, row) => {
+        Object.keys(row).forEach((key) => {
+          const val = row[key as keyof typeof row];
+          const valStr = val ? val.toString() : '';
+          const len = valStr.length;
+          acc[key] = Math.max(acc[key] || 0, len, key.length);
+        });
+        return acc;
+      }, {} as Record<string, number>);
+
+      worksheet['!cols'] = Object.keys(maxLens).map((key) => ({
+        wch: maxLens[key] + 3
+      }));
+
+      XLSX.writeFile(workbook, `bao-cao-booking-host-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      toast.success('Đã tải xuống báo cáo booking Excel (.xlsx)');
+    } catch (err) {
+      console.error(err);
+      toast.error('Lỗi khi xuất file báo cáo Excel');
+    }
+  };
+
   const stats = {
     total: bookings.length,
     pending: bookings.filter(b => b.status === 'pending').length,
@@ -234,7 +293,12 @@ export default function BookingsPage() {
                   </button>
                 ))}
               </div>
-              <Button variant="outline" size="sm" className="gap-1.5 border-border text-xs">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 border-border text-xs"
+                onClick={handleExportReport}
+              >
                 <Download className="h-3.5 w-3.5" /> Xuất báo cáo
               </Button>
             </div>

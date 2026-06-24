@@ -155,7 +155,7 @@ export default function ReviewsPage() {
         <div className="min-h-screen">
             {/* Header */}
             <div className="bg-white ">
-                <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+                <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between">
                         <div>
                             <h1 className="text-3xl font-bold text-gray-900">Quản lý đánh giá</h1>
@@ -166,7 +166,7 @@ export default function ReviewsPage() {
             </div>
 
             {/* Stats */}
-            <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
                     <Card>
                         <CardContent className="p-6">
@@ -244,7 +244,7 @@ export default function ReviewsPage() {
             </div>
 
             {/* Filters */}
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
                         <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 sm:w-auto">
@@ -285,7 +285,7 @@ export default function ReviewsPage() {
             </div>
 
             {/* Reviews List */}
-            <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
                 {loading ? (
                     <div className="flex items-center justify-center py-12">
                         <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent"></div>

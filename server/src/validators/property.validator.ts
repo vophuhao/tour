@@ -34,7 +34,10 @@ export const createPropertySchema = z.object({
     country: z.string().default("Vietnam"),
     coordinates: z.object({
       type: z.literal("Point").default("Point"),
-      coordinates: z.tuple([z.number(), z.number()]), // [lng, lat]
+      coordinates: z.tuple([
+        z.number().min(-180, "Longitude must be >= -180").max(180, "Longitude must be <= 180"),
+        z.number().min(-90, "Latitude must be >= -90").max(90, "Latitude must be <= 90"),
+      ]), // [lng, lat]
     }),
     directions: z.string().max(1000).optional(),
     parkingInstructions: z.string().max(500).optional(),

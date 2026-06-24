@@ -2,6 +2,10 @@ import {
   AmenityService,
   AuthService,
   BookingService,
+  BookingQueryService,
+  BookingLifecycleService,
+  BookingNotificationService,
+  EmailTemplateService,
   CommentService,
   ForumService,
   // Hipcamp-style services
@@ -35,6 +39,10 @@ container.register(
 
 // Register Hipcamp-style services
 container.register(TOKENS.BookingService, () => new BookingService(), { singleton: true });
+container.register(TOKENS.BookingQueryService, () => new BookingQueryService(), { singleton: true });
+container.register(TOKENS.BookingLifecycleService, () => new BookingLifecycleService(), { singleton: true });
+container.register(TOKENS.BookingNotificationService, () => new BookingNotificationService(), { singleton: true });
+container.register(TOKENS.EmailTemplateService, () => new EmailTemplateService(), { singleton: true });
 container.register(TOKENS.ReviewService, () => new ReviewService(), { singleton: true });
 container.register(TOKENS.AmenityService, () => new AmenityService(), { singleton: true });
 container.register(TOKENS.PropertyService, () => new PropertyService(), { singleton: true });

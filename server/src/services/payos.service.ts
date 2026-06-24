@@ -1,80 +1,107 @@
+import { createHmac } from "crypto";
 import { ErrorFactory } from "@/errors";
-import { AvailabilityModel, BookingModel } from "@/models";
+import { BookingModel } from "@/models";
 import appAssert from "../utils/app-assert";
-import mongoose from "mongoose";
 import { sendBookingSuccessEmail } from "../utils/send-booking-email";
+import { PAYOS_CHECKSUM_KEY } from "../constants";
 
+/**
+ * Verify PayOS webhook signature using HMAC-SHA256
+ * Tài liệu: https://payos.vn/docs/webhook
+ */
+export function verifyPayOSSignature(data: Record<string, any>, receivedSignature: string): boolean {
+  try {
+    // Sắp xếp keys theo alphabet và tạo chuỗi key=value&...
+    const sortedKeys = Object.keys(data).sort();
+    const dataString = sortedKeys
+      .map((key) => `${key}=${data[key]}`)
+      .join("&");
 
+    const expectedSignature = createHmac("sha256", PAYOS_CHECKSUM_KEY)
+      .update(dataString)
+      .digest("hex");
+
+    return expectedSignature === receivedSignature;
+  } catch {
+    return false;
+  }
+}
 
 export default class PayOSService {
-    constructor() { }
+  constructor() {}
 
+  async handlePayOS(rawBody: any, signature?: string) {
+    // ============================================================
+    // SECURITY: Verify webhook signature trước khi xử lý
+    // Ngăn chặn kẻ tấn công fake webhook PAID
+    // ============================================================
+    appAssert(signature, ErrorFactory.forbidden("Missing PayOS webhook signature"));
 
-    async handlePayOS(data: any) {
+    const webhookData = rawBody.data || {};
+    const isValid = verifyPayOSSignature(webhookData, signature);
+    appAssert(isValid, ErrorFactory.forbidden("Invalid PayOS webhook signature"));
 
-        console.log("Received PayOS webhook data:", data);
+    const description: string = rawBody.data?.description || "";
+    const isBooking = description.includes("BOOKING");
 
-        const description = data.data?.description || ""; // Lấy description
-        const isBooking = description.includes("BOOKING")
-        const isOrder = description.includes("ORDER");
-        console.log(data);
-        if (isBooking) {
-            try {
-                const orderCode = data.data?.orderCode;
-                const success = data.data?.status === "PAID" || data.success;
-                const booking = await BookingModel.findOne({ payOSOrderCode: orderCode })
-                    .populate("property", "name location")
-                    .populate("site", "name")
-                    .populate("guest", "username email fullName name");
-                appAssert(booking, ErrorFactory.resourceNotFound("Booking"));
-                console.log("Found booking for PayOS webhook:", booking);
-                if (success) {
-                    booking.paymentStatus = "paid";
-                    await booking.save();
-                    
-                    // Gửi email xác nhận đặt chỗ cho khách hàng
-                    try {
-                        await sendBookingSuccessEmail(booking);
-                    } catch (mailErr) {
-                        console.error("Lỗi khi gửi email xác nhận đặt chỗ:", mailErr);
-                    }
-
-                    return { success: true, code: "PAYMENT_SUCCESS", message: "Thanh toán thành công", booking };
-                } else {
-                    console.error("Payment failed for booking with orderCode:", orderCode);
-                    booking.paymentStatus = "failed";
-                    console.error("đã vô đây");
-                    await booking.save();
-
-
-                    return { success: false, code: "PAYMENT_FAILED", message: "Thanh toán thất bại", booking };
-                }
-            } catch (err: any) {
-                console.error("Error handling PayOS webhook:", err.message);
-                return { success: false, code: "WEBHOOK_ERROR", message: err.message };
-            }
-        }
-
-        else {
-            const session = await mongoose.startSession();
-            session.startTransaction();
-
-            try {
-                const orderCode = data.data?.orderCode;
-                const success = data.data?.status === "PAID" || data.success;
-
-                if (!orderCode) {
-                    await session.abortTransaction();
-                    session.endSession();
-                    return { success: false, code: "MISSING_ORDER_CODE", message: "Thiếu orderCode" };
-                }
-
-
-            } catch (err: any) {
-                await session.abortTransaction();
-                session.endSession();
-                return { success: false, code: "WEBHOOK_ERROR", message: err.message };
-            }
-        }
+    if (isBooking) {
+      return this.handleBookingWebhook(rawBody);
     }
+
+    // Có thể mở rộng thêm các loại webhook khác ở đây
+    return { success: true, code: "UNHANDLED_TYPE", message: "Webhook type not handled" };
+  }
+
+  /**
+   * Xử lý webhook cho booking thanh toán
+   */
+  private async handleBookingWebhook(data: any) {
+    try {
+      const orderCode = data.data?.orderCode;
+      const status = data.data?.status;
+      const success = status === "PAID" || data.success === true;
+
+      appAssert(orderCode, ErrorFactory.badRequest("Thiếu orderCode trong webhook"));
+
+      const booking = await BookingModel.findOne({ payOSOrderCode: orderCode })
+        .populate("property", "name location")
+        .populate("site", "name")
+        .populate("guest", "username email fullName name");
+
+      appAssert(booking, ErrorFactory.resourceNotFound("Booking"));
+
+      if (success) {
+        booking.paymentStatus = "paid";
+        booking.paidAt = new Date(); // Set đúng thời điểm thanh toán thành công
+        await booking.save();
+
+        // Gửi email xác nhận đặt chỗ cho khách hàng
+        try {
+          await sendBookingSuccessEmail(booking);
+        } catch (mailErr) {
+          console.error("Lỗi khi gửi email xác nhận đặt chỗ:", mailErr);
+        }
+
+        return {
+          success: true,
+          code: "PAYMENT_SUCCESS",
+          message: "Thanh toán thành công",
+          bookingCode: booking.code,
+        };
+      } else {
+        booking.paymentStatus = "failed";
+        await booking.save();
+
+        return {
+          success: false,
+          code: "PAYMENT_FAILED",
+          message: "Thanh toán thất bại",
+          bookingCode: booking.code,
+        };
+      }
+    } catch (err: any) {
+      console.error("Error handling PayOS booking webhook:", err.message);
+      return { success: false, code: "WEBHOOK_ERROR", message: err.message };
+    }
+  }
 }

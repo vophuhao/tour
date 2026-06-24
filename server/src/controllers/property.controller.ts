@@ -7,6 +7,7 @@ import {
   searchPropertySchema,
   updatePropertySchema,
 } from "@/validators/property.validator";
+import { routeSearchSchema } from "@/validators/route-search.validator";
 
 export default class PropertyController {
   constructor(private readonly propertyService: PropertyService) { }
@@ -45,6 +46,30 @@ export default class PropertyController {
         hasPrev: pagination.page > 1,
       },
       "Tìm kiếm property thành công"
+    );
+  });
+
+  /**
+   * Search properties along a route
+   * @route POST /api/properties/route-search
+   */
+  searchPropertiesAlongRoute = catchErrors(async (req, res) => {
+    const input = routeSearchSchema.parse(req.body);
+
+    const { properties, pagination } = await this.propertyService.searchPropertiesAlongRoute(input);
+
+    return ResponseUtil.paginated(
+      res,
+      properties,
+      {
+        page: pagination.page,
+        limit: pagination.limit,
+        total: pagination.total,
+        totalPages: pagination.pages,
+        hasNext: pagination.page < pagination.pages,
+        hasPrev: pagination.page > 1,
+      },
+      "Tìm kiếm địa điểm dọc lộ trình thành công"
     );
   });
 
@@ -291,5 +316,18 @@ export default class PropertyController {
     const data = await this.propertyService.getHostPropertiesWithSites(hostId || "");
 
     return ResponseUtil.success(res, data, "Lấy danh sách property của host thành công");
+  });
+
+  /**
+   * Compare multiple properties
+   * @route GET /api/properties/compare/list
+   */
+  compareProperties = catchErrors(async (req, res) => {
+    const idsString = req.query.ids as string | undefined;
+    const ids = idsString ? idsString.split(",").map(id => id.trim()).filter(Boolean) : [];
+
+    const data = await this.propertyService.compareProperties(ids);
+
+    return ResponseUtil.success(res, data, "Lấy danh sách so sánh thành công");
   });
 }

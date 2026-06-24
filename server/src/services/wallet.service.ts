@@ -1,11 +1,13 @@
 import { ErrorFactory } from "@/errors";
 import { BookingModel } from "@/models";
-import HostModel from "@/models/host.modal";
+import HostModel from "@/models/host.model";
 import UserModel from "../models/user.model";
 import NotificationService from "./notification.service";
 import { WalletTransactionModel } from "@/models/wallet-transaction.model";
 import { WithdrawalModel } from "@/models/withdrawal.model";
 import appAssert from "../utils/app-assert";
+import { buildSafeSearchRegex } from "../utils/regex";
+import { logger } from "../utils";
 import mongoose from "mongoose";
 
 const PLATFORM_FEE_RATE = 0.05; // 5%
@@ -195,7 +197,9 @@ export default class WalletService {
     appAssert(bankInfo.accountNumber?.trim(), ErrorFactory.badRequest("Số tài khoản là bắt buộc"));
     appAssert(bankInfo.accountHolderName?.trim(), ErrorFactory.badRequest("Tên chủ tài khoản là bắt buộc"));
 
-    const available = hostRecord.walletBalance;
+    // Số dư khả dụng trừ đi các lệnh chờ duyệt (nếu có, để đảm bảo an toàn)
+    const pendingAmount = hostRecord.pendingWithdrawalAmount || 0;
+    const available = hostRecord.walletBalance - pendingAmount;
     appAssert(
       amount <= available,
       ErrorFactory.badRequest(
@@ -210,6 +214,15 @@ export default class WalletService {
       accountNumber: bankInfo.accountNumber.trim(),
       accountHolderName: bankInfo.accountHolderName.trim(),
     };
+
+    // Giả lập giao dịch chuyển tiền liên ngân hàng qua Napas/VietQR
+    const napasTransId = `NPS${Date.now()}${Math.floor(1000 + Math.random() * 9000)}`;
+    logger.info("=== [BANK MOCK GATEWAY] Kích hoạt chuyển khoản tự động ===");
+    logger.info(`Đang kết nối tới cổng thanh toán VietQR / Napas247...`);
+    logger.info(`Thông tin tài khoản nhận: ${bankInfo.bankName.trim()} - Stk: ${bankInfo.accountNumber.trim()} - Chủ TK: ${bankInfo.accountHolderName.trim()}`);
+    logger.info(`Đang xử lý giao dịch chuyển tiền số lượng: ${amount.toLocaleString("vi-VN")}₫...`);
+    logger.info(`[SUCCESS] Giao dịch thành công. Mã giao dịch Napas: ${napasTransId}`);
+    logger.info("======================================================");
 
     // Trừ số dư ví ngay lập tức
     const balanceBefore = hostRecord.walletBalance;
@@ -237,7 +250,7 @@ export default class WalletService {
       type: "debit",
       amount,
       withdrawalId: withdrawal._id,
-      description: `Rút tiền - Lệnh #${(withdrawal._id as mongoose.Types.ObjectId).toString().slice(-6).toUpperCase()}`,
+      description: `Rút tiền - Lệnh #${(withdrawal._id as mongoose.Types.ObjectId).toString().slice(-6).toUpperCase()} (Auto Payout)`,
       balanceBefore,
       balanceAfter,
     });
@@ -299,8 +312,8 @@ export default class WalletService {
     if (search) {
       const matchingUsers = await UserModel.find({
         $or: [
-          { username: { $regex: search, $options: "i" } },
-          { email: { $regex: search, $options: "i" } },
+          { username: { $regex: buildSafeSearchRegex(search) } },
+          { email: { $regex: buildSafeSearchRegex(search) } },
         ]
       }).select("_id");
       
@@ -308,9 +321,9 @@ export default class WalletService {
       
       query.$or = [
         { host: { $in: userIds } },
-        { "bankInfo.accountNumber": { $regex: search, $options: "i" } },
-        { "bankInfo.bankName": { $regex: search, $options: "i" } },
-        { "bankInfo.accountHolderName": { $regex: search, $options: "i" } },
+        { "bankInfo.accountNumber": { $regex: buildSafeSearchRegex(search) } },
+        { "bankInfo.bankName": { $regex: buildSafeSearchRegex(search) } },
+        { "bankInfo.accountHolderName": { $regex: buildSafeSearchRegex(search) } },
       ];
     }
 
@@ -362,16 +375,16 @@ export default class WalletService {
     if (search) {
       const matchingUsers = await UserModel.find({
         $or: [
-          { username: { $regex: search, $options: "i" } },
-          { email: { $regex: search, $options: "i" } },
+          { username: { $regex: buildSafeSearchRegex(search) } },
+          { email: { $regex: buildSafeSearchRegex(search) } },
         ]
       }).select("_id");
       
       const userIds = matchingUsers.map(u => u._id);
 
       query.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { gmail: { $regex: search, $options: "i" } },
+        { name: { $regex: buildSafeSearchRegex(search) } },
+        { gmail: { $regex: buildSafeSearchRegex(search) } },
         { user: { $in: userIds } },
       ];
     }

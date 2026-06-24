@@ -170,10 +170,29 @@ function calculateSiteSubtotal(site: Site, checkIn: Date, checkOut: Date) {
     currentDate.setDate(currentDate.getDate() + 1);
   }
 
+  // Apply discounts
+  let hasLongStayDiscount = false;
+  let discountPercent = 0;
+  const nights = Math.round(
+    (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  if (nights >= 28 && site.pricing.monthlyDiscount) {
+    discountPercent = site.pricing.monthlyDiscount;
+    hasLongStayDiscount = true;
+  } else if (nights >= 7 && site.pricing.weeklyDiscount) {
+    discountPercent = site.pricing.weeklyDiscount;
+    hasLongStayDiscount = true;
+  }
+  if (discountPercent > 0) {
+    subtotal = Math.round(subtotal * (1 - discountPercent / 100));
+  }
+
   return {
     subtotal,
     hasWeekendPrice,
-    hasSeasonalPrice
+    hasSeasonalPrice,
+    hasLongStayDiscount,
+    discountPercent,
   };
 }
 
@@ -994,15 +1013,19 @@ export function SitesListSection({
                                     </p>
                                     {hasSelectedDates ? (
                                       <div className="flex flex-col gap-0.5 mt-0.5">
-
-                                        {/* {(calculated?.hasSeasonalPrice || calculated?.hasWeekendPrice) && (
-                                          <span className="text-[10px] text-emerald-600 font-medium flex items-center gap-1">
-                                            ✨ Đã áp dụng giá
-                                            {calculated.hasSeasonalPrice && ' mùa vụ'}
-                                            {calculated.hasSeasonalPrice && calculated.hasWeekendPrice && ' /'}
-                                            {calculated.hasWeekendPrice && ' cuối tuần'}
+                                        <p className="text-xs text-gray-500 font-medium">
+                                          Tổng cộng: {totalPrice.toLocaleString()} ₫
+                                        </p>
+                                        {(calculated?.hasSeasonalPrice ||
+                                          calculated?.hasWeekendPrice ||
+                                          calculated?.hasLongStayDiscount) && (
+                                          <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                                            ✨ Áp dụng:
+                                            {calculated.hasSeasonalPrice && ' Giá mùa vụ'}
+                                            {calculated.hasWeekendPrice && ' Giá cuối tuần'}
+                                            {calculated.hasLongStayDiscount && ` Giảm dài ngày (-${calculated.discountPercent}%)`}
                                           </span>
-                                        )} */}
+                                        )}
                                       </div>
                                     ) : (
                                       <div className="flex flex-wrap gap-1 mt-0.5">
@@ -1241,12 +1264,14 @@ export function SitesListSection({
                                           <p className="text-xs text-gray-500">
                                             {totalPrice.toLocaleString()} ₫ tổng
                                           </p>
-                                          {(calculated?.hasSeasonalPrice || calculated?.hasWeekendPrice) && (
+                                          {(calculated?.hasSeasonalPrice ||
+                                            calculated?.hasWeekendPrice ||
+                                            calculated?.hasLongStayDiscount) && (
                                             <span className="text-[9px] text-emerald-600 font-medium">
-                                              ✨ Có áp dụng giá
+                                              ✨ Áp dụng:
                                               {calculated.hasSeasonalPrice && ' mùa vụ'}
-                                              {calculated.hasSeasonalPrice && calculated.hasWeekendPrice && '/'}
                                               {calculated.hasWeekendPrice && ' cuối tuần'}
+                                              {calculated.hasLongStayDiscount && ` giảm dài ngày (-${calculated.discountPercent}%)`}
                                             </span>
                                           )}
                                         </div>

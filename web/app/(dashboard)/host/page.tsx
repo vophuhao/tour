@@ -372,15 +372,9 @@ export default function HostDashboard() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
-            Host Dashboard
-            <Badge className="bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold px-2 py-0.5">
-              Kênh Chủ Nhà
-            </Badge>
-          </h1>
-          <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+          <h1 className="text-md md:text-xl font-medium text-slate-500 dark:text-slate-400 mt-0.5">
             Chào mừng quay trở lại, <span className="font-bold text-slate-800 dark:text-slate-200">{user?.username || 'Chủ nhà'}</span>. Dưới đây là hiệu quả kinh doanh của bạn.
-          </p>
+          </h1>
         </div>
         <div className="flex gap-2">
           <Link href="/host/properties" className="inline-flex items-center justify-center gap-2 text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/80 px-3 py-2 rounded-xl text-slate-700 dark:text-slate-250 transition-colors">
@@ -486,8 +480,8 @@ export default function HostDashboard() {
                   key={btn.value}
                   onClick={() => setPeriod(btn.value)}
                   className={`px-3 py-1.5 text-[10px] font-semibold rounded-lg transition-all ${period === btn.value
-                      ? 'bg-white dark:bg-slate-850 text-primary shadow-xs font-bold'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                    ? 'bg-white dark:bg-slate-850 text-primary shadow-xs font-bold'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                     }`}
                 >
                   {btn.label}
@@ -575,8 +569,8 @@ export default function HostDashboard() {
           <CardContent className="space-y-3.5 flex-1 overflow-y-auto pr-1">
             {/* Pending Requests */}
             <div className={`p-3 rounded-xl border flex items-center justify-between transition-all ${stats.bookings.pending > 0
-                ? 'bg-red-50/50 dark:bg-red-950/10 border-red-200/60 dark:border-red-900/40'
-                : 'bg-slate-50/50 dark:bg-slate-900/40 border-slate-100 dark:border-slate-850'
+              ? 'bg-red-50/50 dark:bg-red-950/10 border-red-200/60 dark:border-red-900/40'
+              : 'bg-slate-50/50 dark:bg-slate-900/40 border-slate-100 dark:border-slate-850'
               }`}>
               <div className="flex gap-2.5 items-start">
                 <Clock className={`h-4.5 w-4.5 shrink-0 mt-0.5 ${stats.bookings.pending > 0 ? 'text-red-500' : 'text-slate-400'}`} />

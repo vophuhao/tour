@@ -233,6 +233,19 @@ export default class ForumController {
   });
 
   /**
+   * Get liked posts
+   * @route GET /api/forum/liked
+   */
+  getLikedPosts = catchErrors(async (req: any, res: any) => {
+    const userId = mongoIdSchema.parse(req.userId);
+    const isAdmin = false;
+
+    const posts = await this.forumService.getLikedPosts(userId, isAdmin);
+
+    return ResponseUtil.success(res, posts, "Lấy bài viết đã thích thành công");
+  });
+
+  /**
    * Get trending posts
    * @route GET /api/forum/trending
    */

@@ -492,10 +492,10 @@ function SentHistoryTab() {
 
 export default function AdminNotificationsPage() {
   return (
-    <div className="h-[calc(100vh-2rem)] flex flex-col gap-4">
+    <div className="h-[calc(100vh-2rem)] max-w-7xl mx-auto w-full flex flex-col gap-4">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">
+        <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
           Quản lý thông báo
         </h1>
         <p className="text-xs text-slate-400 font-semibold mt-0.5">

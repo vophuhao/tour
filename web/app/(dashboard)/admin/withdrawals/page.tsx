@@ -129,10 +129,10 @@ export default function AdminWithdrawalsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+        <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
           <Wallet className="h-6 w-6 text-primary" />
           Quản lý Rút tiền Host
         </h1>

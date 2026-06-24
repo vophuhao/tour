@@ -1,6 +1,7 @@
 import Report from "../models/report.model";
 import ForumPost from "../models/forum.post.model";
 import FreeSpot from "../models/free-spot.model";
+import { buildSafeSearchRegex } from "../utils/regex";
 
 export interface CreateReportInput {
   targetId: string;
@@ -142,9 +143,10 @@ export class ReportService {
     const query: any = {};
     if (status) query.status = status;
     if (search) {
+      const safeSearch = buildSafeSearchRegex(search);
       query.$or = [
-        { title: { $regex: search, $options: "i" } },
-        { subject: { $regex: search, $options: "i" } },
+        { title: { $regex: safeSearch } },
+        { subject: { $regex: safeSearch } },
       ];
     }
 
@@ -190,10 +192,11 @@ export class ReportService {
     const query: any = {};
     if (status) query.status = status;
     if (search) {
+      const safeSearch = buildSafeSearchRegex(search);
       query.$or = [
-        { title: { $regex: search, $options: "i" } },
-        { city: { $regex: search, $options: "i" } },
-        { address: { $regex: search, $options: "i" } },
+        { title: { $regex: safeSearch } },
+        { city: { $regex: safeSearch } },
+        { address: { $regex: safeSearch } },
       ];
     }
 

@@ -18,6 +18,8 @@ const reviewController = new ReviewController(reviewService);
 
 // Search endpoint (must be first to avoid matching "search" as ID)
 propertyRoutes.get("/search", propertyController.searchProperties);
+propertyRoutes.get("/compare/list", propertyController.compareProperties);
+propertyRoutes.post("/route-search", propertyController.searchPropertiesAlongRoute);
 propertyRoutes.get("/", propertyController.searchProperties); // Alias
 
 // Featured and nearby (must be before /:idOrSlug)

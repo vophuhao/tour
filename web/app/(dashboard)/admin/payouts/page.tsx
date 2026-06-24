@@ -168,12 +168,10 @@ export default function AdminPayoutsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-primary">
+          <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
             Thanh toán Host
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Quản lý thanh toán cho host · Lịch sử rút tiền, số dư ví và tổng kết doanh thu.
-          </p>
+
         </div>
         {tab === 'unpaid' && (
           <button

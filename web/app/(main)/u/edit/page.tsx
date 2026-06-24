@@ -153,7 +153,7 @@ export default function EditProfilePage() {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadingAvatar}
-                className="absolute right-0 bottom-0 rounded-full bg-emerald-500 p-2 text-white transition-colors hover:bg-emerald-600 disabled:opacity-50"
+                className="absolute right-0 bottom-0 rounded-full bg-primary p-2 text-white transition-colors hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
               >
                 {uploadingAvatar ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -224,7 +224,7 @@ export default function EditProfilePage() {
               <div className="flex items-center gap-4">
                 <Button
                   type="submit"
-                  className="bg-emerald-500 hover:bg-emerald-600"
+                  className="bg-primary hover:bg-primary/90 cursor-pointer"
                   disabled={updateProfileMutation.isPending}
                 >
                   {updateProfileMutation.isPending ? (

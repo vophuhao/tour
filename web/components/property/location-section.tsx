@@ -66,7 +66,7 @@ export function LocationSection({ location }: LocationSectionProps) {
         </div>
 
         {/* Mapbox Map */}
-        <div className="relative h-[400px] w-full overflow-hidden rounded-lg border">
+        <div className="relative h-[400px] w-full overflow-hidden rounded-lg border notranslate" translate="no">
           <Map
             key={`location-${coords.lat}-${coords.lng}`}
             id="location-map"

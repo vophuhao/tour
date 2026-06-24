@@ -2,6 +2,7 @@ import { v2 as cloudinary } from "cloudinary";
 import sanitizeHtml from "sanitize-html";
 import validator from "validator";
 import streamifier from "streamifier";
+import { isValidObjectId } from "mongoose";
 import ForumPost from "../models/forum.post.model";
 import Comment from "../models/comment.model";
 
@@ -336,8 +337,8 @@ export class ForumService {
    * Get a single post by ID or slug
    */
   async getPost(id: string, userId?: string): Promise<any> {
-
-    const post = await ForumPost.findOne({ slug: id }).populate(
+    const query = isValidObjectId(id) ? { _id: id } : { slug: id };
+    const post = await ForumPost.findOne(query).populate(
       "userId",
       "username avatarUrl email _id "
     );
@@ -391,16 +392,20 @@ export class ForumService {
   /**
    * Increment view count with deduplication
    */
-  private incrementViewCount = (
+  private async incrementViewCount(
     post: any,
     _userId?: string
-  ): Promise<number> => {
-    return new Promise((resolve) => {
-      // Simplified view count - would need session/cache in production
-      post.viewCount = (post.viewCount || 0) + 1;
-      post.save().then(() => resolve(post.viewCount));
-    });
-  };
+  ): Promise<number> {
+    try {
+      const { redisClient } = await import("../config/redis");
+      await redisClient.hIncrBy("post_views", post._id.toString(), 1);
+      const redisViews = await redisClient.hGet("post_views", post._id.toString());
+      return (post.viewCount || 0) + (redisViews ? parseInt(redisViews) : 0);
+    } catch (err) {
+      console.warn("Failed to increment/read post views in Redis:", err);
+      return (post.viewCount || 0) + 1;
+    }
+  }
 
   /**
    * Update a post
@@ -680,6 +685,24 @@ export class ForumService {
   }
 
   /**
+   * Get liked posts
+   */
+  async getLikedPosts(userId: string, isAdmin: boolean): Promise<any[]> {
+    const query: any = { likes: userId };
+    if (!isAdmin) {
+      query.status = "active";
+    } else {
+      query.status = { $ne: "deleted" };
+    }
+
+    const posts = await ForumPost.find(query)
+      .sort({ createdAt: -1 })
+      .populate("userId", "name avatarUrl email");
+
+    return posts;
+  }
+
+  /**
    * Get trending posts (sorted by likes and creation date)
    */
   async getTrending(): Promise<
@@ -775,5 +798,37 @@ export class ForumService {
     ]);
 
     return categories;
+  }
+
+  /**
+   * Sync post view counts from Redis to MongoDB
+   */
+  async syncViewsFromRedis(): Promise<void> {
+    const { redisClient } = await import("../config/redis");
+    const mongoose = await import("mongoose");
+    const keys = await redisClient.hKeys("post_views").catch(() => [] as string[]);
+    const updateOps = [];
+
+    for (const id of keys) {
+      const countStr = await redisClient.hGet("post_views", id).catch(() => null);
+      if (countStr) {
+        const count = parseInt(countStr);
+        await redisClient.hDel("post_views", id).catch(() => {});
+        if (count > 0 && mongoose.isValidObjectId(id)) {
+          updateOps.push({
+            updateOne: {
+              filter: { _id: id },
+              update: { $inc: { viewCount: count } },
+            },
+          });
+        }
+      }
+    }
+
+    if (updateOps.length > 0) {
+      await ForumPost.bulkWrite(updateOps).catch((err) => {
+        console.error("Failed to sync post views bulk write:", err);
+      });
+    }
   }
 }

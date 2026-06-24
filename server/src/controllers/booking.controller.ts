@@ -1,5 +1,4 @@
 import { catchErrors } from "@/errors";
-import type { BookingService } from "@/services/booking.service";
 import { ResponseUtil } from "../utils";
 import { mongoIdSchema } from "@/validators";
 import {
@@ -13,23 +12,33 @@ import {
   processDissatisfactionSchema,
 } from "@/validators/booking.validator";
 import mongoose from "mongoose";
+import { container, TOKENS } from "@/di";
+import type { BookingService } from "@/services/booking.service";
+import type { BookingQueryService } from "@/services/booking-query.service";
+import PayOSService from "@/services/payos.service";
+import { BookingDTO } from "../dtos/booking.dto";
 
 export default class BookingController {
-  constructor(private readonly bookingService: BookingService) { }
+  constructor(private readonly _bookingService?: BookingService) { }
+
+  private get bookingService(): BookingService {
+    return this._bookingService || container.resolve<BookingService>(TOKENS.BookingService);
+  }
+
+  private get bookingQueryService(): BookingQueryService {
+    return container.resolve<BookingQueryService>(TOKENS.BookingQueryService);
+  }
 
   /**
    * Create booking (guest)
    * @route POST /api/bookings
    */
   createBooking = catchErrors(async (req, res) => {
-    // Parse and validate input
     const input = createBookingSchema.parse(req.body);
     const guestId = mongoIdSchema.parse(req.userId);
 
-    // Create booking - availability check now handles maxConcurrentBookings automatically
     const booking = await this.bookingService.createBooking(guestId, input);
-
-    return ResponseUtil.created(res, booking, "Đặt chỗ thành công");
+    return ResponseUtil.created(res, BookingDTO.toResponse(booking), "Đặt chỗ thành công");
   });
 
   /**
@@ -40,9 +49,8 @@ export default class BookingController {
     const { id } = req.params;
     const userId = mongoIdSchema.parse(req.userId);
 
-    const booking = await this.bookingService.getBooking(id || "", userId);
-
-    return ResponseUtil.success(res, booking, "Lấy thông tin booking thành công");
+    const booking = await this.bookingQueryService.getBooking(id || "", userId);
+    return ResponseUtil.success(res, BookingDTO.toResponse(booking), "Lấy thông tin booking thành công");
   });
 
   /**
@@ -53,9 +61,8 @@ export default class BookingController {
     const input = searchBookingSchema.parse(req.query);
     const userId = mongoIdSchema.parse(req.userId);
 
-    const { data, pagination } = await this.bookingService.searchBookings(userId, input);
-
-    return ResponseUtil.paginated(res, data, pagination, "Lấy danh sách booking thành công");
+    const { data, pagination } = await this.bookingQueryService.searchBookings(userId, input);
+    return ResponseUtil.paginated(res, BookingDTO.toResponseList(data), pagination, "Lấy danh sách booking thành công");
   });
 
   /**
@@ -68,8 +75,7 @@ export default class BookingController {
     const { hostMessage } = confirmBookingSchema.parse(req.body);
 
     const booking = await this.bookingService.confirmBooking(id || "", hostId, hostMessage);
-
-    return ResponseUtil.success(res, booking, "Xác nhận booking thành công");
+    return ResponseUtil.success(res, BookingDTO.toResponse(booking), "Xác nhận booking thành công");
   });
 
   /**
@@ -86,10 +92,8 @@ export default class BookingController {
       userId as unknown as mongoose.Types.ObjectId,
       input
     );
-
-    return ResponseUtil.success(res, booking, "Hủy booking thành công");
+    return ResponseUtil.success(res, BookingDTO.toResponse(booking), "Hủy booking thành công");
   });
-
 
   /**
    * Complete booking (system - called after checkout date)
@@ -99,7 +103,7 @@ export default class BookingController {
     const { id } = req.params;
 
     const booking = await this.bookingService.completeBooking(id || "");
-    return ResponseUtil.success(res, booking, "Hoàn thành booking thành công");
+    return ResponseUtil.success(res, BookingDTO.toResponse(booking), "Hoàn thành booking thành công");
   });
 
   /**
@@ -112,7 +116,7 @@ export default class BookingController {
     const { refundAmount } = refundBookingSchema.parse(req.body);
 
     const booking = await this.bookingService.refundBooking(id || "", userId, refundAmount);
-    return ResponseUtil.success(res, booking, "Hoàn tiền booking thành công");
+    return ResponseUtil.success(res, BookingDTO.toResponse(booking), "Hoàn tiền booking thành công");
   });
 
   /**
@@ -121,13 +125,10 @@ export default class BookingController {
    */
   updatePayment = catchErrors(async (req, res) => {
     const { id } = req.params;
-    // Validate input
     updatePaymentSchema.parse(req.body);
 
-    // This would be in a separate payment service, simplified here
-    const booking = await this.bookingService.getBooking(id || "", mongoIdSchema.parse(req.userId));
-
-    return ResponseUtil.success(res, booking, "Cập nhật thanh toán thành công");
+    const booking = await this.bookingQueryService.getBooking(id || "", mongoIdSchema.parse(req.userId));
+    return ResponseUtil.success(res, BookingDTO.toResponse(booking), "Cập nhật thanh toán thành công");
   });
 
   getMyBookings = catchErrors(async (req, res) => {
@@ -135,23 +136,26 @@ export default class BookingController {
     const page = req.query.page ? Number(req.query.page) : 1;
     const limit = req.query.limit ? Number(req.query.limit) : 20;
 
-    const { data, pagination } = await this.bookingService.getMyBookings(userId, page, limit);
+    const { data, pagination } = await this.bookingQueryService.getMyBookings(userId, page, limit);
     return ResponseUtil.paginated(
       res,
-      data,
+      BookingDTO.toResponseList(data),
       pagination,
       "Lấy danh sách booking của tôi thành công"
     );
   });
+
   getBookingByCode = catchErrors(async (req, res) => {
     const { code } = req.params;
 
-    const booking = await this.bookingService.getBookingByCode(code || "");
-    return ResponseUtil.success(res, booking, "Lấy thông tin booking thành công");
+    const booking = await this.bookingQueryService.getBookingByCode(code || "");
+    return ResponseUtil.success(res, BookingDTO.toResponse(booking), "Lấy thông tin booking thành công");
   });
 
   handlePayOSWebhook = catchErrors(async (req, res) => {
-    const result = await this.bookingService.handlePayOSWebhook(req.body);
+    const payOSService = new PayOSService();
+    const signature = req.headers["x-payos-signature"] as string | undefined;
+    const result = await payOSService.handlePayOS(req.body, signature);
     return res.status(200).json(result);
   });
 
@@ -169,11 +173,8 @@ export default class BookingController {
     const { id } = req.params;
     const guestId = mongoIdSchema.parse(req.userId);
 
-    const booking = await this.bookingService.guestConfirmArrival(
-      id || "",
-      guestId
-    );
-    return ResponseUtil.success(res, booking, "Xác nhận đã đến thành công! Tiền đã được cộng vào ví host");
+    const booking = await this.bookingService.guestConfirmArrival(id || "", guestId);
+    return ResponseUtil.success(res, BookingDTO.toResponse(booking), "Xác nhận đã đến thành công! Tiền đã được cộng vào ví host");
   });
 
   // Khách báo không thể đến
@@ -189,7 +190,7 @@ export default class BookingController {
     );
     return ResponseUtil.success(
       res,
-      booking,
+      BookingDTO.toResponse(booking),
       "Đã ghi nhận yêu cầu không đến. Admin sẽ xét duyệt hoàn tiền 50% cho bạn"
     );
   });
@@ -201,7 +202,7 @@ export default class BookingController {
     const { reason } = req.body;
 
     const booking = await this.bookingService.requestRefund(id || "", userId, reason || "");
-    return ResponseUtil.success(res, booking, "Đã gửi yêu cầu hoàn tiền");
+    return ResponseUtil.success(res, BookingDTO.toResponse(booking), "Đã gửi yêu cầu hoàn tiền");
   });
 
   // Admin xử lý refund
@@ -219,7 +220,7 @@ export default class BookingController {
     );
     return ResponseUtil.success(
       res,
-      booking,
+      BookingDTO.toResponse(booking),
       approved ? "Đã duyệt hoàn tiền" : "Đã từ chối hoàn tiền"
     );
   });
@@ -227,7 +228,7 @@ export default class BookingController {
   // Admin xem tất cả booking
   getAdminBookings = catchErrors(async (req, res) => {
     const { status, paymentStatus, hostId, search, startDate, endDate, page, limit, cannotAttendStatus } = req.query;
-    const result = await this.bookingService.getAdminBookings({
+    const result = await this.bookingQueryService.getAdminBookings({
       status: status as string,
       paymentStatus: paymentStatus as string,
       hostId: hostId as string,
@@ -240,16 +241,15 @@ export default class BookingController {
     });
     return ResponseUtil.paginated(
       res,
-      result.data,
+      BookingDTO.toResponseList(result.data),
       result.pagination,
       "Lấy danh sách booking thành công"
     );
   });
 
-
   // Admin thống kê
   getAdminBookingStats = catchErrors(async (_req, res) => {
-    const stats = await this.bookingService.getAdminBookingStats();
+    const stats = await this.bookingQueryService.getAdminBookingStats();
     return ResponseUtil.success(res, stats, "Lấy thống kê thành công");
   });
 
@@ -260,7 +260,7 @@ export default class BookingController {
     const { reason } = req.body;
 
     const booking = await this.bookingService.adminCancelBooking(id || "", adminId, reason);
-    return ResponseUtil.success(res, booking, "Đã hủy booking");
+    return ResponseUtil.success(res, BookingDTO.toResponse(booking), "Đã hủy booking");
   });
 
   // Admin xử lý yêu cầu khách không đến (cannot attend)
@@ -277,7 +277,7 @@ export default class BookingController {
     );
     return ResponseUtil.success(
       res,
-      booking,
+      BookingDTO.toResponse(booking),
       approved ? "Đã xác nhận hoàn tiền, ví host đã được cộng 20%" : "Đã từ chối yêu cầu"
     );
   });
@@ -287,14 +287,14 @@ export default class BookingController {
     const hostId = mongoIdSchema.parse(req.userId);
     const { status, page, limit } = req.query;
 
-    const result = await this.bookingService.getHostBookings(hostId, {
+    const result = await this.bookingQueryService.getHostBookings(hostId, {
       status: status as string,
       page: parseInt(page as string) || 1,
       limit: parseInt(limit as string) || 20,
     });
     return ResponseUtil.paginated(
       res,
-      result.data,
+      BookingDTO.toResponseList(result.data),
       result.pagination,
       "Lấy danh sách booking thành công"
     );
@@ -302,35 +302,25 @@ export default class BookingController {
 
   /**
    * Khách gửi yêu cầu hoàn tiền do không hài lòng
-   * @route POST /bookings/:id/dissatisfaction
    */
   requestDissatisfaction = catchErrors(async (req, res) => {
     const { id } = req.params;
     const guestId = mongoIdSchema.parse(req.userId);
     const input = requestDissatisfactionSchema.parse(req.body);
 
-    const booking = await this.bookingService.requestDissatisfaction(
-      guestId,
-      id || "",
-      input
-    );
-    return ResponseUtil.success(res, booking, "Đã gửi yêu cầu hoàn tiền không hài lòng");
+    const booking = await this.bookingService.requestDissatisfaction(guestId, id || "", input);
+    return ResponseUtil.success(res, BookingDTO.toResponse(booking), "Đã gửi yêu cầu hoàn tiền không hài lòng");
   });
 
   /**
    * Admin xử lý yêu cầu hoàn tiền không hài lòng
-   * @route POST /bookings/:id/dissatisfaction/process
    */
   processDissatisfaction = catchErrors(async (req, res) => {
     const { id } = req.params;
     const adminId = mongoIdSchema.parse(req.userId);
     const input = processDissatisfactionSchema.parse(req.body);
 
-    const booking = await this.bookingService.processDissatisfaction(
-      adminId,
-      id || "",
-      input
-    );
-    return ResponseUtil.success(res, booking, "Đã xử lý yêu cầu hoàn tiền");
+    const booking = await this.bookingService.processDissatisfaction(adminId, id || "", input);
+    return ResponseUtil.success(res, BookingDTO.toResponse(booking), "Đã xử lý yêu cầu hoàn tiền");
   });
 }

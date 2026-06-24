@@ -13,6 +13,7 @@ import { SiteBookingSettings } from "@/components/host/site/site-booking-setting
 import { createSite, getPropertyById, getSitesByProperty } from "@/lib/property-site-api";
 import { uploadMedia } from "@/lib/client-actions";
 import { useQuery } from "@tanstack/react-query";
+import { StepIndicator } from "@/components/host/property/step-indicator";
 
 const STEPS = [
     { id: "details", title: "Thông tin & Giá" },
@@ -221,145 +222,111 @@ export default function NewSitePage() {
     };
 
     return (
-        <div className="max-w-5xl mx-auto py-6 space-y-6">
-            <div className="w-full">
-                <div className="flex items-center justify-between w-full">
-
-                    <Button
-                        variant="ghost"
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900/50 pb-12">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div className="flex items-center justify-between bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-4 shadow-sm mb-8">
+                    <button
+                        type="button"
                         onClick={() => router.push(`/host/properties/${propertyId}/sites`)}
-                        className="flex items-center gap-2"
+                        className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
                     >
-                        <ArrowLeft className="h-4 w-4" />
-                        Quay lại
-                    </Button>
-                    {/* STEP INDICATOR */}
-                    <div className="flex items-center justify-center gap-3">
-                        {[
-                            { label: "Chi tiết", icon: "1" },
-                            { label: "Tiện nghi", icon: "2" },
-                            { label: "Vị trí", icon: "3" },
-                            { label: "Hình ảnh", icon: "4" },
-                            { label: "Đặt chỗ", icon: "5" },
-                        ].map((s, idx) => (
-                            <div key={idx} className="flex items-center">
-                                {/* Step */}
-                                <div className="flex flex-col items-center gap-1">
-                                    <button
-                                        onClick={() => setStep(idx)}
-                                        className={`h-10 w-10 rounded-full grid place-items-center text-sm font-medium transition-all ${step === idx
-                                            ? "bg-emerald-600 text-white shadow-lg scale-110"
-                                            : step > idx
-                                                ? "bg-emerald-100 text-emerald-700 border-2 border-emerald-300"
-                                                : "bg-gray-100 text-gray-700 border-2 border-gray-200"
-                                            }`}
-                                    >
-                                        {step > idx ? <Check className="h-5 w-5" /> : s.icon}
-                                    </button>
-
-                                    <span
-                                        className={`text-xs font-medium ${step === idx ? "text-emerald-700" : "text-gray-500"
-                                            }`}
-                                    >
-                                        {s.label}
-                                    </span>
-                                </div>
-
-                                {/* Line giữa các step */}
-                                {idx < 4 && (
-                                    <div
-                                        className={`w-10 h-0.5 mx-2 ${step > idx ? "bg-emerald-400" : "bg-gray-300"
-                                            }`}
-                                    />
-                                )}
-                            </div>
-                        ))}
+                        <ArrowLeft className="h-5 w-5" />
+                    </button>
+                    <div className="flex-1 flex justify-center px-4">
+                        <StepIndicator currentStep={step} steps={STEPS.map(s => ({ label: s.title, description: "" }))} onStepClick={setStep} />
                     </div>
-
-
-
-                    {/* Spacer để căn giữa đối xứng */}
-                    <div className="w-20" />
+                    <div className="w-9" />
                 </div>
             </div>
 
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl shadow-xl shadow-slate-100/40 dark:shadow-none border border-slate-200/50 dark:border-slate-800/50 p-6 sm:p-8 lg:p-10 mb-6 transition-all duration-300">
+                    {step === 0 && (
+                        <SiteDetails
+                            data={{
+                                basic: form.basic,
+                                accommodationType: form.accommodationType,
+                                lodgingProvided: form.lodgingProvided,
+                                terrain: form.terrain,
+                                capacity: form.capacity,
+                                pricing: form.pricing,
+                            }}
+                            onChange={(patch) => update(patch)}
+                        />
+                    )}
 
+                    {step === 1 && (
+                        <SiteAmenitiesRules
+                            data={{ amenities: form.amenities, rules: form.rules }}
+                            onChange={(patch) => update(patch)}
+                        />
+                    )}
 
-            <div className="bg-white rounded-lg border p-6 shadow-sm">
-                {step === 0 && (
-                    <SiteDetails
-                        data={{
-                            basic: form.basic,
-                            accommodationType: form.accommodationType,
-                            lodgingProvided: form.lodgingProvided,
-                            terrain: form.terrain,
-                            capacity: form.capacity,
-                            pricing: form.pricing,
-                        }}
-                        onChange={(patch) => update(patch)}
-                    />
-                )}
+                    {step === 2 && (
+                        <SiteLocation
+                            data={form.siteLocation}
+                            propertyLocation={propertyLocation}
+                            onChange={(d: any) => update({ siteLocation: { ...(form.siteLocation ?? {}), ...(d ?? {}) } })}
+                            existingSites={sitesData?.sites || []}
+                        />
+                    )}
 
-                {step === 1 && (
-                    <SiteAmenitiesRules
-                        data={{ amenities: form.amenities, rules: form.rules }}
-                        onChange={(patch) => update(patch)}
-                    />
-                )}
+                    {step === 3 && (
+                        <SitePhotos
+                            data={form.photos ?? []}
+                            onChange={(p: any[]) => update({ photos: p })}
+                        />
+                    )}
 
-                {step === 2 && (
-                    <SiteLocation
-                        data={form.siteLocation}
-                        propertyLocation={propertyLocation}
-                        onChange={(d: any) => update({ siteLocation: { ...(form.siteLocation ?? {}), ...(d ?? {}) } })}
-                        existingSites={sitesData?.sites || []}
-                    />
-                )}
-
-                {step === 3 && (
-                    <SitePhotos
-                        data={form.photos ?? []}
-                        onChange={(p: any[]) => update({ photos: p })}
-                    />
-                )}
-
-                {step === 4 && (
-                    <>
+                    {step === 4 && (
                         <SiteBookingSettings
                             data={form.bookingSettings ?? defaultForm.bookingSettings}
                             onChange={(s: any) => update({ bookingSettings: { ...(form.bookingSettings ?? {}), ...(s ?? {}) } })}
                         />
+                    )}
+                </div>
 
-                        <div className="flex gap-2 mt-4">
-                            <Button disabled={saving} onClick={() => handleSubmit(false)} variant="outline">Lưu nháp</Button>
-                            <Button disabled={saving} onClick={() => handleSubmit(true)}>Lưu & Đăng</Button>
-                        </div>
-                    </>
-                )}
-            </div>
-
-            <div className="flex items-center gap-3 mt-6 pt-6 border-t">
-                <Button variant="outline" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0 || saving} className="min-w-24">
-                    <ArrowLeft className="h-4 w-4 mr-1" />
-                    Quay lại
-                </Button>
-
-                <div className="flex-1" />
-
-                <Button variant="outline" disabled={!canNext || saving} onClick={() => handleSubmit(false)}>
-                    Lưu nháp
-                </Button>
-
-                {step < 4 ? (
-                    <Button disabled={!canNext || saving} onClick={() => setStep((s) => Math.min(4, s + 1))} className="min-w-24">
-                        Tiếp theo
-                        <ArrowLeft className="h-4 w-4 ml-1 rotate-180" />
+                <div className="flex items-center justify-between bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl shadow-md border border-slate-200/50 dark:border-slate-800/50 p-4">
+                    <Button
+                        variant="outline"
+                        onClick={() => setStep((s) => Math.max(0, s - 1))}
+                        disabled={step === 0 || saving}
+                        className="gap-2 rounded-xl px-5 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                    >
+                        <ArrowLeft className="h-4 w-4" />
+                        Quay lại
                     </Button>
-                ) : (
-                    <Button disabled={!canNext || saving} onClick={() => handleSubmit(true)}>
-                        Lưu & Đăng
-                    </Button>
-                )}
+
+                    <div className="flex items-center gap-3">
+                        <Button
+                            variant="outline"
+                            disabled={!canNext || saving}
+                            onClick={() => handleSubmit(false)}
+                            className="rounded-xl px-5 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                        >
+                            Lưu nháp
+                        </Button>
+
+                        {step < 4 ? (
+                            <Button
+                                onClick={() => setStep((s) => Math.min(4, s + 1))}
+                                disabled={!canNext || saving}
+                                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl px-6 gap-2 transition-all shadow-md shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0"
+                            >
+                                Tiếp theo
+                                <ArrowLeft className="h-4 w-4 ml-1 rotate-180" />
+                            </Button>
+                        ) : (
+                            <Button
+                                onClick={() => handleSubmit(true)}
+                                disabled={!canNext || saving}
+                                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl px-6 gap-2 transition-all shadow-md shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0"
+                            >
+                                Lưu & Đăng
+                            </Button>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );

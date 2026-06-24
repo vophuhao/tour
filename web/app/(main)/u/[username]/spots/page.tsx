@@ -8,6 +8,9 @@ import { getFreeSpots, deleteFreeSpot } from '@/lib/free-spot-api';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import Image from 'next/image';
+import { useMounted } from '@/hooks/useMounted';
+import { Button } from '@/components/ui/button';
 import {
   MapPin, Eye, Heart, Edit3, Trash2, Loader2,
   Plus, ChevronLeft, ChevronRight, Clock, Lock, ShieldCheck,
@@ -18,10 +21,10 @@ const TERRAIN_LABELS: Record<string, string> = {
   river: '🏞️ Sông', lake: '💧 Hồ', field: '🌾 Đồng', other: '📍 Khác',
 };
 
-const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }> = {
-  active: { label: 'Hoạt động', color: '#15803d', bg: '#dcfce7' },
-  pending: { label: 'Chờ duyệt', color: '#b45309', bg: '#fef3c7' },
-  hidden: { label: 'Đã ẩn', color: '#c2410c', bg: '#ffedd5' },
+const STATUS_BADGE: Record<string, { label: string; className: string }> = {
+  active: { label: 'Hoạt động', className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400' },
+  pending: { label: 'Chờ duyệt', className: 'bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400' },
+  hidden: { label: 'Đã ẩn', className: 'bg-orange-100 text-orange-850 dark:bg-orange-950/30 dark:text-orange-400' },
 };
 
 export default function MySpotsPage() {
@@ -35,6 +38,7 @@ export default function MySpotsPage() {
   const [page, setPage] = useState(1);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const mounted = useMounted();
 
   const { data: mySpots, isLoading } = useQuery({
     queryKey: ['my-free-spots', currentUser?._id, page],
@@ -64,109 +68,122 @@ export default function MySpotsPage() {
     }
   };
 
+  if (!mounted || isLoading) {
+    return (
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="animate-pulse space-y-2">
+          <div className="h-8 w-48 bg-slate-200 dark:bg-slate-800 rounded" />
+          <div className="h-4 w-64 bg-slate-200 dark:bg-slate-800 rounded" />
+        </div>
+
+        {/* Grid Skeleton */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm animate-pulse p-4 space-y-4">
+              <div className="h-44 w-full bg-slate-200 dark:bg-slate-800 rounded-xl" />
+              <div className="space-y-3">
+                <div className="h-4 w-16 bg-slate-200 dark:bg-slate-800 rounded" />
+                <div className="h-5 w-3/4 bg-slate-200 dark:bg-slate-800 rounded" />
+                <div className="h-4 w-1/2 bg-slate-200 dark:bg-slate-800 rounded" />
+                <div className="flex gap-4 pt-1">
+                  <div className="h-3.5 w-10 bg-slate-200 dark:bg-slate-800 rounded" />
+                  <div className="h-3.5 w-10 bg-slate-200 dark:bg-slate-800 rounded" />
+                  <div className="h-3.5 w-16 bg-slate-200 dark:bg-slate-800 rounded" />
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <div className="h-8 flex-1 bg-slate-200 dark:bg-slate-800 rounded-lg" />
+                  <div className="h-8 flex-1 bg-slate-200 dark:bg-slate-800 rounded-lg" />
+                  <div className="h-8 flex-1 bg-slate-200 dark:bg-slate-800 rounded-lg" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   if (!isOwnProfile) {
     return (
-      <div style={{ padding: '40px 0', textAlign: 'center' }}>
-        <Lock size={40} style={{ color: '#9ca3af', margin: '0 auto 12px' }} />
-        <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--foreground)' }}>Riêng tư</h2>
-        <p style={{ color: 'var(--muted-foreground)', fontSize: 14 }}>Bạn không thể xem địa điểm của người dùng khác</p>
+      <div className="py-16 text-center">
+        <Lock className="text-muted-foreground mx-auto h-10 w-10 mb-3" />
+        <h2 className="text-lg font-bold text-slate-850 dark:text-white">Riêng tư</h2>
+        <p className="text-sm text-muted-foreground mt-1">Bạn không thể xem địa điểm của người dùng khác</p>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="space-y-6">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0, color: 'var(--foreground)' }}>
+          <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
             Địa điểm của tôi
           </h2>
-          <p style={{ fontSize: 13, color: 'var(--muted-foreground)', marginTop: 4 }}>
+          <p className="text-xs text-muted-foreground mt-1">
             {total} địa điểm đã chia sẻ
           </p>
         </div>
         <Link
           href="/free-spots/create"
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px',
-            borderRadius: 10, background: '#10b981', color: '#fff',
-            textDecoration: 'none', fontSize: 13, fontWeight: 700,
-            boxShadow: '0 2px 8px rgba(16,185,129,0.3)',
-          }}
+          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary text-white text-xs font-bold shadow-md hover:bg-primary/95 transition-all w-full sm:w-auto text-center"
         >
           <Plus size={15} /> Thêm địa điểm
         </Link>
       </div>
 
       {/* Content */}
-      {isLoading ? (
-        <div style={{ padding: '60px 0', textAlign: 'center' }}>
-          <Loader2 size={32} style={{ color: '#10b981', animation: 'spin 1s linear infinite' }} />
-        </div>
-      ) : spots.length === 0 ? (
-        <div style={{
-          padding: '60px 24px', textAlign: 'center',
-          background: 'var(--card)', borderRadius: 16, border: '1px solid var(--border)',
-        }}>
-          <MapPin size={48} style={{ color: '#d1d5db', margin: '0 auto 16px' }} />
-          <h3 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 8px', color: 'var(--foreground)' }}>
+      {spots.length === 0 ? (
+        <div className="py-16 px-6 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
+          <MapPin className="text-slate-300 dark:text-slate-700 mx-auto h-12 w-12 mb-4" />
+          <h3 className="text-lg font-bold text-slate-850 dark:text-white mb-2">
             Chưa có địa điểm nào
           </h3>
-          <p style={{ color: 'var(--muted-foreground)', fontSize: 14, marginBottom: 20 }}>
+          <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
             Hãy chia sẻ những địa điểm cắm trại tuyệt vời bạn đã khám phá!
           </p>
           <Link
             href="/free-spots/create"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 22px',
-              borderRadius: 10, background: '#10b981', color: '#fff',
-              textDecoration: 'none', fontSize: 14, fontWeight: 700,
-            }}
+            className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-primary text-white text-sm font-bold shadow-md hover:bg-primary/95 transition-all"
           >
             <Plus size={16} /> Chia sẻ địa điểm đầu tiên
           </Link>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {spots.map((spot: any) => {
             const badge = STATUS_BADGE[spot.status] ?? STATUS_BADGE.active;
             return (
               <div
                 key={spot._id}
-                style={{
-                  background: 'var(--card)', borderRadius: 14, border: '1px solid var(--border)',
-                  overflow: 'hidden', transition: 'box-shadow 0.15s',
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-                }}
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col"
               >
                 {/* Image */}
-                <div style={{ position: 'relative', height: 160, background: '#f3f4f6' }}>
+                <div className="relative h-44 w-full bg-slate-100 dark:bg-slate-800">
                   {spot.images?.[0] ? (
-                    <img
+                    <Image
                       src={spot.images[0]}
                       alt={spot.title}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      fill
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      className="object-cover"
                     />
                   ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>
+                    <div className="w-full h-full flex items-center justify-center text-4xl select-none">
                       🏕️
                     </div>
                   )}
                   {/* Status badge overlay */}
-                  <div style={{ position: 'absolute', top: 10, left: 10 }}>
-                    <span style={{
-                      padding: '3px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700,
-                      background: badge.bg, color: badge.color,
-                    }}>{badge.label}</span>
+                  <div className="absolute top-3 left-3 z-10">
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold shadow-sm ${badge.className}`}>
+                      {badge.label}
+                    </span>
                   </div>
                   {spot.isVerified && (
-                    <div style={{ position: 'absolute', top: 10, right: 10 }}>
-                      <span style={{
-                        display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px',
-                        borderRadius: 99, fontSize: 11, fontWeight: 700,
-                        background: '#dbeafe', color: '#1d4ed8',
-                      }}>
+                    <div className="absolute top-3 right-3 z-10">
+                      <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-455 shadow-sm">
                         <ShieldCheck size={10} /> Đã xác minh
                       </span>
                     </div>
@@ -174,69 +191,55 @@ export default function MySpotsPage() {
                 </div>
 
                 {/* Content */}
-                <div style={{ padding: '14px 16px' }}>
-                  <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 6 }}>
-                    {TERRAIN_LABELS[spot.terrain] ?? spot.terrain}
-                  </div>
-                  <h3 style={{
-                    fontSize: 15, fontWeight: 700, margin: '0 0 6px',
-                    color: 'var(--foreground)', overflow: 'hidden',
-                    textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}>
-                    {spot.title}
-                  </h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#9ca3af', marginBottom: 10 }}>
-                    <MapPin size={11} /> {spot.city}
-                  </div>
-
-                  {/* Stats */}
-                  <div style={{ display: 'flex', gap: 14, marginBottom: 14 }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#9ca3af' }}>
-                      <Eye size={12} /> {spot.viewCount ?? 0}
-                    </span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#9ca3af' }}>
-                      <Heart size={12} /> {spot.likeCount ?? 0}
-                    </span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#9ca3af' }}>
-                      <Clock size={12} /> {new Date(spot.createdAt).toLocaleDateString('vi-VN')}
-                    </span>
+                <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                  <div className="space-y-2">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-450 dark:text-slate-400">
+                      {TERRAIN_LABELS[spot.terrain] ?? spot.terrain}
+                    </div>
+                    <h3 className="text-base font-bold text-slate-850 dark:text-white line-clamp-1">
+                      {spot.title}
+                    </h3>
+                    <div className="flex items-center gap-1 text-xs text-slate-550 dark:text-slate-400">
+                      <MapPin size={12} className="text-primary/70 shrink-0" />
+                      <span className="truncate">{spot.city}</span>
+                    </div>
                   </div>
 
-                  {/* Action Buttons */}
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <Link
-                      href={`/free-spots/${spot._id}`}
-                      style={{
-                        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                        padding: '7px 0', borderRadius: 8, border: '1px solid var(--border)',
-                        background: 'var(--card)', color: 'var(--foreground)',
-                        fontSize: 12, fontWeight: 600, textDecoration: 'none',
-                      }}
-                    >
-                      <Eye size={12} /> Xem
-                    </Link>
-                    <Link
-                      href={`/free-spots/${spot._id}/edit`}
-                      style={{
-                        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                        padding: '7px 0', borderRadius: 8, border: '1px solid #10b981',
-                        background: '#f0fdf4', color: '#065f46',
-                        fontSize: 12, fontWeight: 600, textDecoration: 'none',
-                      }}
-                    >
-                      <Edit3 size={12} /> Sửa
-                    </Link>
-                    <button
-                      onClick={() => setConfirmDelete(spot._id)}
-                      style={{
-                        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                        padding: '7px 0', borderRadius: 8, border: '1px solid #ef4444',
-                        background: '#fef2f2', color: '#dc2626',
-                        fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                      }}
-                    >
-                      <Trash2 size={12} /> Xóa
-                    </button>
+                  <div className="space-y-3.5 pt-1">
+                    {/* Stats */}
+                    <div className="flex gap-4 text-xs text-slate-500 dark:text-slate-400">
+                      <span className="flex items-center gap-1">
+                        <Eye size={12} /> {spot.viewCount ?? 0}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Heart size={12} /> {spot.likeCount ?? 0}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock size={12} /> {new Date(spot.createdAt).toLocaleDateString('vi-VN')}
+                      </span>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                      <Link
+                        href={`/free-spots/${spot._id}`}
+                        className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-350 transition-colors"
+                      >
+                        <Eye size={12} /> Xem
+                      </Link>
+                      <Link
+                        href={`/free-spots/${spot._id}/edit`}
+                        className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border border-primary/20 bg-primary/5 hover:bg-primary/10 text-primary-dark text-xs font-bold transition-colors"
+                      >
+                        <Edit3 size={12} /> Sửa
+                      </Link>
+                      <button
+                        onClick={() => setConfirmDelete(spot._id)}
+                        className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-950/20 hover:bg-red-100/50 dark:hover:bg-red-950/30 text-red-650 dark:text-red-400 text-xs font-bold transition-colors cursor-pointer"
+                      >
+                        <Trash2 size={12} /> Xóa
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -247,19 +250,21 @@ export default function MySpotsPage() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 28 }}>
+        <div className="flex justify-center items-center gap-3 mt-8">
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page === 1}
-            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '8px 16px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--card)', cursor: page === 1 ? 'not-allowed' : 'pointer', opacity: page === 1 ? 0.5 : 1, fontSize: 13 }}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <ChevronLeft size={14} /> Trước
           </button>
-          <span style={{ fontSize: 13 }}>Trang <strong>{page}</strong> / {totalPages}</span>
+          <span className="text-xs text-slate-650 dark:text-slate-400">
+            Trang <strong className="text-slate-900 dark:text-white">{page}</strong> / {totalPages}
+          </span>
           <button
             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '8px 16px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--card)', cursor: page === totalPages ? 'not-allowed' : 'pointer', opacity: page === totalPages ? 0.5 : 1, fontSize: 13 }}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             Sau <ChevronRight size={14} />
           </button>
@@ -269,34 +274,34 @@ export default function MySpotsPage() {
       {/* Delete Confirmation Modal */}
       {confirmDelete && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+          className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-xs"
           onClick={e => e.target === e.currentTarget && setConfirmDelete(null)}
         >
-          <div style={{ background: 'var(--card)', borderRadius: 16, padding: 28, maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
-            <h3 style={{ margin: '0 0 12px', fontSize: 18, fontWeight: 700 }}>Xóa địa điểm?</h3>
-            <p style={{ margin: '0 0 20px', fontSize: 14, color: 'var(--muted-foreground)' }}>
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Xóa địa điểm?</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
               Địa điểm sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác.
             </p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
                 onClick={() => setConfirmDelete(null)}
-                style={{ padding: '9px 20px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--card)', fontSize: 14, cursor: 'pointer' }}
+                className="rounded-xl font-bold cursor-pointer"
               >
                 Hủy
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="destructive"
                 onClick={() => handleDelete(confirmDelete)}
                 disabled={!!deletingId}
-                style={{ padding: '9px 20px', borderRadius: 10, border: 'none', background: '#ef4444', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+                className="rounded-xl font-bold cursor-pointer bg-red-650 hover:bg-red-600"
               >
                 {deletingId ? 'Đang xóa...' : 'Xóa địa điểm'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
-
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

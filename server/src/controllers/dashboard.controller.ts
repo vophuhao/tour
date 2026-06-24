@@ -1,6 +1,6 @@
 import { catchErrors } from "@/errors";
 import { BookingModel } from "@/models/booking.model";
-import HostModel from "@/models/host.modal";
+import HostModel from "@/models/host.model";
 import { PropertyModel } from "@/models/property.model";
 import { ReviewModel } from "@/models/review.model";
 import UserModel from "@/models/user.model";

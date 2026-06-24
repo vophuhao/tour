@@ -3,6 +3,8 @@ import { Conversation, ConversationDocument, Message } from "@/models/directMess
 import UserModel from "@/models/user.model";
 import { getIO } from "@/socket";
 import { Types } from "mongoose";
+import { redisClient } from "../config/redis";
+import appAssert from "../utils/app-assert";
 
 type SendMessagePayload = {
   message: string;
@@ -82,6 +84,40 @@ export default class DirectMessageService {
 
     const convId = new Types.ObjectId(conversationId);
     const senderIdObj = new Types.ObjectId(senderId);
+
+    // 1) Rate limiting: Max 30 messages per minute per user
+    const rateLimitKey = `msg_rate:${senderId}`;
+    const messageCount = await redisClient.incr(rateLimitKey);
+    if (messageCount === 1) {
+      await redisClient.expire(rateLimitKey, 60);
+    }
+    appAssert(
+      messageCount <= 30,
+      ErrorFactory.badRequest("Bạn đã gửi tin nhắn quá nhanh. Vui lòng thử lại sau.")
+    );
+
+    // 2) Attachments validation: max 5 files, max 10MB per file, allowed image formats only
+    if (attachments && attachments.length > 0) {
+      appAssert(
+        attachments.length <= 5,
+        ErrorFactory.badRequest("Tối đa 5 tệp đính kèm cho mỗi tin nhắn")
+      );
+      for (const att of attachments) {
+        if (att.size) {
+          appAssert(
+            att.size <= 10 * 1024 * 1024,
+            ErrorFactory.badRequest("Dung lượng tệp đính kèm tối đa là 10MB")
+          );
+        }
+        if (att.type) {
+          const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
+          appAssert(
+            allowedTypes.includes(att.type.toLowerCase()) || att.type.startsWith("image/"),
+            ErrorFactory.badRequest("Định dạng tệp không được hỗ trợ (chỉ chấp nhận JPG, JPEG, PNG, WEBP)")
+          );
+        }
+      }
+    }
 
     // Kiểm tra conversation
     const conversation = await Conversation.findById(convId);

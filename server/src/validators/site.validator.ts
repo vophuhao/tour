@@ -94,7 +94,10 @@ export const createSiteSchema = z.object({
       coordinates: z
         .object({
           type: z.literal("Point").default("Point"),
-          coordinates: z.tuple([z.number(), z.number()]), // [lng, lat]
+          coordinates: z.tuple([
+            z.number().min(-180, "Longitude must be >= -180").max(180, "Longitude must be <= 180"),
+            z.number().min(-90, "Latitude must be >= -90").max(90, "Latitude must be <= 90"),
+          ]), // [lng, lat]
         })
         .optional(),
       mapPinLabel: z.string().max(50).optional(),

@@ -266,7 +266,7 @@ export function PropertyMap({
   }
 
   return (
-    <div className="relative w-full h-full">
+    <div translate="no" className="relative w-full h-full notranslate">
       <Map
         ref={mapRef}
         {...viewState}

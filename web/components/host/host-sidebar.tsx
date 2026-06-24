@@ -73,7 +73,7 @@ export default function HostSidebar({ collapsed, setCollapsed }: SidebarProps) {
   const mainMenuItems: MenuItem[] = [
     { name: 'Dashboard', href: '/host', icon: Home, group: 'main' },
     { name: 'Booking & Lịch', href: '/host/bookings', icon: Calendar, group: 'main' },
-    { name: 'Lịch & Giá mùa', href: '/host/calendar', icon: Calendar, group: 'main' },
+    // { name: 'Lịch & Giá mùa', href: '/host/calendar', icon: Calendar, group: 'main' },
     { name: 'Khu đất', href: '/host/properties', icon: Tent, group: 'main' },
     { name: 'Thông báo', href: '/host/notifications', icon: Bell, group: 'main' },
     { name: 'Đánh giá', href: '/host/reviews', icon: Star, group: 'main' },

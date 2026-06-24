@@ -15,11 +15,14 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { useMounted } from '@/hooks/useMounted';
 import { ModeToggle } from '@/components/mode-toggle';
+import GoogleTranslator from '@/components/GoogleTranslator';
 
 const navItems = [
   { name: 'Trang chủ', href: '/' },
   { name: 'Tìm kiếm', href: '/search' },
+  { name: 'Lập lộ trình', href: '/roadtrip' },
   { name: 'Điểm cắm trại', href: '/free-spots' },
   { name: 'Diễn đàn', href: '/forum' },
   // { name: 'Giới thiệu', href: '/about' },
@@ -31,6 +34,7 @@ export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const { user, isAuthenticated, setUser } = useAuthStore();
+  const mounted = useMounted();
   const handleLogout = async () => {
     const res = await logout();
     if (res.success) {
@@ -82,6 +86,8 @@ export default function Header() {
           <div className="hidden items-center gap-3 md:flex">
             {/* Theme toggle */}
             <ModeToggle />
+            {/* Language Translator */}
+            <GoogleTranslator />
             {/* Shopping Cart
             <Button
               onClick={() => router.push('/cart')}
@@ -98,7 +104,7 @@ export default function Header() {
             </Button> */}
 
             {/* User Menu */}
-            {isAuthenticated && user ? (
+            {mounted && isAuthenticated && user ? (
               <div className="flex items-center gap-2">
                 {user.role === 'admin' && (
                   <Button
@@ -181,20 +187,22 @@ export default function Header() {
             )}
           </div>
 
-          {/* Mobile Menu Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Toggle menu"
-          >
-            {mobileMenuOpen ? (
-              <X className="h-6 w-6" />
-            ) : (
-              <Menu className="h-6 w-6" />
-            )}
-          </Button>
+          {/* Mobile Actions */}
+          <div className="flex items-center gap-2 md:hidden">
+            <GoogleTranslator />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? (
+                <X className="h-6 w-6" />
+              ) : (
+                <Menu className="h-6 w-6" />
+              )}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -239,7 +247,7 @@ export default function Header() {
             </button>
 
             <div className="border-t pt-4">
-              {isAuthenticated && user ? (
+              {mounted && isAuthenticated && user ? (
                 <div className="space-y-2">
                   {user.role === 'admin' && (
                     <Button

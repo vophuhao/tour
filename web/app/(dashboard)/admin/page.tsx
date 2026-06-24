@@ -240,8 +240,8 @@ export default function AdminDashboardPage() {
 
   const bookingsList = useMemo(() => {
     if (!dbBookings) return [];
-    return dbBookings.map((b: any) => ({
-      id: b.code || b._id.slice(-6).toUpperCase(),
+    return dbBookings.map((b: any, index: number) => ({
+      id: b.code || (b._id ? b._id.slice(-6).toUpperCase() : `BKN-${index}`),
       camper: b.guest?.username || '—',
       host: b.host?.username || '—',
       property: b.property?.name || '—',
@@ -254,8 +254,8 @@ export default function AdminDashboardPage() {
 
   const payoutsList = useMemo(() => {
     if (!dbPayouts) return [];
-    return dbPayouts.map((p: any) => ({
-      id: p._id.slice(-6).toUpperCase(),
+    return dbPayouts.map((p: any, index: number) => ({
+      id: p._id ? p._id.slice(-6).toUpperCase() : `PAY-${index}`,
       host: p.host?.username || '—',
       amount: p.netAmount || 0,
       status: p.status === 'completed' ? 'Completed' : 'Pending',
@@ -268,10 +268,10 @@ export default function AdminDashboardPage() {
     if (!dbBookings) return [];
     return dbBookings
       .filter((b: any) => b.cannotAttend?.status === 'pending' || b.status === 'refunded')
-      .map((b: any) => ({
-        id: b._id.slice(-6).toUpperCase(),
+      .map((b: any, index: number) => ({
+        id: b._id ? b._id.slice(-6).toUpperCase() : `REF-${index}`,
         camper: b.guest?.username || '—',
-        bookingId: b.code || b._id.slice(-6).toUpperCase(),
+        bookingId: b.code || (b._id ? b._id.slice(-6).toUpperCase() : `REF-${index}`),
         amount: b.pricing?.total ? Math.round(b.pricing.total * 0.5) : 0,
         reason: b.cannotAttend?.reason || 'Yêu cầu từ khách',
         status: b.cannotAttend?.status === 'approved' || b.status === 'refunded' ? 'Approved' : 'Pending',
@@ -282,10 +282,10 @@ export default function AdminDashboardPage() {
   const transactions = useMemo(() => {
     const list: any[] = [];
     if (dbBookings) {
-      dbBookings.forEach((b: any) => {
+      dbBookings.forEach((b: any, index: number) => {
         if (b.paymentStatus === 'paid') {
           list.push({
-            id: `TXN-${b._id.slice(-4).toUpperCase()}`,
+            id: `TXN-${b._id ? b._id.slice(-4).toUpperCase() : `B-${index}`}`,
             type: 'Payment',
             user: b.guest?.username || '—',
             amount: b.pricing?.total || 0,
@@ -296,9 +296,9 @@ export default function AdminDashboardPage() {
       });
     }
     if (dbPayouts) {
-      dbPayouts.forEach((p: any) => {
+      dbPayouts.forEach((p: any, index: number) => {
         list.push({
-          id: `TXN-${p._id.slice(-4).toUpperCase()}`,
+          id: `TXN-${p._id ? p._id.slice(-4).toUpperCase() : `P-${index}`}`,
           type: 'Payout',
           user: p.host?.username || '—',
           amount: -(p.netAmount || 0),
@@ -462,19 +462,14 @@ export default function AdminDashboardPage() {
   };
 
   return (
-    <div className="space-y-6 p-4 md:p-6 pb-12 bg-slate-50/50 dark:bg-slate-950/20">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-850 dark:text-white tracking-tight flex items-center gap-2">
-            HDCamp SaaS Cockpit
-            <Badge className="bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold px-2 py-0.5">
-              Hệ Thống Quản Trị
-            </Badge>
+          <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+            HDCamping
           </h1>
-          <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Bảng điều khiển tối cao để giám sát hiệu suất doanh thu, quản lý tài khoản, kiểm duyệt tin cắm trại và xử lý tài chính.
-          </p>
+
         </div>
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 shadow-xs flex items-center gap-2 w-fit">
           <Clock className="h-4 w-4 text-primary animate-pulse" />
@@ -597,9 +592,6 @@ export default function AdminDashboardPage() {
           <TabsTrigger value="analytics" className="rounded-lg text-xs font-semibold px-3.5 py-2 hover:text-slate-900 dark:hover:text-slate-200 transition-all data-[state=active]:bg-primary data-[state=active]:text-white">
             Doanh thu & Phân tích
           </TabsTrigger>
-          <TabsTrigger value="moderation" className="rounded-lg text-xs font-semibold px-3.5 py-2 hover:text-slate-900 dark:hover:text-slate-200 transition-all data-[state=active]:bg-primary data-[state=active]:text-white">
-            Hàng đợi kiểm duyệt
-          </TabsTrigger>
           <TabsTrigger value="users" className="rounded-lg text-xs font-semibold px-3.5 py-2 hover:text-slate-900 dark:hover:text-slate-200 transition-all data-[state=active]:bg-primary data-[state=active]:text-white">
             Quản lý Thành viên
           </TabsTrigger>
@@ -618,7 +610,7 @@ export default function AdminDashboardPage() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 outline-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="grid  gap-6">
             <Card className="lg:col-span-3 border border-slate-200/80 dark:border-slate-850">
               <CardHeader>
                 <CardTitle className="text-sm font-bold text-slate-850 dark:text-white">Biểu đồ tăng trưởng tổng quát</CardTitle>
@@ -641,38 +633,7 @@ export default function AdminDashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className="border border-slate-200/80 dark:border-slate-850 lg:col-span-1">
-              <CardHeader>
-                <CardTitle className="text-sm font-bold text-slate-850 dark:text-white">Duyệt nhanh</CardTitle>
-                <CardDescription className="text-[11px] text-slate-400">Các yêu cầu đang chờ xử lý gấp.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {moderationItems.filter(item => item.status === 'Pending').map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-2 bg-slate-50/50 dark:bg-slate-900/30 border rounded-xl hover:shadow-xs transition-shadow">
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{item.target}</p>
-                      <p className="text-[9px] text-slate-450 truncate">{item.type}</p>
-                    </div>
-                    <div className="flex gap-1 shrink-0">
-                      <button
-                        onClick={() => handleApproveModeration(item.id, item.target)}
-                        className="h-6 w-6 rounded bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center transition-colors"
-                        title="Phê duyệt"
-                      >
-                        <Check className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleRejectModeration(item.id, item.target)}
-                        className="h-6 w-6 rounded bg-red-500 hover:bg-red-600 text-white flex items-center justify-center transition-colors"
-                        title="Từ chối"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+
           </div>
 
           {/* Leaders board row */}
@@ -812,85 +773,8 @@ export default function AdminDashboardPage() {
           </Card>
         </TabsContent>
 
-        {/* ====================================
-            TAB: MODERATION CENTER
-            ==================================== */}
-        <TabsContent value="moderation" className="outline-hidden">
-          <Card className="border border-slate-200/80 dark:border-slate-850">
-            <CardHeader>
-              <CardTitle className="text-sm font-bold text-slate-800 dark:text-slate-200">Hàng Đợi Kiểm Duyệt & Giải Quyết Tranh Chấp</CardTitle>
-              <CardDescription className="text-[11px] text-slate-400">Duyệt hồ sơ xác minh danh tính KYC, tin đăng khu trại và giải quyết báo cáo vi phạm.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
-                      <th className="pb-3 text-left font-bold">Mã yêu cầu</th>
-                      <th className="pb-3 text-left font-bold">Loại kiểm duyệt</th>
-                      <th className="pb-3 text-left font-bold font-bold">Đối tượng</th>
-                      <th className="pb-3 text-center font-bold">Mức độ ưu tiên</th>
-                      <th className="pb-3 text-center font-bold">Ngày tạo</th>
-                      <th className="pb-3 text-center font-bold">Trạng thái</th>
-                      <th className="pb-3 text-right font-bold">Thao tác nhanh</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                    {moderationItems.map((item) => (
-                      <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors">
-                        <td className="py-3 font-semibold text-slate-500">{item.id}</td>
-                        <td className="py-3 font-bold text-slate-850 dark:text-slate-200">{item.type}</td>
-                        <td className="py-3 font-medium text-slate-700 dark:text-slate-350">{item.target}</td>
-                        <td className="py-3 text-center">
-                          <Badge className={cn(
-                            "text-[9px] font-extrabold px-2 py-0.5",
-                            item.priority === 'High' ? 'bg-red-50 text-red-600 border border-red-200/50 dark:bg-red-950/20 dark:text-red-400' :
-                              item.priority === 'Medium' ? 'bg-amber-50 text-amber-700 border border-amber-200/50 dark:bg-amber-950/20 dark:text-amber-400' :
-                                'bg-slate-50 text-slate-600 border border-slate-200/50 dark:bg-slate-800 dark:text-slate-350'
-                          )}>
-                            {item.priority}
-                          </Badge>
-                        </td>
-                        <td className="py-3 text-center font-medium text-slate-500">{item.date}</td>
-                        <td className="py-3 text-center">
-                          <span className={cn(
-                            "text-[10px] font-bold",
-                            item.status === 'Pending' || item.status === 'Open' ? 'text-amber-500' :
-                              item.status === 'Approved' ? 'text-emerald-500' : 'text-red-500'
-                          )}>
-                            {item.status === 'Pending' ? 'Chờ duyệt' : item.status === 'Open' ? 'Mở tranh chấp' : item.status === 'Approved' ? 'Đã duyệt' : 'Bị từ chối'}
-                          </span>
-                        </td>
-                        <td className="py-3 text-right">
-                          <div className="flex gap-1.5 justify-end">
-                            {(item.status === 'Pending' || item.status === 'Open') ? (
-                              <>
-                                <button
-                                  onClick={() => handleApproveModeration(item.id, item.target)}
-                                  className="px-2.5 py-1 text-[10px] font-bold bg-emerald-500 hover:bg-emerald-600 text-white rounded-md transition-colors"
-                                >
-                                  Duyệt
-                                </button>
-                                <button
-                                  onClick={() => handleRejectModeration(item.id, item.target)}
-                                  className="px-2.5 py-1 text-[10px] font-bold bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors"
-                                >
-                                  Từ chối
-                                </button>
-                              </>
-                            ) : (
-                              <Badge variant="outline" className="text-[10px] border-slate-200/60 text-slate-400">Đã đóng</Badge>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+
+
 
         {/* ====================================
             TAB: USER MANAGEMENT
@@ -1130,7 +1014,7 @@ export default function AdminDashboardPage() {
           <Card className="border border-slate-200/80 dark:border-slate-850">
             <CardHeader>
               <CardTitle className="text-sm font-bold text-slate-850 dark:text-white">Kiểm Duyệt & Quản Lý Campsite Tin Đăng</CardTitle>
-              <CardDescription className="text-[11px] text-slate-400">Quản lý toàn bộ danh sách địa điểm cắm trại hoạt động, yêu cầu duyệt campsite mới.</CardDescription>
+
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">

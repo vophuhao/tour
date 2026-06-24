@@ -75,12 +75,11 @@ export default function AdminFreeSpotsPage() {
   };
 
   return (
-    <div style={{ padding: '24px', maxWidth: 1200, margin: '0 auto' }}>
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 6px', color: 'var(--foreground)' }}>
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      <div>
+        <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
           Quản lý địa điểm chia sẻ
         </h1>
-
       </div>
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>

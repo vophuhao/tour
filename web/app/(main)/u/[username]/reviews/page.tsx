@@ -301,9 +301,9 @@ export default function UserReviewsPage() {
 
               {/* Host Response */}
               {review.hostResponse && (
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
                   <div className="mb-1 flex items-center gap-2">
-                    <Badge className="bg-emerald-600">
+                    <Badge className="bg-primary text-white">
                       Phản hồi từ chủ nhà
                     </Badge>
                     <span className="text-muted-foreground text-xs">
@@ -313,7 +313,7 @@ export default function UserReviewsPage() {
                       )}
                     </span>
                   </div>
-                  <p className="text-sm text-emerald-900">
+                  <p className="text-sm text-primary dark:text-primary-300">
                     {review.hostResponse.comment}
                   </p>
                 </div>

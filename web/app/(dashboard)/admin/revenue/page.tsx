@@ -6,8 +6,8 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
   TrendingUp, DollarSign, CalendarCheck, Users, RefreshCw,
-  BarChart3, PieChartIcon, Filter, Star, Download, Search, 
-  ArrowUpRight, ArrowDownRight, AlertTriangle, ShieldCheck, 
+  BarChart3, PieChartIcon, Filter, Star, Download, Search,
+  ArrowUpRight, ArrowDownRight, AlertTriangle, ShieldCheck,
   CreditCard, ShieldAlert, FileSpreadsheet, FileText, ChevronRight, X, Info
 } from 'lucide-react';
 import {
@@ -16,7 +16,7 @@ import {
 } from 'recharts';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 // Format helpers
 const fmt = (n: number) => new Intl.NumberFormat('vi-VN').format(Math.round(n));
@@ -78,7 +78,8 @@ export default function AdminRevenuePage() {
   const [dbBookings, setDbBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  
+  const [exportingPdf, setExportingPdf] = useState(false);
+
   // Advanced filters state
   const [hostFilter, setHostFilter] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -87,7 +88,7 @@ export default function AdminRevenuePage() {
   const [timeTab, setTimeTab] = useState<'today' | '7days' | '30days' | '12months' | 'custom'>('30days');
   const [chartView, setChartView] = useState<'revenue' | 'profit' | 'bookings' | 'daily'>('revenue');
   const [chartType, setChartType] = useState<'area' | 'bar'>('area');
-  
+
   // Table filters
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -168,15 +169,15 @@ export default function AdminRevenuePage() {
   // Compile Transactions: strictly use actual database bookings from DB
   const transactions = useMemo(() => {
     const list: any[] = [];
-    
+
     // Map database bookings if they exist
     if (dbBookings && dbBookings.length > 0) {
-      dbBookings.forEach((b: any) => {
+      dbBookings.forEach((b: any, index: number) => {
         const total = b.pricing?.total || 0;
         const sFee = b.pricing?.serviceFee || Math.round(total * 0.05);
         const comm = b.platformFee || Math.round(total * 0.07);
         const hostNet = b.hostNetAmount || (total - sFee - comm);
-        
+
         let status: 'pending' | 'paid' | 'escrow' | 'released' | 'refunded' | 'failed' = 'released';
         if (b.status === 'pending') status = 'pending';
         else if (b.status === 'confirmed') status = 'paid';
@@ -186,8 +187,8 @@ export default function AdminRevenuePage() {
         else if (b.status === 'refund_requested') status = 'escrow';
 
         list.push({
-          id: `TXN-${b._id?.slice(-6).toUpperCase() || 'DB'}`,
-          bookingCode: b.code || b._id?.slice(-6).toUpperCase() || 'DB',
+          id: b._id ? `TXN-${b._id.slice(-6).toUpperCase()}` : `TXN-DB-${index}`,
+          bookingCode: b.code || (b._id ? b._id.slice(-6).toUpperCase() : `DB-${index}`),
           camperName: b.fullnameGuest || b.guest?.username || 'Camper',
           hostName: b.host?.username || 'Host',
           propertyName: b.property?.name || 'Campsite',
@@ -283,13 +284,13 @@ export default function AdminRevenuePage() {
   const calculatedKPIs = useMemo(() => {
     // Total Revenue (Gross)
     const gross = filteredTransactions.reduce((acc, t) => acc + (t.status !== 'failed' ? t.amount : 0), 0);
-    
+
     // Today's revenue
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const grossToday = filteredTransactions.reduce((acc, t) => {
       const tDate = new Date(t.createdAt);
-      tDate.setHours(0,0,0,0);
+      tDate.setHours(0, 0, 0, 0);
       return acc + (tDate.getTime() === today.getTime() && t.status !== 'failed' ? t.amount : 0);
     }, 0);
 
@@ -330,7 +331,7 @@ export default function AdminRevenuePage() {
     if (filteredTransactions.length === 0) {
       return Array.from({ length: 7 }, () => ({ gross: 0, net: 0, bookings: 0, escrow: 0 }));
     }
-    
+
     // Segment filteredTransactions into 7 intervals to show actual database revenue progress
     const txsAsc = [...filteredTransactions].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
     const minTime = txsAsc[0].createdAt.getTime();
@@ -341,9 +342,9 @@ export default function AdminRevenuePage() {
     return Array.from({ length: 7 }, (_, i) => {
       const start = minTime + i * interval;
       const end = minTime + (i + 1) * interval;
-      
+
       const bucketTxs = txsAsc.filter(t => t.createdAt.getTime() >= start && t.createdAt.getTime() <= end);
-      
+
       const gross = bucketTxs.reduce((sum, t) => sum + (t.status !== 'failed' ? t.amount : 0), 0);
       const net = bucketTxs.reduce((sum, t) => sum + (t.status !== 'failed' ? t.serviceFee + t.commission : 0), 0);
       const bookings = bucketTxs.length;
@@ -459,7 +460,7 @@ export default function AdminRevenuePage() {
   // Risk & Anomaly alerts strictly based on real database records
   const anomalies = useMemo(() => {
     const alerts: { id: string; type: 'warning' | 'info' | 'danger'; text: string; time: string }[] = [];
-    
+
     // Check for refunded bookings
     const refundedTxs = filteredTransactions.filter(t => t.status === 'refunded');
     if (refundedTxs.length > 0) {
@@ -567,7 +568,7 @@ export default function AdminRevenuePage() {
   const handleExportExcel = () => {
     try {
       const wb = XLSX.utils.book_new();
-      
+
       // Sheet 1: Transactions Data
       const exportTxns = filteredTransactions.map(t => ({
         'Mã giao dịch': t.id,
@@ -604,30 +605,52 @@ export default function AdminRevenuePage() {
       const wsMonthly = XLSX.utils.json_to_sheet(mainChartData);
       XLSX.utils.book_append_sheet(wb, wsMonthly, "Dòng tiền theo thời gian");
 
-      XLSX.writeFile(wb, `HDCamp_Revenue_Report_${new Date().toISOString().slice(0,10)}.xlsx`);
+      XLSX.writeFile(wb, `HDCamp_Revenue_Report_${new Date().toISOString().slice(0, 10)}.xlsx`);
       toast.success('Xuất file Excel báo cáo doanh thu thành công!');
     } catch {
       toast.error('Có lỗi xảy ra khi xuất file Excel');
     }
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
+    setExportingPdf(true);
     try {
       const doc = new jsPDF('l', 'mm', 'a4'); // landscape format
-      
+
+      // Load Unicode font to support Vietnamese characters
+      const response = await fetch('/fonts/DejaVuSans.ttf');
+      const fontBlob = await response.blob();
+      const reader = new FileReader();
+
+      await new Promise((resolve, reject) => {
+        reader.onloadend = () => {
+          try {
+            const base64 = reader.result as string;
+            const base64Data = base64.split(',')[1];
+            doc.addFileToVFS('DejaVu.ttf', base64Data);
+            doc.addFont('DejaVu.ttf', 'DejaVu', 'normal');
+            doc.addFont('DejaVu.ttf', 'DejaVu', 'bold');
+            doc.setFont('DejaVu', 'normal');
+            resolve(true);
+          } catch (err) {
+            reject(err);
+          }
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(fontBlob);
+      });
+
       // Document header styling
       doc.setFillColor(15, 23, 42); // deep slate background
       doc.rect(0, 0, 297, 30, 'F');
-      
+
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(16);
-      doc.setFont('Helvetica', 'Bold');
-      doc.text("HDCAMP SAAS DASHBOARD - REVENUE AUDIT REPORT", 14, 18);
-      
+      doc.text("HDCAMP SAAS DASHBOARD - BÁO CÁO DOANH THU", 14, 18);
+
       doc.setTextColor(226, 232, 240);
       doc.setFontSize(9);
-      doc.setFont('Helvetica', 'Normal');
-      doc.text(`Ngay xuat: ${new Date().toLocaleString('vi-VN')}`, 220, 18);
+      doc.text(`Ngày xuất: ${new Date().toLocaleString('vi-VN')}`, 220, 18);
 
       // Add KPI summaries
       doc.setFillColor(248, 250, 252);
@@ -639,57 +662,59 @@ export default function AdminRevenuePage() {
       doc.setFontSize(9);
       doc.text("Gross Revenue (Doanh thu)", 20, 45);
       doc.setFontSize(11);
-      doc.text(`${fmt(calculatedKPIs.gross)}d`, 20, 52);
+      doc.text(`${fmt(calculatedKPIs.gross)}đ`, 20, 52);
 
       doc.setFontSize(9);
-      doc.text("Net Profit (Loi nhuan)", 85, 45);
+      doc.text("Net Profit (Lợi nhuận)", 85, 45);
       doc.setFontSize(11);
-      doc.text(`${fmt(calculatedKPIs.netProfit)}d`, 85, 52);
+      doc.text(`${fmt(calculatedKPIs.netProfit)}đ`, 85, 52);
 
       doc.setFontSize(9);
-      doc.text("Escrow Balance (Giu ho)", 155, 45);
+      doc.text("Escrow Balance (Giữ hộ)", 155, 45);
       doc.setFontSize(11);
-      doc.text(`${fmt(calculatedKPIs.escrow)}d`, 155, 52);
+      doc.text(`${fmt(calculatedKPIs.escrow)}đ`, 155, 52);
 
       doc.setFontSize(9);
-      doc.text("Total Refund (Hoan tien)", 225, 45);
+      doc.text("Total Refund (Hoàn tiền)", 225, 45);
       doc.setFontSize(11);
-      doc.text(`${fmt(calculatedKPIs.refund)}d`, 225, 52);
+      doc.text(`${fmt(calculatedKPIs.refund)}đ`, 225, 52);
 
       // Generate Table using jspdf-autotable
-      const headers = [['Ma GD', 'Ma Booking', 'Camper', 'Host', 'Campsite', 'Tong Cong', 'Service Fee', 'Commission', 'Host Nhan', 'PTTT', 'Trang thai']];
+      const headers = [['Mã GD', 'Mã Booking', 'Camper', 'Host', 'Campsite', 'Tổng Cộng', 'Host Nhận', 'PTTT', 'Trạng thái']];
       const body = filteredTransactions.map(t => [
-        t.id, 
-        t.bookingCode, 
-        t.camperName, 
-        t.hostName, 
-        t.propertyName, 
-        `${fmt(t.amount)}d`, 
-        `${fmt(t.serviceFee)}d`, 
-        `${fmt(t.commission)}d`, 
-        `${fmt(t.hostNet)}d`, 
-        t.paymentMethod, 
+        t.id,
+        t.bookingCode,
+        t.camperName,
+        t.hostName,
+        t.propertyName,
+        `${fmt(t.amount)}đ`,
+        `${fmt(t.hostNet)}đ`,
+        t.paymentMethod,
         t.status.toUpperCase()
       ]);
 
-      (doc as any).autoTable({
+      autoTable(doc, {
         head: headers,
         body: body,
         startY: 70,
         theme: 'striped',
+        styles: { font: 'DejaVu', fontStyle: 'normal' },
         headStyles: { fillColor: [15, 23, 42], fontSize: 8 },
         bodyStyles: { fontSize: 8 },
         alternateRowStyles: { fillColor: [248, 250, 252] },
         columnStyles: {
           5: { fontStyle: 'bold', textColor: [16, 185, 129] },
-          10: { fontStyle: 'bold' }
+          8: { fontStyle: 'bold' }
         }
       });
 
-      doc.save(`HDCamp_Revenue_Audit_${new Date().toISOString().slice(0,10)}.pdf`);
+      doc.save(`HDCamp_Revenue_Audit_${new Date().toISOString().slice(0, 10)}.pdf`);
       toast.success('Xuất file PDF báo cáo tài chính thành công!');
     } catch (e) {
+      console.error('PDF export error:', e);
       toast.error('Có lỗi xảy ra khi xuất file PDF');
+    } finally {
+      setExportingPdf(false);
     }
   };
 
@@ -708,18 +733,11 @@ export default function AdminRevenuePage() {
       {/* Header section with Premium design */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/60 dark:border-slate-800/80 pb-6">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-primary animate-pulse" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/10 dark:bg-primary/20 px-2.5 py-1 rounded-full">
-              SaaS Admin Panel
-            </span>
-          </div>
-          <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white mt-2">
+
+          <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
             Quản Lý Doanh Thu
           </h1>
-          <p className="text-xs text-slate-450 dark:text-slate-400 mt-1">
-            Theo dõi dòng tiền, lợi nhuận thực tế, escrow, hoàn phí và phân tích giao dịch toàn hệ thống.
-          </p>
+
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <button
@@ -729,7 +747,7 @@ export default function AdminRevenuePage() {
           >
             <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} /> Làm mới
           </button>
-          
+
           <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 p-1.5 rounded-xl">
             <button
               onClick={handleExportExcel}
@@ -739,9 +757,15 @@ export default function AdminRevenuePage() {
             </button>
             <button
               onClick={handleExportPDF}
-              className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold rounded-lg text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:shadow-xs transition-all cursor-pointer"
+              disabled={exportingPdf}
+              className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold rounded-lg text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:shadow-xs transition-all cursor-pointer disabled:opacity-40"
             >
-              <FileText className="h-3.5 w-3.5 text-rose-500" /> PDF
+              {exportingPdf ? (
+                <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-rose-500 border-t-transparent"></div>
+              ) : (
+                <FileText className="h-3.5 w-3.5 text-rose-500" />
+              )}
+              PDF
             </button>
           </div>
         </div>
@@ -1033,7 +1057,7 @@ export default function AdminRevenuePage() {
                       Giám sát hiệu suất theo thời gian thực dựa trên các bộ lọc
                     </p>
                   </div>
-                  
+
                   {/* Select Chart View (Revenue, Profit, Bookings) */}
                   <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
                     {[
@@ -1185,8 +1209,8 @@ export default function AdminRevenuePage() {
                       <div key={a.id} className={cn(
                         'p-2.5 rounded-xl border flex items-start gap-2 text-xs',
                         a.type === 'danger' ? 'bg-rose-50/50 dark:bg-rose-950/15 border-rose-200/65 dark:border-rose-900/30 text-rose-700 dark:text-rose-400' :
-                        (a.type === 'warning' ? 'bg-amber-50/50 dark:bg-amber-950/15 border-amber-200/65 dark:border-amber-900/30 text-amber-700 dark:text-amber-400' :
-                        'bg-blue-50/50 dark:bg-blue-950/15 border-blue-200/65 dark:border-blue-900/30 text-blue-700 dark:text-blue-400')
+                          (a.type === 'warning' ? 'bg-amber-50/50 dark:bg-amber-950/15 border-amber-200/65 dark:border-amber-900/30 text-amber-700 dark:text-amber-400' :
+                            'bg-blue-50/50 dark:bg-blue-950/15 border-blue-200/65 dark:border-blue-900/30 text-blue-700 dark:text-blue-400')
                       )}>
                         <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
                         <div className="flex-1 min-w-0">
@@ -1525,7 +1549,7 @@ export default function AdminRevenuePage() {
                   <div className="flex justify-between text-slate-400"><span>Tổng thu từ Camper:</span> <span>{fmt(selectedTxn.amount)}₫</span></div>
                   <div className="flex justify-between text-slate-400"><span>Service Fee Camper (5%):</span> <span className="font-semibold text-slate-700 dark:text-slate-305">{fmt(selectedTxn.serviceFee)}₫</span></div>
                   <div className="flex justify-between text-slate-400"><span>Commission Host (7%):</span> <span className="font-semibold text-slate-700 dark:text-slate-305">{fmt(selectedTxn.commission)}₫</span></div>
-                  
+
                   <div className="border-t border-slate-200/50 dark:border-slate-800/80 pt-2 flex justify-between font-bold text-slate-900 dark:text-slate-100">
                     <span>Host nhận (Net Host):</span>
                     <span className="text-indigo-650 dark:text-indigo-400">{fmt(selectedTxn.hostNet)}₫</span>

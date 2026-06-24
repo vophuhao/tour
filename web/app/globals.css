@@ -15,8 +15,8 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.15 0.01 240);
 
-  /* Primary: Deep Teal — professional, easy on eyes */
-  --primary: oklch(61.481% 0.17893 40.225);
+  /* Primary: Forest Green — professional, natural, easy on eyes */
+  --primary: oklch(55% 0.11 160);
   --primary-foreground: oklch(0.98 0 0);
 
   /* Secondary: Warm Amber accent */
@@ -76,8 +76,8 @@
   --popover: oklch(0.18 0.01 240);
   --popover-foreground: oklch(0.92 0.01 240);
 
-  /* Primary: Slightly lighter teal in dark mode */
-  --primary: oklch(0.55 0.13 200);
+  /* Primary: Forest Green in dark mode */
+  --primary: oklch(66% 0.10 160);
   --primary-foreground: oklch(0.98 0 0);
 
   /* Secondary: Muted amber */
@@ -570,4 +570,29 @@ html {
   &:hover img {
     @apply scale-105;
   }
+}
+
+/* Google Translate overrides */
+body {
+  top: 0px !important;
+}
+.skiptranslate iframe,
+iframe[class*="goog-te-banner-frame"],
+.goog-te-banner-frame {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0px !important;
+}
+body {
+  top: 0px !important;
+  position: static !important;
+}
+#goog-gt-tt,
+.goog-te-balloon-frame {
+  display: none !important;
+  visibility: hidden !important;
+}
+.goog-text-highlight {
+  background: none !important;
+  box-shadow: none !important;
 }

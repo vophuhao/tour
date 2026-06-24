@@ -284,6 +284,14 @@ export class ReviewService {
       await review!.unpublish();
     }
 
+    // Recalculate ratings
+    if (review.property) {
+      await this.updatePropertyRating(review.property.toString());
+    }
+    if (review.site) {
+      await this.updateSiteRating(review.site.toString());
+    }
+
     return review!;
   }
 

@@ -630,3 +630,11 @@ export async function getPropertyBlockedDates(propertyId: string) {
   );
   return response.data || [];
 }
+
+/**
+ * Get properties for comparison
+ */
+export async function getCompareProperties(ids: string): Promise<any[]> {
+  const response = await apiClient.get(`/properties/compare/list?ids=${ids}`) as any;
+  return response.data || [];
+}

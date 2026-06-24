@@ -58,59 +58,53 @@ export default function PropertiesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* Header */}
-      <div className="border-b border-slate-200 bg-white/80 backdrop-blur-sm sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-6">
-          <div>
-            <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">
-              Quản lý Properties
-            </h1>
-            <p className="text-xs text-slate-400 font-semibold mt-1">
-              Quản lý các property và sites của bạn
-            </p>
-          </div>
-        </div>
+      <div>
+        <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+          Quản lý Properties
+        </h1>
+        <p className="text-xs text-slate-400 font-semibold mt-1">
+          Quản lý các property và sites của bạn
+        </p>
       </div>
 
-      <div className="container mx-auto py-10 px-4">
+      <DataTable
+        columns={columns}
+        data={properties}
+        searchKey="name"
+        searchPlaceholder="Tìm kiếm property..."
+        createButton={{
+          label: 'Tạo Property',
+          onClick: handleCreate,
+        }}
+        meta={{
+          onEdit: handleEdit,
+          onDelete: handleDelete,
+          onViewSites: handleViewSites,
+        }}
+      />
 
-        <DataTable
-          columns={columns}
-          data={properties}
-          searchKey="name"
-          searchPlaceholder="Tìm kiếm property..."
-          createButton={{
-            label: 'Tạo Property',
-            onClick: handleCreate,
-          }}
-          meta={{
-            onEdit: handleEdit,
-            onDelete: handleDelete,
-            onViewSites: handleViewSites,
-          }}
-        />
+      {/* Create Modal */}
+      <PropertyModal
+        open={createModalOpen}
+        onOpenChange={setCreateModalOpen}
+        onSuccess={() => {
+          refetch();
+          setCreateModalOpen(false);
+        }}
+      />
 
-        {/* Create Modal */}
-        <PropertyModal
-          open={createModalOpen}
-          onOpenChange={setCreateModalOpen}
-          onSuccess={() => {
-            refetch();
-            setCreateModalOpen(false);
-          }}
-        />
-
-        {/* Edit Modal */}
-        <PropertyModal
-          open={editModalOpen}
-          onOpenChange={setEditModalOpen}
-          property={selectedProperty}
-          onSuccess={() => {
-            refetch();
-            setEditModalOpen(false);
-          }}
-        />
+      {/* Edit Modal */}
+      <PropertyModal
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        property={selectedProperty}
+        onSuccess={() => {
+          refetch();
+          setEditModalOpen(false);
+        }}
+      />
 
       <DeleteAlertDialog
         open={deleteDialogOpen}
@@ -119,7 +113,6 @@ export default function PropertiesPage() {
         description={`Bạn có chắc chắn muốn xóa property "${selectedProperty?.name}"? Tất cả sites thuộc property này cũng sẽ bị xóa. Hành động này không thể hoàn tác.`}
         onConfirm={handleConfirmDelete}
       />
-    </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
-/* eslint-disable @next/next/no-img-element */
 'use client';
 
+import Image from 'next/image';
 import { Heart, Eye, MapPin, User } from 'lucide-react';
 import Link from 'next/link';
 import type { FreeSpot } from '@/lib/free-spot-api';
@@ -20,37 +20,30 @@ export default function FreeSpotCard({ spot, highlighted, onHover }: Props) {
   return (
     <Link
       href={`/free-spots/${spot._id}`}
-      className={`group flex flex-col overflow-hidden rounded-2xl border bg-card transition-all duration-300 cursor-pointer text-current no-underline focus-visible:ring-4 focus-visible:ring-primary/20 outline-hidden ${
-        highlighted
-          ? 'border-primary ring-4 ring-primary/10 shadow-md scale-101'
-          : 'border-border shadow-xs hover:shadow-md hover:-translate-y-0.5'
-      }`}
+      className={`group flex flex-col overflow-hidden rounded-2xl border bg-card transition-all duration-300 cursor-pointer text-current no-underline focus-visible:ring-4 focus-visible:ring-primary/20 outline-hidden ${highlighted
+        ? 'border-primary ring-4 ring-primary/10 shadow-md scale-101'
+        : 'border-border shadow-xs hover:shadow-md hover:-translate-y-0.5'
+        }`}
       onMouseEnter={() => onHover?.(spot._id)}
       onMouseLeave={() => onHover?.(null)}
     >
       {/* Thumbnail */}
       <div className="relative h-44 w-full bg-muted flex-shrink-0 overflow-hidden">
         {thumb ? (
-          <img
+          <Image
             src={thumb}
             alt={spot.title}
-            width={400}
-            height={176}
+            fill
+            sizes="(max-width: 768px) 100vw, 400px"
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            unoptimized
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-4xl text-muted-foreground select-none">
             🏕️
           </div>
         )}
-        <div className="absolute top-3 left-3 z-10">
-          <TerrainBadge terrain={spot.terrain} size="sm" />
-        </div>
-        {spot.isVerified ? (
-          <div className="absolute top-3 right-3 z-10 bg-emerald-500 text-white rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase shadow-sm">
-            ✓ Xác minh
-          </div>
-        ) : null}
+
       </div>
 
       {/* Content */}
@@ -75,13 +68,15 @@ export default function FreeSpotCard({ spot, highlighted, onHover }: Props) {
           {/* Author */}
           <div className="flex items-center gap-2">
             {spot.author?.avatarUrl ? (
-              <img
-                src={spot.author.avatarUrl}
-                alt={spot.author.username}
-                width={22}
-                height={22}
-                className="w-5.5 h-5.5 rounded-full object-cover border border-border"
-              />
+              <div className="relative w-5.5 h-5.5 rounded-full overflow-hidden border border-border shrink-0">
+                <Image
+                  src={spot.author.avatarUrl}
+                  alt={spot.author.username}
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+              </div>
             ) : (
               <div className="w-5.5 h-5.5 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
                 {spot.author?.username?.charAt(0).toUpperCase() || 'U'}

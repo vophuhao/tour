@@ -175,7 +175,7 @@ export default function FreeSpotMap({
   }
 
   return (
-    <div className="relative w-full h-full min-h-[300px]">
+    <div translate="no" className="relative w-full h-full min-h-[300px] notranslate">
       <Map
         ref={mapRef}
         {...viewState}

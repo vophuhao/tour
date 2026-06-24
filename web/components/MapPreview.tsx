@@ -115,7 +115,7 @@ export default function MapPreview({
     }, [interactive]);
 
     return (
-        <div className="relative">
+        <div className="relative notranslate" translate="no">
             <div
                 ref={mapContainer}
                 className="w-full rounded-lg border"

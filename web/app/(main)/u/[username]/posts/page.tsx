@@ -9,18 +9,21 @@ import API from '@/lib/api-client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import Image from 'next/image';
+import { useMounted } from '@/hooks/useMounted';
+import { Button } from '@/components/ui/button';
 import {
   MessageSquare, Eye, Heart, Edit3, Trash2,
   Loader2, Plus, ChevronLeft, ChevronRight, Clock, Lock,
 } from 'lucide-react';
 
-const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }> = {
-  published: { label: 'Đã đăng', color: '#15803d', bg: '#dcfce7' },
-  draft: { label: 'Nháp', color: '#b45309', bg: '#fef3c7' },
-  archived: { label: 'Lưu trữ', color: '#6b7280', bg: '#f3f4f6' },
-  hidden: { label: 'Đã ẩn', color: '#c2410c', bg: '#ffedd5' },
-  deleted: { label: 'Đã xóa', color: '#6b7280', bg: '#f3f4f6' },
-  active: { label: 'Hoạt động', color: '#15803d', bg: '#dcfce7' },
+const STATUS_BADGE: Record<string, { label: string; className: string }> = {
+  published: { label: 'Đã đăng', className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400' },
+  draft: { label: 'Nháp', className: 'bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400' },
+  archived: { label: 'Lưu trữ', className: 'bg-slate-100 text-slate-650 dark:bg-slate-800 dark:text-slate-400' },
+  hidden: { label: 'Đã ẩn', className: 'bg-orange-100 text-orange-850 dark:bg-orange-950/30 dark:text-orange-400' },
+  deleted: { label: 'Đã xóa', className: 'bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400' },
+  active: { label: 'Hoạt động', className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400' },
 };
 
 export default function MyPostsPage() {
@@ -33,6 +36,7 @@ export default function MyPostsPage() {
   const [page, setPage] = useState(1);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const mounted = useMounted();
 
   const { data: myPostsData, isLoading } = useQuery({
     queryKey: ['my-posts-by-user', currentUser?._id, page],
@@ -64,158 +68,160 @@ export default function MyPostsPage() {
     }
   };
 
+  if (!mounted || isLoading) {
+    return (
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="animate-pulse space-y-2">
+          <div className="h-8 w-48 bg-slate-200 dark:bg-slate-800 rounded" />
+          <div className="h-4 w-64 bg-slate-200 dark:bg-slate-800 rounded" />
+        </div>
+
+        {/* List Skeleton */}
+        <div className="flex flex-col gap-4">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row gap-4 items-start shadow-sm animate-pulse">
+              <div className="w-full sm:w-24 h-40 sm:h-20 bg-slate-200 dark:bg-slate-800 rounded-xl flex-shrink-0" />
+              <div className="flex-1 w-full space-y-3">
+                <div className="flex gap-2">
+                  <div className="h-4 w-12 bg-slate-200 dark:bg-slate-800 rounded" />
+                  <div className="h-4 w-16 bg-slate-200 dark:bg-slate-800 rounded" />
+                </div>
+                <div className="h-6 w-3/4 bg-slate-200 dark:bg-slate-800 rounded" />
+                <div className="flex gap-4 pt-1">
+                  <div className="h-3.5 w-10 bg-slate-200 dark:bg-slate-800 rounded" />
+                  <div className="h-3.5 w-10 bg-slate-200 dark:bg-slate-800 rounded" />
+                  <div className="h-3.5 w-10 bg-slate-200 dark:bg-slate-800 rounded" />
+                  <div className="h-3.5 w-16 bg-slate-200 dark:bg-slate-800 rounded" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   if (!isOwnProfile) {
     return (
-      <div style={{ padding: '40px 0', textAlign: 'center' }}>
-        <Lock size={40} style={{ color: '#9ca3af', margin: '0 auto 12px' }} />
-        <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--foreground)' }}>Riêng tư</h2>
-        <p style={{ color: 'var(--muted-foreground)', fontSize: 14 }}>Bạn không thể xem bài viết của người dùng khác</p>
+      <div className="py-16 text-center">
+        <Lock className="text-muted-foreground mx-auto h-10 w-10 mb-3" />
+        <h2 className="text-lg font-bold text-slate-850 dark:text-white">Riêng tư</h2>
+        <p className="text-sm text-muted-foreground mt-1">Bạn không thể xem bài viết của người dùng khác</p>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="space-y-6">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0, color: 'var(--foreground)' }}>
+          <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
             Bài viết của tôi
           </h2>
-          <p style={{ fontSize: 13, color: 'var(--muted-foreground)', marginTop: 4 }}>
-            {total} bài viết
+          <p className="text-xs text-muted-foreground mt-1">
+            {total} bài viết đã đăng
           </p>
         </div>
         <Link
           href="/forum/create"
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px',
-            borderRadius: 10, background: '#2563eb', color: '#fff',
-            textDecoration: 'none', fontSize: 13, fontWeight: 700,
-            boxShadow: '0 2px 8px rgba(37,99,235,0.3)',
-          }}
+          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary text-white text-xs font-bold shadow-md hover:bg-primary/95 transition-all w-full sm:w-auto text-center"
         >
           <Plus size={15} /> Tạo bài viết
         </Link>
       </div>
 
       {/* Content */}
-      {isLoading ? (
-        <div style={{ padding: '60px 0', textAlign: 'center' }}>
-          <Loader2 size={32} style={{ color: '#2563eb', animation: 'spin 1s linear infinite' }} />
-        </div>
-      ) : posts.length === 0 ? (
-        <div style={{
-          padding: '60px 24px', textAlign: 'center',
-          background: 'var(--card)', borderRadius: 16, border: '1px solid var(--border)',
-        }}>
-          <MessageSquare size={48} style={{ color: '#d1d5db', margin: '0 auto 16px' }} />
-          <h3 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 8px', color: 'var(--foreground)' }}>
+      {posts.length === 0 ? (
+        <div className="py-16 px-6 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
+          <MessageSquare className="text-slate-300 dark:text-slate-700 mx-auto h-12 w-12 mb-4" />
+          <h3 className="text-lg font-bold text-slate-850 dark:text-white mb-2">
             Chưa có bài viết nào
           </h3>
-          <p style={{ color: 'var(--muted-foreground)', fontSize: 14, marginBottom: 20 }}>
+          <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
             Hãy chia sẻ kinh nghiệm cắm trại của bạn với cộng đồng!
           </p>
           <Link
             href="/forum/create"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 22px',
-              borderRadius: 10, background: '#2563eb', color: '#fff',
-              textDecoration: 'none', fontSize: 14, fontWeight: 700,
-            }}
+            className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-primary text-white text-sm font-bold shadow-md hover:bg-primary/95 transition-all"
           >
             <Plus size={16} /> Viết bài đầu tiên
           </Link>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="flex flex-col gap-4">
           {posts.map((post: any) => {
             const badge = STATUS_BADGE[post.status] ?? STATUS_BADGE.published;
             return (
               <div
                 key={post._id}
-                style={{
-                  background: 'var(--card)', borderRadius: 14, border: '1px solid var(--border)',
-                  padding: '16px 20px', display: 'flex', gap: 14, alignItems: 'flex-start',
-                }}
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row gap-4 items-start shadow-sm"
               >
                 {/* Cover image */}
                 {post.coverImage && (
-                  <img
-                    src={post.coverImage}
-                    alt=""
-                    style={{ width: 80, height: 64, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }}
-                  />
+                  <div className="relative w-full sm:w-24 h-40 sm:h-20 flex-shrink-0 overflow-hidden rounded-xl">
+                    <Image
+                      src={post.coverImage}
+                      alt={post.title || ''}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 96px"
+                      className="object-cover"
+                    />
+                  </div>
                 )}
 
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-                    <span style={{
-                      padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 700,
-                      background: badge.bg, color: badge.color,
-                    }}>{badge.label}</span>
+                <div className="flex-1 min-w-0 w-full space-y-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${badge.className}`}>
+                      {badge.label}
+                    </span>
                     {post.subject && (
-                      <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 99, background: '#f3f4f6', color: '#6b7280' }}>
+                      <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-650 dark:bg-slate-800 dark:text-slate-400 font-bold">
                         {post.subject}
                       </span>
                     )}
                   </div>
 
-                  <h3 style={{
-                    fontSize: 15, fontWeight: 700, margin: '0 0 8px',
-                    color: 'var(--foreground)', overflow: 'hidden',
-                    textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}>
+                  <h3 className="text-base font-bold text-slate-850 dark:text-white truncate">
                     {post.title}
                   </h3>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#9ca3af' }}>
+                  <div className="flex items-center gap-4 flex-wrap text-xs text-slate-500 dark:text-slate-400">
+                    <span className="flex items-center gap-1">
                       <Eye size={12} /> {post.viewCount ?? 0}
                     </span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#9ca3af' }}>
+                    <span className="flex items-center gap-1">
                       <Heart size={12} /> {post.likeCount ?? post.likes?.length ?? 0}
                     </span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#9ca3af' }}>
+                    <span className="flex items-center gap-1">
                       <MessageSquare size={12} /> {post.commentCount ?? 0}
                     </span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#9ca3af' }}>
+                    <span className="flex items-center gap-1">
                       <Clock size={12} /> {new Date(post.createdAt).toLocaleDateString('vi-VN')}
                     </span>
                   </div>
                 </div>
 
                 {/* Actions */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+                <div className="flex sm:flex-col gap-2 w-full sm:w-auto flex-shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 mt-2 sm:mt-0">
                   {post.slug && (
                     <Link
                       href={`/forum/${post.slug}`}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px',
-                        borderRadius: 8, border: '1px solid var(--border)', background: 'var(--card)',
-                        color: 'var(--foreground)', fontSize: 12, fontWeight: 600, textDecoration: 'none',
-                      }}
+                      className="flex-1 sm:flex-initial flex items-center justify-center gap-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-350 transition-colors text-center"
                     >
                       <Eye size={12} /> Xem
                     </Link>
                   )}
                   <Link
                     href={`/forum/${post._id}/edit`}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px',
-                      borderRadius: 8, border: '1px solid #2563eb', background: '#eff6ff',
-                      color: '#1d4ed8', fontSize: 12, fontWeight: 600, textDecoration: 'none',
-                    }}
+                    className="flex-1 sm:flex-initial flex items-center justify-center gap-1 px-3 py-2 rounded-lg border border-primary/20 bg-primary/5 hover:bg-primary/10 text-primary-dark text-xs font-bold transition-colors text-center"
                   >
                     <Edit3 size={12} /> Sửa
                   </Link>
                   <button
                     onClick={() => setConfirmDelete(post._id)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px',
-                      borderRadius: 8, border: '1px solid #ef4444', background: '#fef2f2',
-                      color: '#dc2626', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                    }}
+                    className="flex-1 sm:flex-initial flex items-center justify-center gap-1 px-3 py-2 rounded-lg border border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-950/20 hover:bg-red-100/50 dark:hover:bg-red-950/30 text-red-650 dark:text-red-400 text-xs font-bold transition-colors cursor-pointer text-center"
                   >
                     <Trash2 size={12} /> Xóa
                   </button>
@@ -228,14 +234,22 @@ export default function MyPostsPage() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 24 }}>
-          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '8px 16px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--card)', cursor: page === 1 ? 'not-allowed' : 'pointer', opacity: page === 1 ? 0.5 : 1, fontSize: 13 }}>
+        <div className="flex justify-center items-center gap-3 mt-8">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+          >
             <ChevronLeft size={14} /> Trước
           </button>
-          <span style={{ fontSize: 13 }}>Trang <strong>{page}</strong> / {totalPages}</span>
-          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '8px 16px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--card)', cursor: page === totalPages ? 'not-allowed' : 'pointer', opacity: page === totalPages ? 0.5 : 1, fontSize: 13 }}>
+          <span className="text-xs text-slate-655 dark:text-slate-400">
+            Trang <strong className="text-slate-900 dark:text-white">{page}</strong> / {totalPages}
+          </span>
+          <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+          >
             Sau <ChevronRight size={14} />
           </button>
         </div>
@@ -244,28 +258,34 @@ export default function MyPostsPage() {
       {/* Delete Confirmation Modal */}
       {confirmDelete && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+          className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-xs"
           onClick={e => e.target === e.currentTarget && setConfirmDelete(null)}
         >
-          <div style={{ background: 'var(--card)', borderRadius: 16, padding: 28, maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
-            <h3 style={{ margin: '0 0 12px', fontSize: 18, fontWeight: 700 }}>Xóa bài viết?</h3>
-            <p style={{ margin: '0 0 20px', fontSize: 14, color: 'var(--muted-foreground)' }}>
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Xóa bài viết?</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
               Bài viết sẽ bị xóa vĩnh viễn và không thể khôi phục.
             </p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button onClick={() => setConfirmDelete(null)} style={{ padding: '9px 20px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--card)', fontSize: 14, cursor: 'pointer' }}>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setConfirmDelete(null)}
+                className="rounded-xl font-bold cursor-pointer"
+              >
                 Hủy
-              </button>
-              <button onClick={() => handleDelete(confirmDelete)} disabled={!!deletingId}
-                style={{ padding: '9px 20px', borderRadius: 10, border: 'none', background: '#ef4444', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => handleDelete(confirmDelete)}
+                disabled={!!deletingId}
+                className="rounded-xl font-bold cursor-pointer bg-red-650 hover:bg-red-600"
+              >
                 {deletingId ? 'Đang xóa...' : 'Xóa'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
-
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

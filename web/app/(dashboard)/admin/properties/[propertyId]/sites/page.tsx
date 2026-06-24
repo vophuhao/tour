@@ -72,9 +72,9 @@ export default function PropertySitesPage() {
   };
 
   return (
-    <div className="container mx-auto py-10">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* Header with back button */}
-      <div className="mb-6 flex items-center gap-4">
+      <div className="flex items-center gap-4">
         <Button
           variant="ghost"
           size="icon"
@@ -83,9 +83,11 @@ export default function PropertySitesPage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">Quản lý Sites</h1>
+          <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+            Quản lý Sites
+          </h1>
           {property && (
-            <p className="text-muted-foreground mt-2 flex items-center gap-2">
+            <p className="text-xs text-slate-400 font-semibold mt-1 flex items-center gap-2">
               <Building2 className="h-4 w-4" />
               {property.name}
             </p>

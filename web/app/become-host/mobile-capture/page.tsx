@@ -101,101 +101,108 @@ export default function MobileCapturePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50 to-white flex flex-col">
-      {/* Header */}
-      <div className="bg-emerald-600 text-white px-4 py-4 text-center">
-        <div className="flex items-center justify-center gap-2 mb-1">
-          <Smartphone className="h-5 w-5" />
-          <h1 className="text-lg font-bold">Chụp ảnh xác minh</h1>
-        </div>
-        <p className="text-emerald-100 text-xs">Chụp ảnh selfie để so khớp với CCCD</p>
+    <div className="min-h-screen bg-background flex flex-col justify-between relative overflow-hidden">
+      {/* Subtle brand color overlay glow */}
+      <div className="absolute inset-0 pointer-events-none opacity-20 z-0">
+        <div className="absolute -top-[30%] -left-[20%] w-[80%] aspect-square rounded-full bg-primary/20 blur-[100px]" />
       </div>
 
-      {/* Camera area */}
-      <div className="flex-1 flex flex-col items-center justify-center p-4 gap-4">
-        <div className="relative w-full max-w-sm aspect-[3/4] rounded-2xl overflow-hidden bg-gray-900 shadow-xl">
-          <video
-            ref={videoRef}
-            className={`w-full h-full object-cover ${!cameraActive ? "hidden" : ""}`}
-            autoPlay
-            muted
-            playsInline
-          />
-          {!cameraActive && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-white gap-3">
-              {selfieUrl ? (
-                <img src={selfieUrl} alt="Selfie" className="w-full h-full object-cover" />
-              ) : (
-                <>
-                  <Camera className="h-16 w-16 opacity-30" />
-                  <p className="text-sm opacity-50">Camera chưa bật</p>
-                </>
-              )}
-            </div>
-          )}
-          {/* Face guide overlay */}
-          {cameraActive && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="w-48 h-64 border-2 border-emerald-400 rounded-full opacity-60 animate-pulse" />
-            </div>
-          )}
+      <div className="flex-1 flex flex-col z-10">
+        {/* Header */}
+        <div className="bg-primary text-primary-foreground px-4 py-5 text-center shadow-md relative z-10">
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <Smartphone className="h-5 w-5 text-primary-foreground/90" />
+            <h1 className="text-lg font-bold tracking-wide">Chụp ảnh xác minh</h1>
+          </div>
+          <p className="text-primary-foreground/80 text-xs">Chụp ảnh selfie để so khớp với CCCD</p>
         </div>
 
-        {/* Status messages */}
-        {status === "uploading" && (
-          <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 w-full max-w-sm">
-            <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
-            <p className="text-sm text-blue-700">Đang gửi ảnh về máy tính...</p>
+        {/* Camera area */}
+        <div className="flex-1 flex flex-col items-center justify-center p-6 gap-6">
+          <div className="relative w-full max-w-sm aspect-[3/4] rounded-2xl overflow-hidden bg-gray-950 shadow-xl border border-border">
+            <video
+              ref={videoRef}
+              className={`w-full h-full object-cover ${!cameraActive ? "hidden" : ""}`}
+              autoPlay
+              muted
+              playsInline
+            />
+            {!cameraActive && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-white gap-3 bg-gray-900/95">
+                {selfieUrl ? (
+                  <img src={selfieUrl} alt="Selfie" className="w-full h-full object-cover" />
+                ) : (
+                  <>
+                    <Camera className="h-16 w-16 text-muted-foreground opacity-40 animate-pulse-subtle" />
+                    <p className="text-sm text-muted-foreground">Camera chưa được kích hoạt</p>
+                  </>
+                )}
+              </div>
+            )}
+            {/* Face guide overlay */}
+            {cameraActive && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-44 h-56 border-2 border-primary rounded-[50%/40%] opacity-70 animate-pulse-subtle" />
+              </div>
+            )}
           </div>
-        )}
-        {status === "done" && (
-          <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-300 rounded-xl px-4 py-3 w-full max-w-sm">
-            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-            <div>
-              <p className="text-sm text-emerald-700 font-semibold">Đã gửi ảnh thành công!</p>
-              <p className="text-xs text-emerald-600 mt-0.5">Quay lại máy tính để hoàn tất xác minh. Bạn có thể đóng trang này.</p>
-            </div>
-          </div>
-        )}
-        {status === "error" && errorMsg && (
-          <div className="flex items-center gap-2 bg-red-50 border border-red-300 rounded-xl px-4 py-3 w-full max-w-sm">
-            <p className="text-sm text-red-700">{errorMsg}</p>
-          </div>
-        )}
 
-        {/* Action buttons */}
-        <div className="w-full max-w-sm space-y-2">
-          {status === "idle" && (
-            <button
-              className="w-full py-4 rounded-xl bg-emerald-600 text-white font-bold text-base flex items-center justify-center gap-2 active:bg-emerald-700 transition-colors shadow-lg"
-              onClick={startCamera}
-            >
-              <Camera className="h-5 w-5" /> Mở camera & Chụp ảnh
-            </button>
+          {/* Status messages */}
+          {status === "uploading" && (
+            <div className="flex items-center gap-3 bg-blue-500/10 border border-blue-500/20 rounded-xl px-4 py-3.5 w-full max-w-sm">
+              <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
+              <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">Đang gửi ảnh về máy tính...</p>
+            </div>
           )}
-          {status === "camera" && cameraActive && (
-            <button
-              className="w-full py-4 rounded-xl bg-emerald-600 text-white font-bold text-base flex items-center justify-center gap-2 active:bg-emerald-700 transition-colors shadow-lg animate-pulse"
-              onClick={capture}
-            >
-              <Camera className="h-5 w-5" /> Chụp ngay
-            </button>
+          {status === "done" && (
+            <div className="flex items-center gap-3 bg-primary/10 border border-primary/20 rounded-xl px-4 py-3.5 w-full max-w-sm animate-fade-in">
+              <CheckCircle2 className="h-5 w-5 text-primary" />
+              <div>
+                <p className="text-sm text-primary font-bold">Đã gửi ảnh thành công!</p>
+                <p className="text-xs text-primary/80 mt-0.5">Quay lại máy tính để hoàn tất xác minh. Bạn có thể đóng trang này.</p>
+              </div>
+            </div>
           )}
-          {(status === "error" || (status === "idle" && selfieUrl)) && (
-            <button
-              className="w-full py-3 rounded-xl border-2 border-emerald-200 text-emerald-700 font-semibold text-sm flex items-center justify-center gap-2 active:bg-emerald-50 transition-colors"
-              onClick={retry}
-            >
-              <RefreshCw className="h-4 w-4" /> Thử lại
-            </button>
+          {status === "error" && errorMsg && (
+            <div className="flex items-center gap-3 bg-destructive/10 border border-destructive/20 rounded-xl px-4 py-3.5 w-full max-w-sm animate-fade-in">
+              <p className="text-sm text-destructive font-medium">{errorMsg}</p>
+            </div>
           )}
+
+          {/* Action buttons */}
+          <div className="w-full max-w-sm space-y-2.5">
+            {status === "idle" && (
+              <button
+                className="w-full py-4 rounded-xl bg-primary text-primary-foreground font-bold text-base flex items-center justify-center gap-2 active:bg-primary/90 transition-all shadow-md cursor-pointer"
+                onClick={startCamera}
+              >
+                <Camera className="h-5 w-5" /> Mở camera & Chụp ảnh
+              </button>
+            )}
+            {status === "camera" && cameraActive && (
+              <button
+                className="w-full py-4 rounded-xl bg-primary text-primary-foreground font-bold text-base flex items-center justify-center gap-2 active:bg-primary/90 transition-all shadow-md cursor-pointer animate-pulse-subtle"
+                onClick={capture}
+              >
+                <Camera className="h-5 w-5" /> Chụp ảnh ngay
+              </button>
+            )}
+            {(status === "error" || (status === "idle" && selfieUrl)) && (
+              <button
+                className="w-full py-3.5 rounded-xl border-2 border-primary/20 hover:border-primary/40 text-primary font-bold text-sm flex items-center justify-center gap-2 active:bg-primary/5 transition-all cursor-pointer bg-card"
+                onClick={retry}
+              >
+                <RefreshCw className="h-4 w-4" /> Thử lại
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Tips */}
-      <div className="px-4 py-4 bg-gray-50 border-t">
-        <p className="text-xs text-gray-500 text-center">
-          💡 Giữ khuôn mặt trong vùng khung oval • Đảm bảo đủ ánh sáng • Tháo kính/khẩu trang
+      {/* Tips Footer */}
+      <div className="px-4 py-4 bg-muted/40 border-t border-border/60 z-10">
+        <p className="text-xs text-muted-foreground text-center font-medium leading-relaxed">
+          💡 Hướng dẫn: Giữ khuôn mặt trong vùng khung oval • Đảm bảo đủ ánh sáng • Tháo kính/khẩu trang khi chụp.
         </p>
       </div>
     </div>

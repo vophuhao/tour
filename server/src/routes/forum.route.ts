@@ -29,5 +29,6 @@ forumRoutes.delete("/:id", authenticate, forumController.deletePost);
 forumRoutes.post("/:id/like", authenticate, forumController.toggleLike);
 forumRoutes.post("/:id/save", authenticate, forumController.toggleSave);
 forumRoutes.get("/saved", authenticate, forumController.getSavedPosts);
+forumRoutes.get("/liked", authenticate, forumController.getLikedPosts);
 
 export default forumRoutes;

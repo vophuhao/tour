@@ -173,8 +173,8 @@ export default function AdminTourBooking() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Quản lý Booking Tour</h1>
-        <p className="text-muted-foreground mt-2">Danh sách các tour đã đặt</p>
+        <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Quản lý Booking Tour</h1>
+        <p className="text-xs text-slate-400 font-semibold mt-1">Danh sách các tour đã đặt</p>
       </div>
 
       <DataTable

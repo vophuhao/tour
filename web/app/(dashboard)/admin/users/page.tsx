@@ -169,11 +169,11 @@ export default function UsersManagementPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">Quản lý người dùng</h1>
+          <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Quản lý người dùng</h1>
           <p className="text-xs text-slate-400 font-semibold mt-0.5">
             Xem, phân quyền và khóa/mở khóa tài khoản thành viên hệ thống.
           </p>

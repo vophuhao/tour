@@ -4,6 +4,7 @@ import "dotenv/config";
 import express from "express";
 import http from "http";
 import cron from "node-cron";
+import mongoose from "mongoose";
 import { connectRedis, connectToDatabase } from "./config";
 import { APP_ORIGIN, NODE_ENV, OK, PORT } from "./constants";
 import { authenticate, errorHandler, globalRateLimit, authRateLimit } from "./middleware";
@@ -32,7 +33,7 @@ import freeSpotRoutes from "./routes/free-spot.route";
 import reportRoutes from "./routes/report.route";
 import walletRoutes from "./routes/wallet.route";
 import mobileSelfieRoutes from "./routes/mobile-selfie.route";
-import { BookingService } from "./services";
+import { BookingLifecycleService, PropertyService, ForumService } from "./services";
 import PayoutService from "./services/payout.service";
 import { initializeSocket } from "./socket";
 
@@ -98,7 +99,7 @@ app.use(globalRateLimit);
 // ============================================================
 // Cron Jobs
 // ============================================================
-const bookingService = new BookingService();
+const bookingLifecycleService = new BookingLifecycleService();
 const payoutService = new PayoutService();
 
 // Cron: Tổng kết payout đầu mỗi tháng (ngày 1, 00:00)
@@ -120,7 +121,7 @@ cron.schedule("0 0 1 * *", async () => {
 cron.schedule("0 */6 * * *", async () => {
   console.log("🔄 Running auto-settle expired bookings job...");
   try {
-    const result = await bookingService.autoSettleExpiredBookings();
+    const result = await bookingLifecycleService.autoSettleExpiredBookings();
     if (result.settled > 0) {
       console.log(`✅ Auto-settle: đã giải quyết ${result.settled}/${result.total} booking hết hạn`);
     }
@@ -133,7 +134,7 @@ cron.schedule("0 */6 * * *", async () => {
 cron.schedule("*/15 * * * *", async () => {
   console.log("🔄 Running cancel expired pending bookings job (12h timeout)...");
   try {
-    const result = await bookingService.cancelExpiredPendingBookings();
+    const result = await bookingLifecycleService.cancelExpiredPendingBookings();
     if (result.remindersSent > 0 || result.bookingsCancelled > 0) {
       console.log(
         `✅ Expired bookings job: sent ${result.remindersSent} reminders, cancelled ${result.bookingsCancelled} bookings`
@@ -148,12 +149,28 @@ cron.schedule("*/15 * * * *", async () => {
 cron.schedule("0 1 * * *", async () => {
   console.log("🔄 Running cleanup unpaid bookings job...");
   try {
-    const result = await bookingService.cancelUnpaidBookingsOnCheckinDay();
+    const result = await bookingLifecycleService.cancelUnpaidBookingsOnCheckinDay();
     console.log(
-      `✅ Cleanup completed: deleted ${result.deleted}/${result.total} unpaid bookings`
+      `✅ Cleanup completed: cancelled ${result.cancelled}/${result.total} unpaid bookings`
     );
   } catch (err) {
     console.error("❌ Cleanup unpaid bookings job failed:", err);
+  }
+});
+
+// Cron: Đồng bộ lượt xem từ Redis sang MongoDB (mỗi 5 phút)
+cron.schedule("*/5 * * * *", async () => {
+  console.log("🔄 Syncing property and post views from Redis to MongoDB...");
+  try {
+    const propertyService = new PropertyService();
+    const forumService = new ForumService();
+    await Promise.all([
+      propertyService.syncViewsFromRedis(),
+      forumService.syncViewsFromRedis(),
+    ]);
+    console.log("✅ View syncing completed");
+  } catch (err) {
+    console.error("❌ View syncing failed:", err);
   }
 });
 
@@ -170,11 +187,28 @@ cron.schedule("0 3 * * *", async () => {
 });
 
 // ============================================================
-// Health check
+// Health check — Readiness probe cho load balancer / k8s
 // ============================================================
+app.get("/health", async (_, res) => {
+  const dbState = mongoose.connection.readyState === 1 ? "connected" : "disconnected";
+  const { redisClient } = await import("./config/redis");
+  const redisState = redisClient.isOpen ? "connected" : "disconnected";
+  const allHealthy = dbState === "connected" && redisState === "connected";
+
+  return res.status(allHealthy ? OK : 503).json({
+    status: allHealthy ? "healthy" : "degraded",
+    environment: NODE_ENV,
+    database: dbState,
+    redis: redisState,
+    uptime: Math.round(process.uptime()),
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Basic ping (always 200 — dùng để check server còn sống, không check dependencies)
 app.get("/", (_, res) => {
   return res.status(OK).json({
-    status: "healthy",
+    status: "ok",
     environment: NODE_ENV,
     timestamp: new Date().toISOString(),
   });

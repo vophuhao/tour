@@ -15,6 +15,7 @@ import type {
   SearchPropertyInput,
   UpdatePropertyInput,
 } from "@/validators/property.validator";
+import type { RouteSearchInput } from "../validators/route-search.validator";
 import mongoose, { isValidObjectId } from "mongoose";
 
 export class PropertyService {
@@ -53,12 +54,18 @@ export class PropertyService {
 
     appAssert(property, ErrorFactory.resourceNotFound("Property"));
 
-    // Increment view count bằng atomic $inc (tránh race condition + không cần read-modify-write)
-    PropertyModel.findByIdAndUpdate(
-      property._id,
-      { $inc: { "stats.viewCount": 1 } },
-      { timestamps: false } // Không cập nhật updatedAt khi chỉ đếm view
-    ).exec().catch(() => { }); // Fire-and-forget
+    // Increment view count in Redis
+    try {
+      const { redisClient } = require("../config/redis");
+      redisClient.hIncrBy("property_views", property._id.toString(), 1).catch(() => {});
+      
+      const redisViews = await redisClient.hGet("property_views", property._id.toString());
+      if (redisViews && property.stats) {
+        property.stats.viewCount += parseInt(redisViews);
+      }
+    } catch (err) {
+      console.warn("Failed to increment/read property views in Redis:", err);
+    }
 
     return property!;
   }
@@ -213,7 +220,7 @@ export class PropertyService {
     const propertiesWithSites = await Promise.all(
       properties.map(async (property) => {
         const sites = await SiteModel.find({ property: property._id })
-          .select("name slug status isActive pricing.basePrice accommodationType stats photos capacity")
+          .populate("amenities", "name icon category description")
           .sort({ createdAt: -1 })
           .lean();
         return { ...property, sites };
@@ -1274,6 +1281,513 @@ export class PropertyService {
     });
 
     return !!blockedDates;
+  }
+
+  /**
+   * Sync property view counts from Redis to MongoDB
+   */
+  async syncViewsFromRedis(): Promise<void> {
+    const { redisClient } = await import("../config/redis");
+    const keys = await redisClient.hKeys("property_views").catch(() => [] as string[]);
+    const updateOps = [];
+
+    for (const id of keys) {
+      const countStr = await redisClient.hGet("property_views", id).catch(() => null);
+      if (countStr) {
+        const count = parseInt(countStr);
+        await redisClient.hDel("property_views", id).catch(() => {});
+        if (count > 0 && mongoose.isValidObjectId(id)) {
+          updateOps.push({
+            updateOne: {
+              filter: { _id: id },
+              update: { $inc: { "stats.viewCount": count } },
+            },
+          });
+        }
+      }
+    }
+
+    if (updateOps.length > 0) {
+      await PropertyModel.bulkWrite(updateOps).catch((err) => {
+        console.error("Failed to sync property views bulk write:", err);
+      });
+    }
+  }
+
+  /**
+   * Search properties along a specific roadtrip route
+   */
+  async searchPropertiesAlongRoute(input: RouteSearchInput) {
+    const {
+      points,
+      radius,
+      guests,
+      pets,
+      propertyType,
+      campingStyle,
+      amenities,
+      checkIn,
+      checkOut,
+      sortBy,
+      page,
+      limit,
+    } = input;
+
+    const query: any = {};
+
+    // Filter out blocked hosts
+    const blockedHosts = await UserModel.find({ isBlocked: true }).distinct("_id");
+    if (blockedHosts.length > 0) {
+      query.host = { $nin: blockedHosts };
+    }
+
+    // Geospatial filter: points along route
+    if (points && points.length > 0) {
+      query.$or = points.map(([lng, lat]) => ({
+        "location.coordinates": {
+          $geoWithin: {
+            $centerSphere: [[lng, lat], radius / 6378.1],
+          },
+        },
+      }));
+    }
+
+    // Property type
+    if (propertyType && propertyType.length > 0) {
+      query.propertyType = { $in: propertyType };
+    }
+
+    // Amenities (Site level)
+    let amenityPropertyIds: mongoose.Types.ObjectId[] | undefined;
+    if (amenities && amenities.length > 0) {
+      const sitesWithAmenities = await SiteModel.find({
+        amenities: { $in: amenities.filter((id) => isValidObjectId(id)) },
+        isActive: true,
+      })
+        .select("property")
+        .lean();
+
+      amenityPropertyIds = [...new Set(sitesWithAmenities.map((s) => s.property))];
+      if (amenityPropertyIds.length === 0) {
+        return {
+          properties: [],
+          pagination: { page, limit, total: 0, pages: 0 },
+        };
+      }
+      query._id = { $in: amenityPropertyIds };
+    }
+
+    // Availability & Capacity
+    let availabilityPropertyIds: mongoose.Types.ObjectId[] | undefined;
+    if (checkIn && checkOut) {
+      const checkInDate = new Date(checkIn);
+      const checkOutDate = new Date(checkOut);
+
+      if (checkInDate >= checkOutDate) {
+        return {
+          properties: [],
+          pagination: { page, limit, total: 0, pages: 0 },
+        };
+      }
+
+      const nights = Math.ceil(
+        (checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      const siteQuery: any = { isActive: true };
+      if (guests) {
+        siteQuery["capacity.maxGuests"] = { $gte: guests };
+      }
+      if (pets && pets > 0) {
+        siteQuery["capacity.maxPets"] = { $gte: pets };
+      }
+      siteQuery["bookingSettings.minimumNights"] = { $lte: nights };
+      siteQuery.$or = [
+        { "bookingSettings.maximumNights": { $exists: false } },
+        { "bookingSettings.maximumNights": null },
+        { "bookingSettings.maximumNights": { $gte: nights } },
+      ];
+
+      const candidateSites = await SiteModel.find(siteQuery).select("_id property").lean();
+
+      if (candidateSites.length === 0) {
+        return {
+          properties: [],
+          pagination: { page, limit, total: 0, pages: 0 },
+        };
+      }
+
+      const candidateSiteIds = candidateSites.map((s) => s._id);
+      const conflictingBookings = await BookingModel.find({
+        site: { $in: candidateSiteIds },
+        status: { $in: ["pending", "confirmed"] },
+        $or: [
+          { checkIn: { $gte: checkInDate, $lt: checkOutDate } },
+          { checkOut: { $gt: checkInDate, $lte: checkOutDate } },
+          { checkIn: { $lte: checkInDate }, checkOut: { $gte: checkOutDate } },
+        ],
+      })
+        .select("site")
+        .lean();
+
+      const bookedSiteIds = new Set(conflictingBookings.map((b) => b.site.toString()));
+      const availableSites = candidateSites.filter((s) => !bookedSiteIds.has(s._id.toString()));
+
+      if (availableSites.length === 0) {
+        return {
+          properties: [],
+          pagination: { page, limit, total: 0, pages: 0 },
+        };
+      }
+
+      availabilityPropertyIds = [...new Set(availableSites.map((s) => s.property))];
+
+      if (query._id) {
+        const existingIds = query._id.$in || [];
+        query._id = { $in: existingIds.filter((id: any) => availabilityPropertyIds!.includes(id)) };
+        if (query._id.$in.length === 0) {
+          return {
+            properties: [],
+            pagination: { page, limit, total: 0, pages: 0 },
+          };
+        }
+      } else {
+        query._id = { $in: availabilityPropertyIds };
+      }
+    } else if (guests || (pets && pets > 0)) {
+      const capacityQuery: any = { isActive: true };
+      if (guests) {
+        capacityQuery["capacity.maxGuests"] = { $gte: guests };
+      }
+      if (pets && pets > 0) {
+        capacityQuery["capacity.maxPets"] = { $gte: pets };
+      }
+
+      const sitesWithCapacity = await SiteModel.find(capacityQuery).select("property").lean();
+
+      if (sitesWithCapacity.length === 0) {
+        return {
+          properties: [],
+          pagination: { page, limit, total: 0, pages: 0 },
+        };
+      }
+
+      const capacityPropertyIds = [...new Set(sitesWithCapacity.map((s) => s.property))];
+
+      if (query._id) {
+        const existingIds = query._id.$in || [];
+        query._id = { $in: existingIds.filter((id: any) => capacityPropertyIds.includes(id)) };
+        if (query._id.$in.length === 0) {
+          return {
+            properties: [],
+            pagination: { page, limit, total: 0, pages: 0 },
+          };
+        }
+      } else {
+        query._id = { $in: capacityPropertyIds };
+      }
+    }
+
+    // campingStyle filter
+    if (campingStyle && campingStyle.length > 0) {
+      const glampingTypes = [
+        "cabin",
+        "yurt",
+        "treehouse",
+        "tiny_home",
+        "safari_tent",
+        "bell_tent",
+        "glamping_pod",
+        "dome",
+        "airstream",
+        "vintage_trailer",
+        "van",
+      ];
+
+      const accommodationTypes: string[] = [];
+      campingStyle.forEach((style) => {
+        if (style === "tent") {
+          accommodationTypes.push("tent");
+        } else if (style === "rv") {
+          accommodationTypes.push("rv");
+        } else if (style === "glamping") {
+          accommodationTypes.push(...glampingTypes);
+        }
+      });
+
+      const sitesWithAccommodation = await SiteModel.find({
+        accommodationType: { $in: accommodationTypes },
+        isActive: true,
+      })
+        .select("property")
+        .lean();
+
+      const accommodationPropertyIds = [...new Set(sitesWithAccommodation.map((s) => s.property))];
+
+      if (accommodationPropertyIds.length === 0) {
+        return {
+          properties: [],
+          pagination: { page, limit, total: 0, pages: 0 },
+        };
+      }
+
+      if (query._id) {
+        const existingIds = query._id.$in || [];
+        query._id = {
+          $in: existingIds.filter((id: any) => accommodationPropertyIds.includes(id)),
+        };
+        if (query._id.$in.length === 0) {
+          return {
+            properties: [],
+            pagination: { page, limit, total: 0, pages: 0 },
+          };
+        }
+      } else {
+        query._id = { $in: accommodationPropertyIds };
+      }
+    }
+
+    // Sorting
+    let sort: any = {};
+    switch (sortBy) {
+      case "newest":
+        sort = { createdAt: -1 };
+        break;
+      case "oldest":
+        sort = { createdAt: 1 };
+        break;
+      case "rating":
+        sort = { "rating.average": -1, "rating.count": -1 };
+        break;
+      case "reviewCount":
+        sort = { "stats.totalReviews": -1 };
+        break;
+      case "minPrice-asc":
+        sort = { minPrice: 1 };
+        break;
+      case "minPrice-desc":
+        sort = { minPrice: -1 };
+        break;
+      case "name":
+        sort = { name: 1 };
+        break;
+      case "totalSites":
+        sort = { totalSites: -1 };
+        break;
+      default:
+        sort = { "stats.totalReviews": -1 };
+    }
+
+    const skip = (page - 1) * limit;
+    const needsMinPriceSort = sortBy === "minPrice-asc" || sortBy === "minPrice-desc";
+
+    if (needsMinPriceSort) {
+      const pipeline: any[] = [
+        { $match: { ...query, isActive: true } },
+        {
+          $lookup: {
+            from: "sites",
+            localField: "_id",
+            foreignField: "property",
+            as: "sites",
+          },
+        },
+        {
+          $addFields: {
+            minPrice: {
+              $ifNull: [
+                {
+                  $min: {
+                    $map: {
+                      input: {
+                        $filter: {
+                          input: "$sites",
+                          as: "site",
+                          cond: { $eq: ["$$site.isActive", true] },
+                        },
+                      },
+                      as: "site",
+                      in: "$$site.pricing.basePrice",
+                    },
+                  },
+                },
+                999999999,
+              ],
+            },
+          },
+        },
+        { $sort: sortBy === "minPrice-asc" ? { minPrice: 1 } : { minPrice: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $lookup: {
+            from: "users",
+            localField: "host",
+            foreignField: "_id",
+            as: "host",
+          },
+        },
+        { $unwind: { path: "$host", preserveNullAndEmptyArrays: true } },
+        {
+          $project: {
+            sites: 0,
+            "host.password": 0,
+            "host.email": 0,
+          },
+        },
+      ];
+
+      const [properties, totalResult] = await Promise.all([
+        PropertyModel.aggregate(pipeline),
+        PropertyModel.countDocuments({ ...query, isActive: true }),
+      ]);
+
+      return {
+        properties,
+        pagination: {
+          page,
+          limit,
+          total: totalResult,
+          pages: Math.ceil(totalResult / limit),
+        },
+      };
+    }
+
+    // Standard query for non-price sorts
+    const pipeline: any[] = [
+      { $match: { ...query, isActive: true } },
+      {
+        $lookup: {
+          from: "sites",
+          let: { propertyId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ["$property", "$$propertyId"] },
+                isActive: true,
+              },
+            },
+            { $sort: { "pricing.basePrice": 1 } },
+            { $limit: 1 },
+            { $project: { "pricing.basePrice": 1 } },
+          ],
+          as: "cheapestSite",
+        },
+      },
+      {
+        $addFields: {
+          minPrice: {
+            $ifNull: [
+              { $arrayElemAt: ["$cheapestSite.pricing.basePrice", 0] },
+              0,
+            ],
+          },
+        },
+      },
+      { $project: { cheapestSite: 0 } },
+      { $sort: Object.keys(sort).length > 0 ? sort : { "stats.totalReviews": -1 } },
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: "users",
+          localField: "host",
+          foreignField: "_id",
+          as: "hostData",
+        },
+      },
+      {
+        $addFields: {
+          host: { $arrayElemAt: ["$hostData", 0] },
+        },
+      },
+      { $project: { hostData: 0, "host.password": 0, "host.email": 0 } },
+    ];
+
+    const [properties, total] = await Promise.all([
+      PropertyModel.aggregate(pipeline),
+      PropertyModel.countDocuments({ ...query, isActive: true }),
+    ]);
+
+    return {
+      properties,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
+   * Aggregate data of multiple properties for comparison
+   */
+  async compareProperties(ids: string[]) {
+    const validIds = ids.filter((id) => isValidObjectId(id));
+    if (validIds.length === 0) {
+      return [];
+    }
+
+    const properties = await PropertyModel.find({
+      _id: { $in: validIds },
+      isActive: true,
+    }).populate("host", "username avatarUrl");
+
+    const compareList = [];
+    for (const property of properties) {
+      const sites = await SiteModel.find({
+        property: property._id,
+        isActive: true,
+      }).populate("amenities", "name icon category");
+
+      const terrains = [...new Set(sites.map((s) => s.terrain).filter(Boolean))];
+      const accommodationTypes = [...new Set(sites.map((s) => s.accommodationType).filter(Boolean))];
+
+      const uniqueAmenitiesMap = new Map<string, any>();
+      sites.forEach((s) => {
+        if (s.amenities) {
+          s.amenities.forEach((a: any) => {
+            uniqueAmenitiesMap.set(a._id.toString(), {
+              _id: a._id,
+              name: a.name,
+              icon: a.icon,
+              category: a.category,
+            });
+          });
+        }
+      });
+      const amenities = Array.from(uniqueAmenitiesMap.values());
+
+      const basePrices = sites
+        .map((s) => s.pricing?.basePrice)
+        .filter((p) => p !== undefined && p !== null);
+      const minPrice = basePrices.length > 0 ? Math.min(...basePrices) : 0;
+
+      const maxGuestsList = sites.map((s) => s.capacity?.maxGuests || 0);
+      const maxGuests = maxGuestsList.length > 0 ? Math.max(...maxGuestsList) : 0;
+
+      compareList.push({
+        _id: property._id,
+        name: property.name,
+        slug: property.slug,
+        photos: property.photos || [],
+        propertyType: property.propertyType,
+        rating: property.rating,
+        stats: property.stats,
+        location: property.location,
+        host: property.host,
+        landSize: property.landSize,
+        minPrice,
+        maxGuests,
+        terrains,
+        accommodationTypes,
+        amenities,
+        totalSites: sites.length,
+      });
+    }
+
+    return compareList;
   }
 }
 

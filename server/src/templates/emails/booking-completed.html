@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { 
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
+      color: white; 
+      padding: 30px; 
+      text-align: center; 
+      border-radius: 10px 10px 0 0; 
+    }
+    .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+    .button { 
+      display: inline-block; 
+      background: #3b82f6; 
+      color: white !important; 
+      padding: 15px 40px; 
+      text-decoration: none; 
+      border-radius: 8px; 
+      margin: 20px 0;
+      font-weight: bold;
+    }
+    .info-box { 
+      background: white; 
+      padding: 20px; 
+      border-left: 4px solid #10b981; 
+      margin: 20px 0; 
+      border-radius: 5px; 
+    }
+    .tips-box { 
+      background: #dbeafe; 
+      padding: 20px; 
+      border-left: 4px solid #3b82f6; 
+      margin: 20px 0; 
+      border-radius: 5px; 
+    }
+    .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 30px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎉 Chuyến đi đã hoàn thành!</h1>
+      <p style="font-size: 16px; margin: 10px 0;">Cảm ơn bạn đã tin tưởng HipCamp</p>
+    </div>
+    
+    <div class="content">
+      <p>Xin chào <strong><%= guestName %></strong>,</p>
+      
+      <p>Chuyến đi của bạn tại <strong><%= siteName %> - <%= propertyName %></strong> đã hoàn thành. Chúng tôi hy vọng bạn đã có những trải nghiệm tuyệt vời!</p>
+      
+      <div class="info-box">
+        <h3 style="margin-top: 0; color: #10b981;">📋 Thông tin chuyến đi</h3>
+        <p><strong>Mã booking:</strong> <%= code %></p>
+        <p><strong>Địa điểm:</strong> <%= siteName %> - <%= propertyName %></p>
+        <p><strong>Check-in:</strong> <%= checkInStr %></p>
+        <p><strong>Check-out:</strong> <%= checkOutStr %></p>
+        <p><strong>Số đêm:</strong> <%= nights %> đêm</p>
+        <p><strong>Số khách:</strong> <%= numberOfGuests %> người</p>
+      </div>
+      
+      <div class="tips-box">
+        <h3 style="margin-top: 0; color: #3b82f6;">⭐ Chia sẻ trải nghiệm của bạn</h3>
+        <p>Đánh giá của bạn sẽ giúp những khách hàng khác có thêm thông tin để lựa chọn địa điểm phù hợp!</p>
+        <ul>
+          <li>Viết review về chuyến đi</li>
+          <li>Đánh giá dịch vụ và tiện nghi</li>
+          <li>Chia sẻ hình ảnh đẹp</li>
+          <li>Giúp cộng đồng camping Việt Nam phát triển</li>
+        </ul>
+      </div>
+      
+      <div style="text-align: center;">
+        <a href="<%= clientUrl %>/bookings/<%= code %>/review" class="button" style="color: white;">
+          ⭐ Viết đánh giá
+        </a>
+      </div>
+      
+      <p style="margin-top: 30px;">
+        Cảm ơn bạn đã lựa chọn HipCamp. Chúng tôi mong được phục vụ bạn trong những chuyến đi tiếp theo!
+      </p>
+      
+      <p style="margin-top: 20px;">
+        Trân trọng,<br>
+        <strong>Đội ngũ HipCamp</strong>
+      </p>
+    </div>
+    
+    <div class="footer">
+      <p>© <%= currentYear %> HipCamp. All rights reserved.</p>
+      <p>Liên hệ hỗ trợ: support@hipcamp.vn | Hotline: 1900-xxxx</p>
+    </div>
+  </div>
+</body>
+</html>

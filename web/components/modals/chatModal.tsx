@@ -7,6 +7,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { useChatModal } from '@/store/chatstore';
 import { useCallback, useEffect, useState } from 'react';
 import ChatWindow from './chat-window';
+import { useMounted } from '@/hooks/useMounted';
 
 const API = process.env.NEXT_PUBLIC_API_URL;
 
@@ -14,6 +15,8 @@ export default function ConversationsList() {
   const { user } = useAuthStore();
   const { socket } = useSocket();
   const { isOpen: isChatModalOpen, targetUserId, targetUserInfo, closeChat } = useChatModal();
+
+  const mounted = useMounted();
 
   const [open, setOpen] = useState(false);
   const [conversations, setConversations] = useState<any[]>([]);
@@ -197,7 +200,7 @@ export default function ConversationsList() {
     0,
   );
 
-  if (!user) return null;
+  if (!mounted || !user) return null;
 
   return (
     <>

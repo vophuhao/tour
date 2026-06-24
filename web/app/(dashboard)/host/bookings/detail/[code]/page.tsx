@@ -275,6 +275,10 @@ export default function BookingDetailPage() {
       setExporting(true);
       const doc = new jsPDF();
 
+      const formatPricePDF = (price: number) => {
+        return formatPrice(price).replace(/₫/g, 'đ').replace(/\u20ab/g, 'đ');
+      };
+
       const loadFont = async () => {
         const response = await fetch('/fonts/DejaVuSans.ttf');
         const fontBlob = await response.blob();
@@ -287,6 +291,7 @@ export default function BookingDetailPage() {
               const base64Data = base64.split(',')[1];
               doc.addFileToVFS('DejaVu.ttf', base64Data);
               doc.addFont('DejaVu.ttf', 'DejaVu', 'normal');
+              doc.addFont('DejaVu.ttf', 'DejaVu', 'bold');
               doc.setFont('DejaVu', 'normal');
               resolve(true);
             } catch (err) {
@@ -341,14 +346,14 @@ export default function BookingDetailPage() {
         y += 2;
         const paidAmount = getPaidAmount();
         const paymentLabel = booking.paymentMethod === 'deposit'
-          ? `Số tiền đã cọc (30%): ${formatPrice(paidAmount)}`
-          : `Số tiền đã thanh toán: ${formatPrice(paidAmount)}`;
+          ? `Số tiền đã cọc (30%): ${formatPricePDF(paidAmount)}`
+          : `Số tiền đã thanh toán: ${formatPricePDF(paidAmount)}`;
         doc.text(paymentLabel, 20, y);
         y += 6;
 
         if (booking.paymentMethod === 'deposit') {
           const remaining = getRemainingAmount();
-          doc.text(`Còn lại (70%): ${formatPrice(remaining)}`, 20, y);
+          doc.text(`Còn lại (70%): ${formatPricePDF(remaining)}`, 20, y);
           y += 6;
         }
       }
@@ -356,7 +361,7 @@ export default function BookingDetailPage() {
       // Refund info if cancelled
       if (booking.status === 'cancelled' && refundInfo.refundAmount > 0) {
         y += 2;
-        doc.text(`Số tiền hoàn lại (${refundInfo.refundPercentage}%): ${formatPrice(refundInfo.refundAmount)}`, 20, y);
+        doc.text(`Số tiền hoàn lại (${refundInfo.refundPercentage}%): ${formatPricePDF(refundInfo.refundAmount)}`, 20, y);
         y += 6;
         doc.text(`Hủy trước check-in: ${refundInfo.daysBeforeCancellation} ngày`, 20, y);
         y += 6;
@@ -407,7 +412,7 @@ export default function BookingDetailPage() {
 
       const pricing = [
         {
-          label: `Giá cơ bản (${formatPrice(booking.pricing.basePrice)} x ${booking.pricing.totalNights} đêm)`,
+          label: `Giá cơ bản (${formatPricePDF(booking.pricing.basePrice)} x ${booking.pricing.totalNights} đêm)`,
           value: booking.pricing.subtotal,
         },
         { label: 'Phí vệ sinh', value: booking.pricing.cleaningFee },
@@ -420,7 +425,7 @@ export default function BookingDetailPage() {
       pricing.forEach(item => {
         if (item.value > 0) {
           doc.text(item.label, 20, y);
-          doc.text(formatPrice(item.value), 190, y, { align: 'right' });
+          doc.text(formatPricePDF(item.value), 190, y, { align: 'right' });
           y += 6;
         }
       });
@@ -431,7 +436,7 @@ export default function BookingDetailPage() {
       y += 8;
       doc.setFontSize(12);
       doc.text('TỔNG CỘNG', 20, y);
-      doc.text(formatPrice(booking.pricing.total), 190, y, { align: 'right' });
+      doc.text(formatPricePDF(booking.pricing.total), 190, y, { align: 'right' });
 
       // Guest Info
       y += 12;
@@ -618,7 +623,7 @@ export default function BookingDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-6">
           <Button variant="ghost" size="sm" asChild className="mb-4">

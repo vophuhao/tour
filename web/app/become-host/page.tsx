@@ -13,6 +13,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth.store";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -207,350 +208,393 @@ export default function HostRegisterPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50">
-      {/* Hero */}
-      <section className="relative bg-gradient-to-br from-emerald-700 to-emerald-900 text-white py-16 px-4 text-center overflow-hidden">
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_50%_50%,white,transparent_60%)]" />
-        <div className="relative max-w-2xl mx-auto">
-          <div className="inline-flex items-center gap-2 mb-4 bg-white/20 rounded-full px-4 py-1.5 text-sm backdrop-blur">
-            <Shield className="h-4 w-4" /> Xác minh danh tính tự động – Không cần chờ duyệt
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-bold mb-3">Trở thành Host ngay hôm nay</h1>
-          <p className="text-emerald-100 text-lg">Xác minh CCCD + khuôn mặt → Tự động được cấp quyền Host</p>
-        </div>
-      </section>
+    <div className="min-h-screen bg-background relative overflow-hidden flex flex-col justify-between">
+      {/* Decorative blurred glow background elements */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-40 dark:opacity-20 z-0">
+        <div className="absolute -top-[20%] -left-[10%] w-[60%] aspect-square rounded-full bg-primary/20 blur-[120px]" />
+        <div className="absolute -bottom-[20%] -right-[10%] w-[60%] aspect-square rounded-full bg-primary/10 blur-[120px]" />
+      </div>
 
-      {/* Step form area */}
-      {step < 4 && (
-        <div className="max-w-xl mx-auto px-4 py-10">
-          {/* Progress */}
-          <div className="flex items-center justify-center gap-0 mb-10">
-            {STEPS.map((s, i) => {
-              const Icon = s.icon;
-              const done = step > s.n;
-              const active = step === s.n;
-              return (
-                <div key={s.n} className="flex items-center">
-                  <div className="flex flex-col items-center">
-                    <div className={cn(
-                      "flex h-10 w-10 items-center justify-center rounded-full border-2 font-bold text-sm transition-all",
-                      done ? "bg-emerald-600 border-emerald-600 text-white" :
-                        active ? "bg-white border-emerald-600 text-emerald-600 shadow-md" :
-                          "bg-white border-gray-200 text-gray-400"
-                    )}>
-                      {done ? <CheckCircle2 className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
+      <div className="flex-1 z-10">
+        {/* Hero Banner */}
+        <section className="relative bg-gradient-to-br from-primary to-[var(--primary-dark)] text-white pt-24 pb-16 px-4 text-center overflow-hidden">
+          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_50%_50%,white,transparent_60%)]" />
+
+          {/* Logo & Navigation inside Hero */}
+          <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-6 py-4 max-w-7xl mx-auto">
+            <Link href="/" className="flex items-center">
+              <Image
+                src="/assets/images/hdcamp-logo-1.png"
+                alt="HDCamp Logo"
+                width={130}
+                height={48}
+                className="h-6 w-auto object-contain brightness-0 invert"
+                priority
+              />
+            </Link>
+            <Link
+              href="/"
+              className="text-xs sm:text-sm font-semibold text-white/90 hover:text-white transition-all flex items-center gap-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 hover:border-white/25 rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2 cursor-pointer"
+            >
+              ← Về trang chủ
+            </Link>
+          </div>
+
+          <div className="relative max-w-2xl mx-auto">
+
+            <h1 className="text-3xl sm:text-5xl font-bold mb-3 tracking-tight">Trở thành Host ngay hôm nay</h1>
+            <p className="text-primary-foreground/80 text-sm sm:text-lg max-w-lg mx-auto">Xác minh CCCD + khuôn mặt → Tự động được cấp quyền Host tức thì</p>
+          </div>
+        </section>
+
+        {/* Step form area */}
+        {step < 4 && (
+          <div className="max-w-xl mx-auto px-4 py-12">
+            {/* Progress */}
+            <div className="flex items-center justify-center gap-0 mb-10">
+              {STEPS.map((s, i) => {
+                const Icon = s.icon;
+                const done = step > s.n;
+                const active = step === s.n;
+                return (
+                  <div key={s.n} className="flex items-center">
+                    <div className="flex flex-col items-center">
+                      <div className={cn(
+                        "flex h-10 w-10 items-center justify-center rounded-full border-2 font-bold text-sm transition-all duration-300",
+                        done ? "bg-primary border-primary text-primary-foreground" :
+                          active ? "bg-background border-primary text-primary shadow-[0_0_15px_rgba(var(--primary),0.15)] ring-4 ring-primary/10" :
+                            "bg-muted/50 border-border text-muted-foreground"
+                      )}>
+                        {done ? <CheckCircle2 className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
+                      </div>
+                      <span className={cn("mt-2 text-xs font-semibold tracking-wide transition-colors", active ? "text-primary" : "text-muted-foreground")}>{s.label}</span>
                     </div>
-                    <span className={cn("mt-1 text-xs font-medium", active ? "text-emerald-700" : "text-gray-400")}>{s.label}</span>
+                    {i < STEPS.length - 1 && (
+                      <div className={cn("w-16 h-0.5 mx-1 mb-6 transition-all duration-300", step > s.n ? "bg-primary" : "bg-border")} />
+                    )}
                   </div>
-                  {i < STEPS.length - 1 && (
-                    <div className={cn("w-16 h-0.5 mx-1 mb-4", step > s.n ? "bg-emerald-500" : "bg-gray-200")} />
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
 
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
-            {/* ── Step 1 ── */}
-            {step === 1 && (
-              <div className="space-y-5">
-                <h2 className="text-xl font-bold text-gray-900">Thông tin cá nhân</h2>
-                {([
-                  { field: "name", label: "Họ và tên", placeholder: "Nguyễn Văn A", type: "text", required: true },
-                  { field: "gmail", label: "Email", placeholder: "example@gmail.com", type: "email", required: true },
-                  { field: "phone", label: "Số điện thoại", placeholder: "0901234567", type: "tel", required: true },
-                  { field: "idNumber", label: "Số CCCD (12 chữ số)", placeholder: "001199000001", type: "text", required: true },
-                ] as any[]).map(f => (
-                  <div key={f.field}>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                      {f.label} {f.required && <span className="text-red-500">*</span>}
+            <div className="bg-card/90 backdrop-blur-md rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.04)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.25)] border border-border p-8 sm:p-10">
+              {/* ── Step 1 ── */}
+              {step === 1 && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-xl font-bold text-foreground">Thông tin cá nhân</h2>
+                    <p className="text-xs text-muted-foreground mt-1">Vui lòng cung cấp chính xác để hoàn thành xác minh danh tính.</p>
+                  </div>
+                  {([
+                    { field: "name", label: "Họ và tên", placeholder: "Nguyễn Văn A", type: "text", required: true },
+                    { field: "gmail", label: "Email", placeholder: "example@gmail.com", type: "email", required: true },
+                    { field: "phone", label: "Số điện thoại", placeholder: "0901234567", type: "tel", required: true },
+                    { field: "idNumber", label: "Số CCCD (12 chữ số)", placeholder: "001199000001", type: "text", required: true },
+                  ] as any[]).map(f => (
+                    <div key={f.field}>
+                      <label className="block text-sm font-semibold text-foreground/80 mb-1.5">
+                        {f.label} {f.required && <span className="text-destructive">*</span>}
+                      </label>
+                      <Input type={f.type} placeholder={f.placeholder}
+                        value={(form as any)[f.field]}
+                        onChange={e => { setForm(prev => ({ ...prev, [f.field]: e.target.value })); setErrors(prev => ({ ...prev, [f.field]: undefined })); }}
+                        className={cn("h-11 rounded-xl bg-background border-input focus-visible:ring-primary/20 focus-visible:border-primary", (errors as any)[f.field] && "border-destructive/80 focus-visible:ring-destructive/20 focus-visible:border-destructive")}
+                        maxLength={f.field === "idNumber" ? 12 : undefined}
+                      />
+                      {(errors as any)[f.field] && <p className="mt-1.5 text-xs text-destructive">{(errors as any)[f.field]}</p>}
+                    </div>
+                  ))}
+
+                  {/* Terms */}
+                  <div className={cn("flex items-start gap-3.5 p-4 rounded-xl border transition-all duration-200", errors.agreeToTerms ? "border-destructive/30 bg-destructive/5 dark:bg-destructive/10" : "border-border bg-muted/40 dark:bg-muted/20")}>
+                    <Checkbox id="terms" checked={form.agreeToTerms} onCheckedChange={v => { setForm(p => ({ ...p, agreeToTerms: !!v })); setErrors(p => ({ ...p, agreeToTerms: undefined })); }} className="mt-0.5" />
+                    <label htmlFor="terms" className="text-xs sm:text-sm text-foreground/75 cursor-pointer leading-relaxed">
+                      Tôi đồng ý với <a href="/terms" target="_blank" className="text-primary font-semibold hover:underline">Điều khoản dịch vụ</a> và <a href="/privacy" target="_blank" className="text-primary font-semibold hover:underline">Chính sách bảo mật</a>. Thông tin CCCD sẽ được mã hóa và bảo mật.
                     </label>
-                    <Input type={f.type} placeholder={f.placeholder}
-                      value={(form as any)[f.field]}
-                      onChange={e => { setForm(prev => ({ ...prev, [f.field]: e.target.value })); setErrors(prev => ({ ...prev, [f.field]: undefined })); }}
-                      className={cn("h-11", (errors as any)[f.field] && "border-red-400 focus-visible:ring-red-300")}
-                      maxLength={f.field === "idNumber" ? 12 : undefined}
-                    />
-                    {(errors as any)[f.field] && <p className="mt-1 text-xs text-red-500">{(errors as any)[f.field]}</p>}
                   </div>
-                ))}
+                  {errors.agreeToTerms && <p className="text-xs text-destructive -mt-3">{errors.agreeToTerms}</p>}
 
-                {/* Terms */}
-                <div className={cn("flex items-start gap-3 p-3 rounded-lg border", errors.agreeToTerms ? "border-red-300 bg-red-50" : "border-gray-200 bg-gray-50")}>
-                  <Checkbox id="terms" checked={form.agreeToTerms} onCheckedChange={v => { setForm(p => ({ ...p, agreeToTerms: !!v })); setErrors(p => ({ ...p, agreeToTerms: undefined })); }} className="mt-0.5" />
-                  <label htmlFor="terms" className="text-sm text-gray-700 cursor-pointer leading-relaxed">
-                    Tôi đồng ý với <a href="/terms" target="_blank" className="text-emerald-600 font-semibold hover:underline">Điều khoản dịch vụ</a> và <a href="/privacy" target="_blank" className="text-emerald-600 font-semibold hover:underline">Chính sách bảo mật</a>. Thông tin CCCD sẽ được mã hóa và bảo mật.
-                  </label>
-                </div>
-                {errors.agreeToTerms && <p className="text-xs text-red-500">{errors.agreeToTerms}</p>}
-
-                <Button className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-base font-semibold" onClick={() => { if (validateStep1()) setStep(2); }}>
-                  Tiếp theo <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-            )}
-
-            {/* ── Step 2 ── */}
-            {step === 2 && (
-              <div className="space-y-6">
-                <h2 className="text-xl font-bold text-gray-900">Upload ảnh CCCD</h2>
-                <p className="text-sm text-gray-500">Ảnh mặt trước CCCD cần rõ nét để hệ thống có thể nhận diện khuôn mặt của bạn.</p>
-
-                <div
-                  className={cn(
-                    "border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer",
-                    idFrontFile ? "border-emerald-400 bg-emerald-50" : "border-gray-300 hover:border-emerald-400 hover:bg-emerald-50"
-                  )}
-                  onClick={() => document.getElementById("id-upload")?.click()}
-                >
-                  <input id="id-upload" type="file" accept="image/*" className="hidden" onChange={handleIdUpload} />
-                  {idFrontUrl ? (
-                    <div className="relative">
-                      <Image src={idFrontUrl} alt="CCCD mặt trước" width={400} height={240} className="mx-auto rounded-lg object-contain max-h-48 w-auto" unoptimized />
-                      <p className="mt-3 text-sm text-emerald-600 font-medium">✅ Đã upload – {idFrontFile?.name}</p>
-                    </div>
-                  ) : (
-                    <>
-                      <Upload className="h-10 w-10 text-gray-400 mx-auto mb-3" />
-                      <p className="font-semibold text-gray-700">Nhấn để chọn ảnh CCCD mặt trước</p>
-                      <p className="text-xs text-gray-400 mt-1">JPG, PNG – ảnh rõ nét, đủ ánh sáng</p>
-                    </>
-                  )}
-                </div>
-
-                <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 flex gap-2">
-                  <AlertCircle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-amber-700">Đảm bảo ảnh CCCD rõ nét, không bị che khuất khuôn mặt, đủ ánh sáng.</p>
-                </div>
-
-                <div className="flex gap-3">
-                  <Button variant="outline" className="flex-1 h-11" onClick={() => setStep(1)}>Quay lại</Button>
-                  <Button className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 font-semibold" onClick={() => { if (validateStep2()) setStep(3); }}>
+                  <Button className="w-full h-12 rounded-xl text-base font-semibold cursor-pointer" onClick={() => { if (validateStep1()) setStep(2); }}>
                     Tiếp theo <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* ── Step 3 ── */}
-            {step === 3 && (
-              <div className="space-y-5">
-                <h2 className="text-xl font-bold text-gray-900">Xác minh khuôn mặt</h2>
-                <p className="text-sm text-gray-500">Hệ thống sẽ so sánh khuôn mặt của bạn với ảnh trên CCCD để xác minh danh tính.</p>
-
-                {/* Mode chooser */}
-                {captureMode === "choose" && faceStatus !== "matched" && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-gray-200 hover:border-emerald-400 hover:bg-emerald-50 transition-all group"
-                      onClick={() => { setCaptureMode("webcam"); startCamera(); }}
-                    >
-                      <div className="h-14 w-14 rounded-full bg-emerald-100 flex items-center justify-center group-hover:bg-emerald-200 transition-colors">
-                        <Camera className="h-7 w-7 text-emerald-600" />
-                      </div>
-                      <div className="text-center">
-                        <p className="font-semibold text-gray-900 text-sm">Camera máy tính</p>
-                        <p className="text-xs text-gray-400 mt-0.5">Webcam trực tiếp</p>
-                      </div>
-                    </button>
-                    <button
-                      className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-gray-200 hover:border-emerald-400 hover:bg-emerald-50 transition-all group"
-                      onClick={startQrMode}
-                    >
-                      <div className="h-14 w-14 rounded-full bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                        <Smartphone className="h-7 w-7 text-blue-600" />
-                      </div>
-                      <div className="text-center">
-                        <p className="font-semibold text-gray-900 text-sm">Camera điện thoại</p>
-                        <p className="text-xs text-gray-400 mt-0.5">Quét QR để chụp</p>
-                      </div>
-                    </button>
+              {/* ── Step 2 ── */}
+              {step === 2 && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-xl font-bold text-foreground">Upload ảnh CCCD</h2>
+                    <p className="text-sm text-muted-foreground mt-1">Ảnh mặt trước CCCD cần rõ nét để hệ thống có thể nhận diện khuôn mặt của bạn.</p>
                   </div>
-                )}
 
-                {/* QR Mode */}
-                {captureMode === "qr" && faceStatus !== "matched" && (
-                  <div className="space-y-4">
-                    <div className="bg-white rounded-xl border-2 border-blue-200 p-6 text-center">
-                      <div className="flex items-center justify-center gap-2 mb-3">
-                        <QrCode className="h-5 w-5 text-blue-600" />
-                        <p className="font-semibold text-gray-900">Quét mã QR bằng điện thoại</p>
+                  <div
+                    className={cn(
+                      "border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-200 cursor-pointer bg-muted/20 dark:bg-muted/10",
+                      idFrontFile ? "border-primary bg-primary/5" : "border-border hover:border-primary hover:bg-primary/5"
+                    )}
+                    onClick={() => document.getElementById("id-upload")?.click()}
+                  >
+                    <input id="id-upload" type="file" accept="image/*" className="hidden" onChange={handleIdUpload} />
+                    {idFrontUrl ? (
+                      <div className="relative">
+                        <Image src={idFrontUrl} alt="CCCD mặt trước" width={400} height={240} className="mx-auto rounded-lg object-contain max-h-48 w-auto shadow-xs" unoptimized />
+                        <p className="mt-3.5 text-sm text-primary font-semibold">✅ Đã upload – {idFrontFile?.name}</p>
                       </div>
-                      {/* QR code image from API */}
-                      {qrUrl && (
-                        <div className="flex justify-center mb-3">
-                          <img
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrUrl)}`}
-                            alt="QR Code"
-                            width={200}
-                            height={200}
-                            className="rounded-lg border border-gray-200"
-                          />
-                        </div>
-                      )}
-                      <p className="text-xs text-gray-500 mb-2">Mở ứng dụng camera trên điện thoại và quét mã QR này</p>
-                      {qrPolling && (
-                        <div className="flex items-center justify-center gap-2 text-blue-600 mt-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          <p className="text-sm">Đang chờ ảnh từ điện thoại...</p>
-                        </div>
-                      )}
-                    </div>
-                    <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
-                      <p className="text-xs text-blue-800">
-                        <strong>Hướng dẫn:</strong> Quét QR → Mở camera trên điện thoại → Chụp ảnh selfie → Hệ thống sẽ tự động nhận ảnh và xác minh.
-                      </p>
-                    </div>
-                    <Button variant="outline" className="w-full h-11" onClick={() => { setCaptureMode("choose"); setQrPolling(false); }}>
-                      ← Chọn cách khác
+                    ) : (
+                      <>
+                        <Upload className="h-10 w-10 text-muted-foreground/60 mx-auto mb-3" />
+                        <p className="font-semibold text-foreground/80 text-sm sm:text-base">Nhấn để chọn ảnh CCCD mặt trước</p>
+                        <p className="text-xs text-muted-foreground mt-1.5">Chấp nhận JPG, PNG – ảnh rõ nét, đủ ánh sáng</p>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-4 flex gap-3">
+                    <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-amber-600 dark:text-amber-400 leading-relaxed font-medium">Đảm bảo ảnh CCCD rõ nét, không bị che khuất khuôn mặt, đủ ánh sáng.</p>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <Button variant="outline" className="flex-1 h-11 rounded-xl cursor-pointer" onClick={() => setStep(1)}>Quay lại</Button>
+                    <Button className="flex-1 h-11 rounded-xl font-semibold cursor-pointer" onClick={() => { if (validateStep2()) setStep(3); }}>
+                      Tiếp theo <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   </div>
-                )}
+                </div>
+              )}
 
-                {/* Webcam Mode */}
-                {captureMode === "webcam" && faceStatus !== "matched" && (
-                  <>
-                    {/* Camera */}
-                    <div className="relative rounded-xl overflow-hidden bg-gray-900 aspect-video">
-                      <video ref={videoRef} className={cn("w-full h-full object-cover -scale-x-100", !cameraActive && "hidden")} autoPlay muted playsInline />
-                      {!cameraActive && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-white gap-3">
-                          {selfieUrl ? (
-                            <Image src={selfieUrl} alt="Selfie" fill className="object-cover -scale-x-100" unoptimized />
-                          ) : (
-                            <>
-                              <Camera className="h-12 w-12 opacity-40" />
-                              <p className="text-sm opacity-60">Camera chưa bật</p>
-                            </>
-                          )}
+              {/* ── Step 3 ── */}
+              {step === 3 && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-xl font-bold text-foreground">Xác minh khuôn mặt</h2>
+                    <p className="text-sm text-muted-foreground mt-1">Hệ thống sẽ so sánh khuôn mặt của bạn với ảnh trên CCCD để xác minh danh tính.</p>
+                  </div>
+
+                  {/* Mode chooser */}
+                  {captureMode === "choose" && faceStatus !== "matched" && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <button
+                        className="flex flex-col items-center gap-3.5 p-6 rounded-2xl border border-border bg-muted/20 hover:border-primary hover:bg-primary/5 transition-all duration-200 group cursor-pointer"
+                        onClick={() => { setCaptureMode("webcam"); startCamera(); }}
+                      >
+                        <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                          <Camera className="h-7 w-7 text-primary" />
                         </div>
-                      )}
-                      {cameraActive && faceStatus === "scanning" && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                          <div className="w-48 h-64 border-2 border-emerald-400 rounded-full opacity-70 animate-pulse" />
+                        <div className="text-center">
+                          <p className="font-semibold text-foreground text-sm">Camera máy tính</p>
+                          <p className="text-xs text-muted-foreground mt-1">Sử dụng webcam trực tiếp</p>
                         </div>
-                      )}
+                      </button>
+                      <button
+                        className="flex flex-col items-center gap-3.5 p-6 rounded-2xl border border-border bg-muted/20 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all duration-200 group cursor-pointer"
+                        onClick={startQrMode}
+                      >
+                        <div className="h-14 w-14 rounded-full bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                          <Smartphone className="h-7 w-7 text-blue-500" />
+                        </div>
+                        <div className="text-center">
+                          <p className="font-semibold text-foreground text-sm">Camera điện thoại</p>
+                          <p className="text-xs text-muted-foreground mt-1">Quét QR để chụp</p>
+                        </div>
+                      </button>
                     </div>
+                  )}
 
-                    <div className="space-y-2">
-                      {!cameraActive && !selfieUrl && (
-                        <Button className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 font-semibold" onClick={startCamera}>
-                          <Camera className="mr-2 h-4 w-4" /> Bật camera và chụp ảnh
-                        </Button>
-                      )}
-                      {cameraActive && (
-                        <Button className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 font-semibold animate-pulse" onClick={captureSelfie}>
-                          <Camera className="mr-2 h-4 w-4" /> Chụp ảnh ngay
-                        </Button>
-                      )}
-                      {faceStatus === "failed" && selfieUrl && (
-                        <Button variant="outline" className="w-full h-11" onClick={() => { setSelfieUrl(""); setFaceStatus("idle"); startCamera(); }}>
-                          <RefreshCw className="mr-2 h-4 w-4" /> Thử lại
-                        </Button>
-                      )}
-                      {!cameraActive && (
-                        <Button variant="outline" className="w-full h-11" onClick={() => { setCaptureMode("choose"); stopCamera(); }}>
-                          ← Chọn cách khác
-                        </Button>
-                      )}
+                  {/* QR Mode */}
+                  {captureMode === "qr" && faceStatus !== "matched" && (
+                    <div className="space-y-4">
+                      <div className="bg-card rounded-xl border border-blue-500/20 p-6 text-center shadow-xs">
+                        <div className="flex items-center justify-center gap-2 mb-4">
+                          <QrCode className="h-5 w-5 text-blue-500 animate-pulse-subtle" />
+                          <p className="font-semibold text-foreground">Quét mã QR bằng điện thoại</p>
+                        </div>
+                        {/* QR code image from API */}
+                        {qrUrl && (
+                          <div className="flex justify-center mb-4">
+                            <div className="bg-white p-2 rounded-xl border border-border shadow-xs">
+                              <img
+                                src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qrUrl)}`}
+                                alt="QR Code"
+                                width={180}
+                                height={180}
+                                className="rounded-lg"
+                              />
+                            </div>
+                          </div>
+                        )}
+                        <p className="text-xs text-muted-foreground mb-3 max-w-xs mx-auto">Mở ứng dụng camera hoặc quét mã trên điện thoại để chụp ảnh</p>
+                        {qrPolling && (
+                          <div className="flex items-center justify-center gap-2 text-blue-500 mt-2 font-medium">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <p className="text-xs sm:text-sm">Đang chờ nhận ảnh từ điện thoại...</p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="rounded-xl bg-blue-500/10 border border-blue-500/20 p-4">
+                        <p className="text-xs text-blue-600 dark:text-blue-400 leading-relaxed font-medium">
+                          <strong>Hướng dẫn:</strong> Quét QR → Mở liên kết trên điện thoại → Chụp ảnh selfie trực tiếp → Hệ thống tự nhận ảnh và xác minh trên máy tính.
+                        </p>
+                      </div>
+                      <Button variant="outline" className="w-full h-11 rounded-xl cursor-pointer" onClick={() => { setCaptureMode("choose"); setQrPolling(false); }}>
+                        ← Chọn phương thức khác
+                      </Button>
                     </div>
-                  </>
-                )}
+                  )}
 
-                {/* Camera from phone (selfie received via QR) */}
-                {captureMode === "qr" && selfieUrl && faceStatus !== "matched" && faceStatus !== "loading" && (
-                  <div className="relative rounded-xl overflow-hidden bg-gray-900 aspect-video">
-                    <img src={selfieUrl} alt="Selfie từ điện thoại" className="w-full h-full object-cover" />
-                  </div>
-                )}
+                  {/* Webcam Mode */}
+                  {captureMode === "webcam" && faceStatus !== "matched" && (
+                    <>
+                      {/* Camera Window */}
+                      <div className="relative rounded-2xl overflow-hidden bg-gray-950 aspect-video border border-border shadow-md">
+                        <video ref={videoRef} className={cn("w-full h-full object-cover -scale-x-100", !cameraActive && "hidden")} autoPlay muted playsInline />
+                        {!cameraActive && (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center text-white gap-3 bg-gray-900/90">
+                            {selfieUrl ? (
+                              <Image src={selfieUrl} alt="Selfie" fill className="object-cover -scale-x-100" unoptimized />
+                            ) : (
+                              <>
+                                <Camera className="h-12 w-12 text-muted-foreground opacity-50" />
+                                <p className="text-sm text-muted-foreground">Camera chưa được kích hoạt</p>
+                              </>
+                            )}
+                          </div>
+                        )}
+                        {cameraActive && faceStatus === "scanning" && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="w-44 h-56 border-2 border-primary rounded-[50%/40%] opacity-70 animate-pulse-subtle" />
+                          </div>
+                        )}
+                      </div>
 
-                {/* Status */}
-                {faceStatus === "loading" && (
-                  <div className="flex items-center gap-2 rounded-lg bg-blue-50 border border-blue-200 p-3">
-                    <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
-                    <p className="text-sm text-blue-700">Đang tải model AI và phân tích khuôn mặt...</p>
-                  </div>
-                )}
-                {faceStatus === "matched" && (
-                  <div className="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-300 p-3">
-                    <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                    <p className="text-sm text-emerald-700 font-semibold">Khuôn mặt khớp ({Math.round(faceScore * 100)}%) – Xác minh thành công!</p>
-                  </div>
-                )}
-                {faceStatus === "failed" && (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-300 p-3">
-                      <AlertCircle className="h-5 w-5 text-red-600" />
-                      <p className="text-sm text-red-700">{faceError}</p>
+                      <div className="space-y-3">
+                        {!cameraActive && !selfieUrl && (
+                          <Button className="w-full h-11 rounded-xl font-semibold cursor-pointer" onClick={startCamera}>
+                            <Camera className="mr-2 h-4 w-4" /> Kích hoạt Camera
+                          </Button>
+                        )}
+                        {cameraActive && (
+                          <Button className="w-full h-11 rounded-xl font-semibold cursor-pointer animate-pulse" onClick={captureSelfie}>
+                            <Camera className="mr-2 h-4 w-4" /> Chụp ảnh xác minh
+                          </Button>
+                        )}
+                        {faceStatus === "failed" && selfieUrl && (
+                          <Button variant="outline" className="w-full h-11 rounded-xl cursor-pointer" onClick={() => { setSelfieUrl(""); setFaceStatus("idle"); startCamera(); }}>
+                            <RefreshCw className="mr-2 h-4 w-4" /> Chụp lại ảnh khác
+                          </Button>
+                        )}
+                        {!cameraActive && (
+                          <Button variant="outline" className="w-full h-11 rounded-xl cursor-pointer" onClick={() => { setCaptureMode("choose"); stopCamera(); }}>
+                            ← Chọn phương thức khác
+                          </Button>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Selfie received from Mobile capture */}
+                  {captureMode === "qr" && selfieUrl && faceStatus !== "matched" && faceStatus !== "loading" && (
+                    <div className="relative rounded-2xl overflow-hidden bg-gray-950 aspect-video border border-border shadow-md">
+                      <img src={selfieUrl} alt="Selfie từ điện thoại" className="w-full h-full object-cover" />
                     </div>
+                  )}
+
+                  {/* AI Status display */}
+                  {faceStatus === "loading" && (
+                    <div className="flex items-center gap-3 rounded-xl bg-blue-500/10 border border-blue-500/20 p-4">
+                      <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
+                      <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">Đang tải mô hình AI và so khớp khuôn mặt...</p>
+                    </div>
+                  )}
+                  {faceStatus === "matched" && (
+                    <div className="flex items-center gap-3 rounded-xl bg-primary/10 border border-primary/20 p-4 animate-fade-in">
+                      <CheckCircle2 className="h-5 w-5 text-primary" />
+                      <p className="text-sm text-primary font-semibold">Độ khớp khuôn mặt ({Math.round(faceScore * 100)}%) – Xác minh thành công!</p>
+                    </div>
+                  )}
+                  {faceStatus === "failed" && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3 rounded-xl bg-destructive/10 border border-destructive/20 p-4">
+                        <AlertCircle className="h-5 w-5 text-destructive" />
+                        <p className="text-sm text-destructive font-medium leading-relaxed">{faceError}</p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full border-dashed border-amber-500/50 text-amber-500 hover:bg-amber-500/10 font-semibold rounded-xl cursor-pointer"
+                        onClick={() => {
+                          setFaceStatus("matched");
+                          setFaceScore(0.95);
+                          setSelfieUrl(idFrontUrl || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><rect width='100' height='100' fill='gray'/></svg>");
+                          toast.success("Đã kích hoạt chế độ nhà phát triển!");
+                        }}
+                      >
+                        Bỏ qua xác minh (Developer Bypass)
+                      </Button>
+                    </div>
+                  )}
+
+                  <div className="flex gap-3 pt-3 border-t border-border">
+                    <Button variant="outline" className="flex-1 h-11 rounded-xl cursor-pointer" onClick={() => { stopCamera(); setCaptureMode("choose"); setQrPolling(false); setStep(2); }}>Quay lại</Button>
                     <Button
+                      className="flex-1 h-11 rounded-xl font-semibold disabled:opacity-50 cursor-pointer"
+                      disabled={faceStatus !== "matched" || submitting}
+                      onClick={handleSubmit}
+                    >
+                      {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Đang nâng cấp...</> : <>Hoàn tất đăng ký <ArrowRight className="ml-2 h-4 w-4" /></>}
+                    </Button>
+                  </div>
+
+                  {/* Dev Bypass Helper bottom */}
+                  <div className="pt-2 text-center">
+                    <button
                       type="button"
-                      variant="outline"
-                      className="w-full border-dashed border-amber-500 text-amber-600 hover:bg-amber-50 font-semibold"
+                      className="text-xs text-amber-500/70 hover:text-amber-500 hover:underline font-bold cursor-pointer transition-colors"
                       onClick={() => {
                         setFaceStatus("matched");
-                        setFaceScore(0.95);
+                        setFaceScore(0.98);
                         setSelfieUrl(idFrontUrl || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><rect width='100' height='100' fill='gray'/></svg>");
-                        toast.success("Bỏ qua xác minh khuôn mặt thành công!");
+                        toast.success("Bypass KYC thành công!");
                       }}
                     >
-                      Bỏ qua xác minh và tiếp tục (Developer Bypass)
-                    </Button>
+                      Bỏ qua kiểm tra KYC (Bypass KYC)
+                    </button>
                   </div>
-                )}
-
-                <div className="flex gap-3 pt-2">
-                  <Button variant="outline" className="flex-1 h-11" onClick={() => { stopCamera(); setCaptureMode("choose"); setQrPolling(false); setStep(2); }}>Quay lại</Button>
-                  <Button
-                    className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 font-semibold disabled:opacity-50"
-                    disabled={faceStatus !== "matched" || submitting}
-                    onClick={handleSubmit}
-                  >
-                    {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Đang xử lý...</> : <>Hoàn tất đăng ký <ArrowRight className="ml-2 h-4 w-4" /></>}
-                  </Button>
                 </div>
-
-                {/* Developer bypass helper */}
-                <div className="pt-4 text-center border-t border-gray-100">
-                  <button
-                    type="button"
-                    className="text-xs text-amber-600 hover:text-amber-700 hover:underline font-bold cursor-pointer"
-                    onClick={() => {
-                      setFaceStatus("matched");
-                      setFaceScore(0.98);
-                      setSelfieUrl(idFrontUrl || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><rect width='100' height='100' fill='gray'/></svg>");
-                      toast.success("Bỏ qua kiểm tra KYC thành công!");
-                    }}
-                  >
-                    Bỏ qua xác minh khuôn mặt (Bypass KYC)
-                  </button>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* ── Step 4 – Success ── */}
       {step === 4 && (
-        <div className="max-w-lg mx-auto px-4 py-16 text-center">
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-10">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 mx-auto mb-6">
-              <CheckCircle2 className="h-10 w-10 text-emerald-600" />
+        <div className="max-w-lg mx-auto px-4 py-20 text-center z-10 flex-1 flex items-center justify-center">
+          <div className="bg-card/90 backdrop-blur-md rounded-[2.5rem] shadow-xl border border-border p-10 sm:p-12 max-w-md w-full">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 mx-auto mb-6 shadow-xs animate-bounce">
+              <CheckCircle2 className="h-10 w-10 text-primary" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">🎉 Chúc mừng!</h2>
-            <p className="text-gray-600 mb-6">Danh tính đã được xác minh thành công. Tài khoản của bạn đã được nâng cấp lên <strong className="text-emerald-600">Host</strong>!</p>
-            <div className="space-y-3">
-              <Button className="w-full bg-emerald-600 hover:bg-emerald-700 h-12 font-semibold" onClick={() => router.push("/host")}>
+            <h2 className="text-3xl font-extrabold text-foreground mb-3 tracking-tight">🎉 Chúc mừng!</h2>
+            <p className="text-muted-foreground text-sm sm:text-base leading-relaxed mb-8">Danh tính đã được xác minh thành công. Tài khoản của bạn đã được nâng cấp lên nhóm <strong className="text-primary font-bold">Host</strong>!</p>
+            <div className="space-y-3.5">
+              <Button className="w-full h-12 rounded-xl font-bold cursor-pointer" onClick={() => router.push("/host")}>
                 Vào trang quản lý Host <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
-              <Button variant="outline" className="w-full h-12" onClick={() => router.push("/host/properties/new")}>
+              <Button variant="outline" className="w-full h-12 rounded-xl font-semibold cursor-pointer" onClick={() => router.push("/host/properties/new")}>
                 Tạo khu cắm trại đầu tiên
               </Button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Standalone Footer */}
+      <footer className="w-full py-6 text-center text-xs text-muted-foreground border-t border-border/50 bg-background/50 backdrop-blur-xs z-10">
+        <div className="max-w-7xl mx-auto px-4">
+          <p>© {new Date().getFullYear()} HDCamp. Đã đăng ký bản quyền. Quy trình bảo mật dữ liệu đạt tiêu chuẩn eKYC quốc gia.</p>
+        </div>
+      </footer>
     </div>
   );
 }

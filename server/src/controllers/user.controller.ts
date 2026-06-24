@@ -1,6 +1,6 @@
 import { catchErrors, ErrorFactory } from "@/errors";
 import { BookingModel, ReviewModel, PropertyModel } from "@/models";
-import HostModel from "@/models/host.modal";
+import HostModel from "@/models/host.model";
 import { ResponseUtil, sendMail } from "../utils";
 import UserModel from "../models/user.model";
 import appAssert from "../utils/app-assert";

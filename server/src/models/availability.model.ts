@@ -62,7 +62,10 @@ availabilitySchema.index({ site: 1 });
 availabilitySchema.index({ date: 1 });
 availabilitySchema.index({ isAvailable: 1 });
 availabilitySchema.index({ site: 1, date: 1 }, { unique: true }); // mỗi site chỉ có 1 record cho 1 ngày
+// Compound index cho query: checkAvailabilityInSession() — hot path
 availabilitySchema.index({ site: 1, date: 1, isAvailable: 1 });
+// Compound index cho query: unblockDatesForBooking() — {site, date, blockType: "booked"}
+availabilitySchema.index({ site: 1, date: 1, blockType: 1 });
 
 export const AvailabilityModel = mongoose.model<AvailabilityDocument>(
   "Availability",

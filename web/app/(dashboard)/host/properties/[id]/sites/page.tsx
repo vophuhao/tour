@@ -248,159 +248,160 @@ export default function PropertySitesPage() {
     return (
       <Card
         key={site._id}
-        className={`group overflow-hidden rounded-2xl transition-all duration-300 border-stone-200/80 bg-white shadow-sm hover:shadow-md ${selectedSite?._id === site._id ? 'ring-2 ring-emerald-800 border-transparent shadow-md' : ''
+        className={`group overflow-hidden rounded-2xl transition-all duration-300 border-stone-200/80 bg-white shadow-sm hover:shadow-md flex flex-col h-full w-full max-w-[340px] mx-auto ${selectedSite?._id === site._id ? 'ring-2 ring-emerald-800 border-transparent shadow-md' : ''
           }`}
         onMouseEnter={() => setHoveredSite(site)}
         onMouseLeave={() => setHoveredSite(null)}
         onClick={() => setSelectedSite(site)}
       >
-        <div className="flex flex-col lg:flex-row">
-          {/* Image */}
-          <div className="relative h-56 w-full flex-shrink-0 bg-stone-100 lg:h-auto lg:w-80 overflow-hidden">
-            <Image
-              src={site.photos?.[0]?.url || '/placeholder.jpg'}
-              alt={site.name}
-              fill
-              className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-              unoptimized
-            />
+        {/* Image */}
+        <div className="relative aspect-[16/9] w-full flex-shrink-0 bg-stone-100 overflow-hidden">
+          <Image
+            src={site.photos?.[0]?.url || '/placeholder.jpg'}
+            alt={site.name}
+            fill
+            className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+            unoptimized
+          />
 
-            {/* Badges on Image */}
-            <div className="absolute left-3 top-3 flex flex-col gap-2">
-              {isVip ? (
-                <Badge className="bg-amber-50 border border-amber-300 text-amber-900 font-serif font-bold italic tracking-wide px-2.5 py-1 rounded-full shadow-sm">
-                  VIP
-                </Badge>
-              ) : (
-                <Badge className="bg-stone-100/90 border border-stone-200/50 text-stone-850 font-medium px-2.5 py-1 rounded-full shadow-sm backdrop-blur-sm">
-                  Thường
-                </Badge>
-              )}
-
-            </div>
-
-
-
-            {site.photos && site.photos.length > 1 && (
-              <div className="absolute bottom-3 right-3 rounded-full bg-stone-900/75 px-3 py-1.5 text-xs text-white backdrop-blur-sm font-medium">
-                +{site.photos.length - 1} ảnh
-              </div>
+          {/* Badges on Image */}
+          <div className="absolute left-2.5 top-2.5 flex flex-col gap-1.5">
+            {isVip ? (
+              <Badge className="bg-amber-50 border border-amber-300 text-amber-900 font-bold px-2 py-0.5 text-[10px] rounded-full shadow-sm">
+                VIP
+              </Badge>
+            ) : (
+              <Badge className="bg-stone-100/90 border border-stone-200/50 text-stone-850 font-semibold px-2 py-0.5 text-[10px] rounded-full shadow-sm backdrop-blur-sm">
+                Thường
+              </Badge>
             )}
           </div>
 
-          {/* Content */}
-          <div className="flex flex-1 flex-col justify-between p-6 bg-white">
-            <div>
-              {/* Title Row */}
-              <div className="mb-2 flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <h3 className="text-xl md:text-2xl font-serif font-bold text-stone-900 leading-snug group-hover:text-emerald-850 transition-colors">
-                    {site.name}
-                  </h3>
-                </div>
-              </div>
+          {site.photos && site.photos.length > 1 && (
+            <div className="absolute bottom-2.5 right-2.5 rounded-full bg-stone-900/75 px-2 py-0.5 text-[10px] text-white backdrop-blur-sm font-medium">
+              +{site.photos.length - 1} ảnh
+            </div>
+          )}
+        </div>
 
-              {/* Description */}
-              <p className="mb-5 line-clamp-2 text-sm text-stone-500 leading-relaxed">
-                {site.description || 'Chưa có mô tả chi tiết cho vị trí cắm trại này.'}
-              </p>
+        {/* Content */}
+        <div className="flex flex-1 flex-col justify-between p-5 bg-white">
+          <div>
+            {/* Title Row */}
+            <div className="mb-2">
+              <h3 className="text-lg font-bold text-stone-900 leading-snug group-hover:text-emerald-850 transition-colors line-clamp-1">
+                {site.name}
+              </h3>
+            </div>
 
-              {/* Capacity Grid: rounded boxes of soft sand/emerald colors */}
-              <div className="mb-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="rounded-xl bg-stone-50/70 border border-stone-200/30 p-3 text-center">
-                  <Users className="mx-auto mb-1 h-4 w-4 text-emerald-700" />
-                  <p className="text-[10px] text-stone-400 font-semibold uppercase tracking-wider">Khách tối đa</p>
-                  <p className="font-bold text-stone-800 mt-0.5">
+            {/* Description */}
+            <p className="mb-4 line-clamp-2 text-xs text-stone-500 leading-relaxed min-h-[2.5rem]">
+              {site.description || 'Chưa có mô tả chi tiết cho vị trí cắm trại này.'}
+            </p>
+
+            {/* Capacity Grid: 2x2 grid of soft sand/emerald colors */}
+            <div className="mb-4 grid grid-cols-2 gap-2 text-xs">
+              <div className="flex items-center gap-2 bg-stone-50/70 border border-stone-200/30 p-2 rounded-xl">
+                <Users className="h-3.5 w-3.5 text-emerald-700 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-[9px] text-stone-400 font-semibold uppercase tracking-wider leading-none">Khách</p>
+                  <p className="font-bold text-stone-800 mt-0.5 truncate leading-none">
                     {site.capacity?.maxGuests || 0} người
                   </p>
                 </div>
+              </div>
 
-                <div className="rounded-xl bg-stone-50/70 border border-stone-200/30 p-3 text-center">
-                  <Car className="mx-auto mb-1 h-4 w-4 text-stone-600" />
-                  <p className="text-[10px] text-stone-400 font-semibold uppercase tracking-wider">Xe tối đa</p>
-                  <p className="font-bold text-stone-800 mt-0.5">
+              <div className="flex items-center gap-2 bg-stone-50/70 border border-stone-200/30 p-2 rounded-xl">
+                <Car className="h-3.5 w-3.5 text-stone-600 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-[9px] text-stone-400 font-semibold uppercase tracking-wider leading-none">Xe</p>
+                  <p className="font-bold text-stone-800 mt-0.5 truncate leading-none">
                     {site.capacity?.maxVehicles || 0} xe
                   </p>
                 </div>
+              </div>
 
-                <div className="rounded-xl bg-stone-50/70 border border-stone-200/30 p-3 text-center">
-                  <Tent className="mx-auto mb-1 h-4 w-4 text-stone-600" />
-                  <p className="text-[10px] text-stone-400 font-semibold uppercase tracking-wider">Sức chứa lều</p>
-                  <p className="font-bold text-stone-800 mt-0.5">
+              <div className="flex items-center gap-2 bg-stone-50/70 border border-stone-200/30 p-2 rounded-xl">
+                <Tent className="h-3.5 w-3.5 text-stone-600 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-[9px] text-stone-400 font-semibold uppercase tracking-wider leading-none">Lều</p>
+                  <p className="font-bold text-stone-800 mt-0.5 truncate leading-none">
                     {site.capacity?.maxTents ?? '-'} lều
                   </p>
                 </div>
+              </div>
 
-                <div className="rounded-xl bg-stone-50/70 border border-stone-200/30 p-3 text-center">
-                  <Calendar className="mx-auto mb-1 h-4 w-4 text-blue-600" />
-                  <p className="text-[10px] text-stone-400 font-semibold uppercase tracking-wider">Bookings</p>
-                  <p className="font-bold text-stone-800 mt-0.5">
+              <div className="flex items-center gap-2 bg-stone-50/70 border border-stone-200/30 p-2 rounded-xl">
+                <Calendar className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-[9px] text-stone-400 font-semibold uppercase tracking-wider leading-none">Bookings</p>
+                  <p className="font-bold text-stone-800 mt-0.5 truncate leading-none">
                     {site.stats?.totalBookings || 0} lượt
                   </p>
                 </div>
               </div>
             </div>
+          </div>
 
-            <Separator className="my-2 bg-stone-100" />
+          <Separator className="my-2 bg-stone-100" />
 
-            {/* Footer with Price and Exposed Buttons */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-3">
-              <div>
-                <p className="text-xs text-stone-400 uppercase tracking-wider">Giá mỗi đêm</p>
-                <p className="text-2xl font-bold text-emerald-850 mt-0.5">
-                  {new Intl.NumberFormat('vi-VN', {
-                    style: 'currency',
-                    currency: 'VND',
-                  }).format(site.pricing?.basePrice || 0)}
-                  <span className="text-sm text-stone-500 font-sans ml-1">/ đêm</span>
-                </p>
-              </div>
+          {/* Footer with Price and Exposed Buttons */}
+          <div className="pt-2 flex flex-col gap-3">
+            <div className="flex items-baseline justify-between">
+              <span className="text-[10px] text-stone-400 uppercase tracking-wider font-semibold">Giá mỗi đêm</span>
+              <p className="text-lg font-bold text-emerald-850">
+                {new Intl.NumberFormat('vi-VN', {
+                  style: 'currency',
+                  currency: 'VND',
+                }).format(site.pricing?.basePrice || 0)}
+                <span className="text-xs text-stone-500 font-sans font-normal ml-1">/ đêm</span>
+              </p>
+            </div>
 
-              {/* Direct buttons exposed side-by-side */}
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-stone-200 text-stone-700 hover:bg-stone-50 rounded-xl px-4 h-10 gap-1.5 text-xs font-medium"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    router.push(`/host/properties/${propertyId}/sites/${site._id}`);
-                  }}
-                >
-                  <Eye className="h-3.5 w-3.5" />
-                  Chi tiết
-                </Button>
+            {/* Direct buttons exposed side-by-side inside grid */}
+            <div className="grid grid-cols-3 gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-stone-200 text-stone-700 hover:bg-stone-50 rounded-xl px-2 h-9 gap-1 text-[11px] font-medium w-full"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push(`/host/properties/${propertyId}/sites/${site._id}`);
+                }}
+              >
+                <Eye className="h-3.5 w-3.5 flex-shrink-0" />
+                Chi tiết
+              </Button>
 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-stone-200 text-stone-700 hover:bg-stone-50 rounded-xl px-4 h-10 gap-1.5 text-xs font-medium bg-stone-50/30"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    router.push(`/host/properties/${propertyId}/sites/${site._id}/edit`);
-                  }}
-                >
-                  <Settings className="h-3.5 w-3.5 text-stone-500" />
-                  Chỉnh sửa
-                </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-stone-200 text-stone-700 hover:bg-stone-50 rounded-xl px-2 h-9 gap-1 text-[11px] font-medium bg-stone-50/30 w-full"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push(`/host/properties/${propertyId}/sites/${site._id}/edit`);
+                }}
+              >
+                <Settings className="h-3.5 w-3.5 text-stone-500 flex-shrink-0" />
+                Sửa
+              </Button>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-rose-600 hover:bg-rose-50 hover:text-rose-700 rounded-xl px-3 h-10 gap-1.5 text-xs font-medium"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSiteToDelete({
-                      id: site._id,
-                      name: site.name,
-                    });
-                    setDeleteDialogOpen(true);
-                  }}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Xóa site
-                </Button>
-              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-rose-600 hover:bg-rose-50 hover:text-rose-700 rounded-xl px-2 h-9 gap-1 text-[11px] font-medium w-full"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSiteToDelete({
+                    id: site._id,
+                    name: site.name,
+                  });
+                  setDeleteDialogOpen(true);
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5 flex-shrink-0" />
+                Xóa
+              </Button>
             </div>
           </div>
         </div>
@@ -443,7 +444,7 @@ export default function PropertySitesPage() {
           <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5">
             <div className="min-w-0">
               <div className="flex items-start justify-between gap-1.5">
-                <h4 className="truncate font-serif font-bold text-stone-900 group-hover:text-emerald-800 transition-colors text-sm">
+                <h4 className="truncate font-bold text-stone-900 group-hover:text-emerald-800 transition-colors text-sm">
                   {site.name}
                 </h4>
                 {/* Exposed quick small icon actions instead of vertical dots */}
@@ -533,7 +534,7 @@ export default function PropertySitesPage() {
       <div className="flex min-h-[60vh] items-center justify-center bg-slate-50 dark:bg-slate-950">
         <div className="text-center">
           <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          <p className="mt-4 text-stone-600 font-serif font-medium">Đang tải...</p>
+          <p className="mt-4 text-stone-600 font-medium">Đang tải...</p>
         </div>
       </div>
     );
@@ -542,8 +543,8 @@ export default function PropertySitesPage() {
   return (
     <div className="min-h-screen text-stone-900 pb-12">
       {/* Header */}
-      <div className="sticky top-0 z-10  backdrop-blur-md border-b border-stone-200/80">
-        <div className="mx-auto max-w-7xl px-6 py-6 sm:px-6 lg:px-8">
+      <div className=" top-0 z-10  border-stone-200/80">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1 min-w-0">
               <Link
@@ -558,7 +559,7 @@ export default function PropertySitesPage() {
                 <div className="flex items-center gap-3 mt-1">
 
                   <div className="min-w-0">
-                    <h1 className="text-2xl md:text-3xl font-serif font-bold text-stone-900 tracking-tight truncate">
+                    <h1 className="text-2xl md:text-3xl font-bold text-stone-900 tracking-tight truncate">
                       {property.name}
                     </h1>
                   </div>
@@ -579,7 +580,7 @@ export default function PropertySitesPage() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-7xl px-6 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
         {/* Filters */}
         <Card className="mb-6 bg-white border-stone-200/80 rounded-2xl shadow-sm overflow-hidden">
           <CardContent className="pt-6">
@@ -645,7 +646,7 @@ export default function PropertySitesPage() {
         {viewMode === 'list' ? (
           // List View - Full cards
           filteredSites && filteredSites.length > 0 ? (
-            <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredSites.map(site => renderFullSiteCard(site))}
             </div>
           ) : (
@@ -654,7 +655,7 @@ export default function PropertySitesPage() {
                 <div className="w-16 h-16 bg-stone-50 border border-stone-100 rounded-full flex items-center justify-center mb-4">
                   <Tent className="h-8 w-8 text-stone-400" />
                 </div>
-                <h3 className="mb-1 text-lg font-serif font-bold text-stone-900">
+                <h3 className="mb-1 text-lg font-bold text-stone-900">
                   {searchQuery || statusFilter !== 'all' || typeFilter !== 'all'
                     ? 'Không tìm thấy site nào'
                     : 'Chưa có site nào'}
@@ -720,7 +721,7 @@ export default function PropertySitesPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent className="rounded-2xl border-stone-200">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-serif text-xl font-bold">Xác nhận xóa site</AlertDialogTitle>
+            <AlertDialogTitle className="text-xl font-bold">Xác nhận xóa site</AlertDialogTitle>
             <AlertDialogDescription className="text-stone-500 text-sm">
               Bạn có chắc chắn muốn xóa site{' '}
               <span className="font-semibold text-stone-850">

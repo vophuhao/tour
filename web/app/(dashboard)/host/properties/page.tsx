@@ -121,7 +121,7 @@ export default function PropertiesPage() {
     <div className="min-h-screen text-stone-900 pb-12">
       {/* Header */}
       <div className="sticky top-0 z-40  backdrop-blur-md  border-stone-200/80">
-        <div className="px-8 py-5 max-w-7xl mx-auto flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between">
           <div>
             <h1 className="text-3xl  font-bold text-stone-900 tracking-tight">Khu cắm trại</h1>
           </div>
@@ -136,7 +136,7 @@ export default function PropertiesPage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-8 py-8 flex flex-col lg:flex-row gap-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col lg:flex-row gap-8">
         {/* Sidebar Filters */}
         <div className="w-full lg:w-64 flex-shrink-0">
           <div className="bg-white rounded-2xl shadow-sm border border-stone-200/80 p-5 sticky top-28 space-y-6">

@@ -58,11 +58,11 @@ export default function AdminReportsPage() {
   const fetchReports = useCallback(async () => {
     setLoading(true);
     try {
-      const res: any = await getReports({ 
-        page, 
-        limit: 15, 
-        status: statusFilter || undefined, 
-        targetType: typeFilter || undefined 
+      const res: any = await getReports({
+        page,
+        limit: 15,
+        status: statusFilter || undefined,
+        targetType: typeFilter || undefined
       });
       setReports(res?.data?.data ?? res?.data ?? []);
       setTotalPages(res?.data?.pagination?.totalPages ?? 1);
@@ -103,14 +103,12 @@ export default function AdminReportsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">Xử lý báo cáo vi phạm</h1>
-          <p className="text-xs text-slate-400 font-semibold mt-0.5">
-            Quản lý các báo cáo vi phạm nội dung từ thành viên và xử lý bài viết/địa điểm không phù hợp.
-          </p>
+          <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Xử lý báo cáo vi phạm</h1>
+
         </div>
       </div>
 
@@ -336,7 +334,7 @@ export default function AdminReportsPage() {
 
       {/* Note modal */}
       {noteModal && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-fade-in"
           onClick={e => e.target === e.currentTarget && setNoteModal(false)}
         >
@@ -353,10 +351,10 @@ export default function AdminReportsPage() {
                 {pendingAction?.action === 'hide_target' ? <AlertTriangle className="h-5 w-5" /> : <Info className="h-5 w-5" />}
               </div>
               <h3 className="text-md font-black text-slate-850 dark:text-slate-100">
-                {pendingAction?.action === 'hide_target' 
-                  ? '🚫 Phê duyệt & Ẩn nội dung' 
-                  : pendingAction?.status === 'dismissed' 
-                    ? '✅ Từ chối báo cáo' 
+                {pendingAction?.action === 'hide_target'
+                  ? '🚫 Phê duyệt & Ẩn nội dung'
+                  : pendingAction?.status === 'dismissed'
+                    ? '✅ Từ chối báo cáo'
                     : '✅ Đánh dấu đã giải quyết'}
               </h3>
             </div>

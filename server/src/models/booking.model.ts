@@ -40,7 +40,7 @@ export interface BookingDocument extends mongoose.Document {
   status: "pending" | "confirmed" | "cancelled" | "completed" | "refunded" | "refund_requested";
 
   // Payment
-  paymentStatus: "pending" | "paid" | "refunded" | "failed";
+  paymentStatus: "pending" | "paid" | "failed" | "refunded";
   paymentMethod?: "deposit" | "full";
   transactionId?: string;
   paidAt?: Date;
@@ -134,10 +134,14 @@ export interface BookingDocument extends mongoose.Document {
   reminderSent?: boolean;
 
   // Methods
-  confirm(): Promise<BookingDocument>;
-  cancel(userId: mongoose.Types.ObjectId, reason?: string): Promise<BookingDocument>;
-  complete(): Promise<BookingDocument>;
-  calculateTotal(): Promise<BookingDocument>;
+  confirm(session?: mongoose.ClientSession): Promise<BookingDocument>;
+  cancel(
+    userId: mongoose.Types.ObjectId,
+    reason?: string,
+    session?: mongoose.ClientSession
+  ): Promise<BookingDocument>;
+  complete(session?: mongoose.ClientSession): Promise<BookingDocument>;
+  calculateTotal(session?: mongoose.ClientSession): Promise<BookingDocument>;
 }
 
 const bookingSchema = new mongoose.Schema<BookingDocument>(
@@ -192,7 +196,8 @@ const bookingSchema = new mongoose.Schema<BookingDocument>(
 
     paymentStatus: {
       type: String,
-      enum: ["pending", "paid", "processing", "cancelled"],
+      // IMPORTANT: Keep in sync with BookingDocument interface above
+      enum: ["pending", "paid", "failed", "refunded"],
       default: "pending",
       index: true,
     },
@@ -321,35 +326,39 @@ bookingSchema.index({ site: 1, checkIn: 1, checkOut: 1 });
 // The non-unique index above (site + checkIn + checkOut) is sufficient for query performance.
 
 // Methods
-bookingSchema.methods.confirm = async function (this: BookingDocument) {
+bookingSchema.methods.confirm = async function (this: BookingDocument, session?: mongoose.ClientSession) {
   this.status = "confirmed";
-  this.paidAt = new Date();
-  return this.save();
+  // NOTE: paidAt KHÔNG được set ở đây
+  // paidAt chỉ được set khi PayOS webhook báo PAID (trong payos.service.ts)
+  // confirm() là hành động của HOST, không liên quan đến thanh toán
+  return this.save(session ? { session } : undefined);
 };
 
 bookingSchema.methods.cancel = async function (
   this: BookingDocument,
   userId: mongoose.Types.ObjectId,
-  reason?: string
+  reason?: string,
+  session?: mongoose.ClientSession
 ) {
   this.status = "cancelled";
   this.cancelledBy = userId;
   this.cancelledAt = new Date();
   if (reason) this.cancellationReason = reason;
-  return this.save();
+  return this.save(session ? { session } : undefined);
 };
 
-bookingSchema.methods.complete = async function (this: BookingDocument) {
+bookingSchema.methods.complete = async function (this: BookingDocument, session?: mongoose.ClientSession) {
   this.status = "completed";
-  return this.save();
+  return this.save(session ? { session } : undefined);
 };
 
 bookingSchema.methods.calculateTotal = async function (
-  this: BookingDocument
+  this: BookingDocument,
+  session?: mongoose.ClientSession
 ): Promise<BookingDocument> {
-  const { subtotal, cleaningFee, petFee, extraGuestFee, serviceFee, tax } = this.pricing;
-  this.pricing.total = subtotal + cleaningFee + petFee + extraGuestFee + serviceFee + tax;
-  return this.save();
+  const { subtotal, cleaningFee, petFee, extraGuestFee, serviceFee, tax, vehicleFee = 0 } = this.pricing;
+  this.pricing.total = subtotal + cleaningFee + petFee + extraGuestFee + serviceFee + tax + vehicleFee;
+  return this.save(session ? { session } : undefined);
 };
 
 export const BookingModel = mongoose.model<BookingDocument>("Booking", bookingSchema);

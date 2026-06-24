@@ -8,8 +8,9 @@ import { cn } from '@/lib/utils';
 import {
   Search, RefreshCw, ChevronLeft, ChevronRight, X, Eye,
   Calendar, Users, DollarSign, AlertCircle, CheckCircle2,
-  XCircle, Clock, Ban, Undo2, Filter, Info, Shield, MapPin, Tent, CreditCard
+  XCircle, Clock, Ban, Undo2, Filter, Info, Shield, MapPin, Tent, CreditCard, FileDown
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 const STATUS_MAP: Record<string, { label: string; class: string }> = {
   pending: { label: 'Chờ xác nhận', class: 'bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-900/30' },
@@ -52,6 +53,45 @@ export default function AdminBookingsPage() {
   const [hostFilter, setHostFilter] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [quickTime, setQuickTime] = useState('all');
+  const [exporting, setExporting] = useState(false);
+
+  // Helper for quick date ranges
+  const getQuickDateRange = (range: string) => {
+    const now = new Date();
+    let start = '';
+    let end = '';
+
+    const formatLocalDate = (date: Date) => {
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      const dd = String(date.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    };
+
+    if (range === 'today') {
+      const todayStr = formatLocalDate(now);
+      start = todayStr;
+      end = todayStr;
+    } else if (range === 'week') {
+      const day = now.getDay();
+      const diffToMonday = day === 0 ? -6 : 1 - day; // Adjust for Sunday (0)
+      const monday = new Date(now);
+      monday.setDate(now.getDate() + diffToMonday);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      
+      start = formatLocalDate(monday);
+      end = formatLocalDate(sunday);
+    } else if (range === 'month') {
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      
+      start = formatLocalDate(firstDay);
+      end = formatLocalDate(lastDay);
+    }
+    return { start, end };
+  };
 
   const fetchHosts = useCallback(async () => {
     try {
@@ -68,21 +108,108 @@ export default function AdminBookingsPage() {
         limit: 15,
         search: search || undefined,
         hostId: hostFilter || undefined,
-        startDate: startDate || undefined,
-        endDate: endDate || undefined
       };
+      if (startDate) {
+        try {
+          params.startDate = new Date(`${startDate}T00:00:00`).toISOString();
+        } catch {
+          params.startDate = startDate;
+        }
+      }
+      if (endDate) {
+        try {
+          params.endDate = new Date(`${endDate}T23:59:59.999`).toISOString();
+        } catch {
+          params.endDate = endDate;
+        }
+      }
       if (tab === 'refunds') params.status = 'refund_requested';
       else if (tab === 'cannotAttend') {
         params.cannotAttendStatus = cannotAttendFilter || 'pending';
       } else if (statusFilter) params.status = statusFilter;
+
       const res: any = await API.get('/bookings/admin/all', { params });
-      const d = res?.data;
-      setBookings(d ?? []);
-      setTotalPages(d?.pagination?.totalPages ?? 1);
-      setTotal(d?.pagination?.total ?? 0);
+      setBookings(res?.data ?? []);
+      setTotalPages(res?.pagination?.totalPages ?? 1);
+      setTotal(res?.pagination?.total ?? 0);
     } catch { toast.error('Không thể tải booking'); }
     finally { setLoading(false); }
   }, [page, search, statusFilter, tab, hostFilter, startDate, endDate, cannotAttendFilter]);
+
+  const handleExportExcel = async () => {
+    if (bookings.length === 0) {
+      toast.warning('Không có dữ liệu để xuất');
+      return;
+    }
+    setExporting(true);
+    try {
+      const params: any = {
+        page: 1,
+        limit: total || 2000,
+        search: search || undefined,
+        hostId: hostFilter || undefined,
+      };
+      if (startDate) {
+        try {
+          params.startDate = new Date(`${startDate}T00:00:00`).toISOString();
+        } catch {
+          params.startDate = startDate;
+        }
+      }
+      if (endDate) {
+        try {
+          params.endDate = new Date(`${endDate}T23:59:59.999`).toISOString();
+        } catch {
+          params.endDate = endDate;
+        }
+      }
+      if (tab === 'refunds') params.status = 'refund_requested';
+      else if (tab === 'cannotAttend') {
+        params.cannotAttendStatus = cannotAttendFilter || 'pending';
+      } else if (statusFilter) params.status = statusFilter;
+
+      const res: any = await API.get('/bookings/admin/all', { params });
+      const allBookings = res?.data ?? [];
+
+      if (!allBookings.length) {
+        toast.warning('Không tìm thấy dữ liệu để xuất');
+        return;
+      }
+
+      const excelData = allBookings.map((b: any) => ({
+        'Mã Booking': b.code || (b._id ? b._id.slice(-6).toUpperCase() : '—'),
+        'Khách Hàng': b.fullnameGuest || b.guest?.username || '—',
+        'Email Khách': b.email || b.guest?.email || '—',
+        'Số Điện Thoại': b.phone || '—',
+        'Chủ Vườn (Host)': b.host?.username || '—',
+        'Khu Cắm Trại': b.property?.name || '—',
+        'Vị Trí (Site)': b.site?.name || '—',
+        'Ngày Check-in': b.checkIn ? new Date(b.checkIn).toLocaleDateString('vi-VN') : '—',
+        'Ngày Check-out': b.checkOut ? new Date(b.checkOut).toLocaleDateString('vi-VN') : '—',
+        'Số Đêm': b.nights || 0,
+        'Số Khách': b.numberOfGuests || 0,
+        'Tổng Tiền (VND)': b.pricing?.total || 0,
+        'Trạng Thái Đơn': STATUS_MAP[b.status]?.label || b.status,
+        'Thanh Toán': PAYMENT_MAP[b.paymentStatus]?.label || b.paymentStatus,
+        'Phương Thức': b.paymentMethod === 'full' ? 'Trả toàn bộ' : 'Đặt cọc/Trả sau',
+        'Khách Xác Nhận Đến': b.hostConfirmedAttendance === true ? 'Có' : b.hostConfirmedAttendance === false ? 'Không' : 'Chờ xác nhận',
+        'Ngày Tạo Đơn': b.createdAt ? new Date(b.createdAt).toLocaleString('vi-VN') : '—'
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(excelData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Bookings');
+
+      const fileName = `HDCamp_Bookings_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+      toast.success('Xuất file Excel thành công!');
+    } catch (e: any) {
+      console.error(e);
+      toast.error('Lỗi khi xuất file Excel');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const fetchStats = useCallback(async () => {
     try {
@@ -128,10 +255,9 @@ export default function AdminBookingsPage() {
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* Title Header */}
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-primary">
+        <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
           Quản lý Booking hệ thống
         </h1>
-        <p className="text-xs text-slate-400 mt-1">Theo dõi và phê duyệt hoàn tiền các booking của khách hàng cắm trại.</p>
       </div>
 
       {/* Stats Cards */}
@@ -231,12 +357,31 @@ export default function AdminBookingsPage() {
           <select
             value={hostFilter}
             onChange={e => { setHostFilter(e.target.value); setPage(1); }}
-            className="px-3 py-2 text-xs rounded-xl border border-slate-250 dark:border-slate-800 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-primary/20 focus:outline-none text-slate-650 dark:text-slate-350"
+            className="px-3 py-2 text-xs rounded-xl border border-slate-250 dark:border-slate-800 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-primary/20 focus:outline-none text-slate-650 dark:text-slate-350 cursor-pointer"
           >
             <option value="">Tất cả Host</option>
-            {hosts.map(h => (
-              <option key={h._id} value={h._id}>{h.username} ({h.email})</option>
+            {hosts.map((h, index) => (
+              <option key={h._id || `HOST-${index}`} value={h._id}>{h.username} ({h.email})</option>
             ))}
+          </select>
+
+          {/* Quick Time Selector */}
+          <select
+            value={quickTime}
+            onChange={e => {
+              const val = e.target.value;
+              setQuickTime(val);
+              const range = getQuickDateRange(val);
+              setStartDate(range.start);
+              setEndDate(range.end);
+              setPage(1);
+            }}
+            className="px-3 py-2 text-xs rounded-xl border border-slate-250 dark:border-slate-800 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-primary/20 focus:outline-none text-slate-650 dark:text-slate-350 cursor-pointer"
+          >
+            <option value="all">Mọi lúc</option>
+            <option value="today">Hôm nay</option>
+            <option value="week">Tuần này</option>
+            <option value="month">Tháng này</option>
           </select>
 
           {/* Time range picker */}
@@ -245,20 +390,20 @@ export default function AdminBookingsPage() {
             <input
               type="date"
               value={startDate}
-              onChange={e => { setStartDate(e.target.value); setPage(1); }}
-              className="bg-transparent border-none text-xs focus:outline-none text-slate-650 dark:text-slate-350"
+              onChange={e => { setStartDate(e.target.value); setQuickTime('all'); setPage(1); }}
+              className="bg-transparent border-none text-xs focus:outline-none text-slate-650 dark:text-slate-350 cursor-pointer"
             />
             <span className="text-[10px] font-bold text-slate-400 uppercase">Đến:</span>
             <input
               type="date"
               value={endDate}
-              onChange={e => { setEndDate(e.target.value); setPage(1); }}
-              className="bg-transparent border-none text-xs focus:outline-none text-slate-650 dark:text-slate-350"
+              onChange={e => { setEndDate(e.target.value); setQuickTime('all'); setPage(1); }}
+              className="bg-transparent border-none text-xs focus:outline-none text-slate-650 dark:text-slate-350 cursor-pointer"
             />
           </div>
 
           {/* Reset Filters */}
-          {(hostFilter || startDate || endDate || search || statusFilter) && (
+          {(hostFilter || startDate || endDate || search || statusFilter || quickTime !== 'all') && (
             <button
               onClick={() => {
                 setHostFilter('');
@@ -266,9 +411,10 @@ export default function AdminBookingsPage() {
                 setEndDate('');
                 setSearch('');
                 setStatusFilter('');
+                setQuickTime('all');
                 setPage(1);
               }}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-rose-200 dark:border-rose-900/30 bg-rose-50 dark:bg-rose-950/20 text-xs font-bold text-rose-600 dark:text-rose-455 hover:bg-rose-100 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-rose-200 dark:border-rose-900/30 bg-rose-50 dark:bg-rose-955/20 text-xs font-bold text-rose-600 dark:text-rose-455 hover:bg-rose-100 transition-colors cursor-pointer"
             >
               <X className="h-3.5 w-3.5" /> Xóa lọc
             </button>
@@ -281,12 +427,22 @@ export default function AdminBookingsPage() {
           >
             <RefreshCw className="h-3.5 w-3.5" /> Làm mới
           </button>
+
+          {/* Export Excel Action */}
+          <button
+            onClick={handleExportExcel}
+            disabled={exporting || bookings.length === 0}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-emerald-250 dark:border-emerald-900/30 bg-emerald-50 dark:bg-emerald-950/20 text-xs font-extrabold text-emerald-600 dark:text-emerald-450 hover:bg-emerald-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+          >
+            {exporting ? (
+              <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent"></div>
+            ) : (
+              <FileDown className="h-3.5 w-3.5" />
+            )}
+            Xuất Excel
+          </button>
         </div>
-
-
       </div>
-
-      {/* Table Data View */}
       {loading ? (
         <div className="flex items-center justify-center py-24 bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-850 rounded-2xl">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
@@ -315,11 +471,11 @@ export default function AdminBookingsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                {bookings.map((b: any) => {
+                {bookings.map((b: any, index: number) => {
                   const st = STATUS_MAP[b.status] ?? { label: b.status, class: 'bg-slate-150 text-slate-700' };
                   const pt = PAYMENT_MAP[b.paymentStatus] ?? { label: b.paymentStatus, class: 'bg-slate-150 text-slate-700' };
                   return (
-                    <tr key={b._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/20 transition-colors">
+                    <tr key={b._id || `BKN-ROW-${index}`} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/20 transition-colors">
                       <td className="px-4 py-3.5">
                         <span className="font-mono font-bold text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-350 px-2 py-1 rounded">
                           {b.code || b._id?.slice(-6).toUpperCase()}

@@ -34,6 +34,13 @@ export const forumApi = {
   unsavePost: (postId: string) =>
     API.post(`${API_URL}/${postId}/save`),
 
+  getSavedPosts: () =>
+    API.get(`${API_URL}/saved`),
+
+  getLikedPosts: () =>
+    API.get(`${API_URL}/liked`),
+
+
   // Comment APIs
   getComments: (postId: string) =>
     API.get(`/comments/post/${postId}`),

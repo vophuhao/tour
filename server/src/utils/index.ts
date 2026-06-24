@@ -13,3 +13,7 @@ export * from "./email-templates";
 export * from "./jwt";
 
 export * from "./send-mail";
+
+export * from "./regex";
+
+export * from "./logger";

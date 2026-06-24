@@ -109,26 +109,26 @@ declare interface Campsite {
     state: string;
     country: string;
     coordinates:
-      | {
-          // GeoJSON format (new)
-          type: 'Point';
-          coordinates: [number, number]; // [lng, lat]
-        }
-      | {
-          // Legacy format (old)
-          lat: number;
-          lng: number;
-        };
+    | {
+      // GeoJSON format (new)
+      type: 'Point';
+      coordinates: [number, number]; // [lng, lat]
+    }
+    | {
+      // Legacy format (old)
+      lat: number;
+      lng: number;
+    };
     accessInstructions?: string;
   };
   propertyType:
-    | 'tent'
-    | 'rv'
-    | 'cabin'
-    | 'glamping'
-    | 'treehouse'
-    | 'yurt'
-    | 'other';
+  | 'tent'
+  | 'rv'
+  | 'cabin'
+  | 'glamping'
+  | 'treehouse'
+  | 'yurt'
+  | 'other';
   capacity: {
     maxGuests: number;
     maxVehicles?: number;
@@ -248,16 +248,16 @@ declare interface Order {
   orderNote?: string;
   paymentStatus: 'pending' | 'paid' | 'failed';
   orderStatus:
-    | 'pending'
-    | 'processing'
-    | 'confirmed'
-    | 'shipping'
-    | 'delivered'
-    | 'cancel_request'
-    | 'completed'
-    | 'refund_request'
-    | 'cancelled'
-    | 'refunded';
+  | 'pending'
+  | 'processing'
+  | 'confirmed'
+  | 'shipping'
+  | 'delivered'
+  | 'cancel_request'
+  | 'completed'
+  | 'refund_request'
+  | 'cancelled'
+  | 'refunded';
 
   payOSOrderCode?: number;
   history: { status: string; date: string; note?: string, images?: string[] }[];

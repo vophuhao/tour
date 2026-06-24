@@ -12,7 +12,7 @@ export function StepIndicator({ currentStep, steps, onStepClick }: StepIndicator
         {/* Progress line */}
         <div className="absolute top-5 left-0 right-0 h-[3px] bg-slate-100 dark:bg-slate-800 -z-10 rounded-full">
           <div
-            className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-500 ease-out shadow-[0_0_8px_rgba(16,185,129,0.5)] rounded-full"
+            className="h-full bg-gradient-to-r from-primary to-primary/80 transition-all duration-500 ease-out shadow-sm rounded-full"
             style={{ width: `${(currentStep / (steps.length - 1)) * 100}%` }}
           />
         </div>
@@ -35,10 +35,10 @@ export function StepIndicator({ currentStep, steps, onStepClick }: StepIndicator
                 className={`
                   w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm
                   transition-all duration-300 mb-2 relative z-10 shadow-sm
-                  ${isCompleted ? "bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-emerald-200/50" : ""}
-                  ${isCurrent ? "bg-gradient-to-br from-emerald-500 to-teal-500 text-white ring-4 ring-emerald-100 dark:ring-emerald-950/50 scale-110 shadow-md shadow-emerald-500/20" : ""}
+                  ${isCompleted ? "bg-gradient-to-br from-primary to-primary/80 text-white shadow-primary/20" : ""}
+                  ${isCurrent ? "bg-gradient-to-br from-primary to-primary/80 text-white ring-4 ring-primary/20 dark:ring-primary/10 scale-110 shadow-md shadow-primary/30" : ""}
                   ${isPending ? "bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-slate-400" : ""}
-                  ${onStepClick && !isCurrent ? "group-hover:scale-105 group-hover:border-emerald-400 dark:group-hover:border-emerald-600" : ""}
+                  ${onStepClick && !isCurrent ? "group-hover:scale-105 group-hover:border-primary dark:group-hover:border-primary" : ""}
                 `}
               >
                 {isCompleted ? (
@@ -55,7 +55,7 @@ export function StepIndicator({ currentStep, steps, onStepClick }: StepIndicator
                 <p
                   className={`
                     text-xs sm:text-sm font-semibold tracking-wide transition-colors duration-300
-                    ${isCurrent ? "text-emerald-600 dark:text-emerald-400" : ""}
+                    ${isCurrent ? "text-primary" : ""}
                     ${isCompleted ? "text-slate-700 dark:text-slate-300" : ""}
                     ${isPending ? "text-slate-400 dark:text-slate-600" : ""}
                   `}

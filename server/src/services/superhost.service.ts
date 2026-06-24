@@ -45,7 +45,7 @@ export class SuperhostService {
         cancelledAt: { $gte: twelveMonthsAgo },
       }),
       PropertyModel.find({ host: hostId, isActive: true }).select(
-        "stats.averageRating stats.responseRate"
+        "stats.averageRating stats.responseRate stats.totalReviews"
       ),
     ]);
 
