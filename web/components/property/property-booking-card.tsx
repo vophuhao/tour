@@ -8,14 +8,15 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { WeatherAdvice } from '@/components/property/weather-advice';
 import { usePropertyBookingState } from '@/hooks/usePropertyBookingState';
 import { getBlockedDates } from '@/lib/client-actions';
-import { getPropertyBlockedDates } from '@/lib/property-site-api';
+import { getPropertyBlockedDates, getPropertyWithSites } from '@/lib/property-site-api';
 import { useAuthStore } from '@/store/auth.store';
 import type { Property, Site } from '@/types/property-site';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { addDays, differenceInDays, parseISO } from 'date-fns';
 import { Star } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { useSocket } from '@/provider/socketProvider';
 
 interface PropertyBookingCardProps {
   property: Property;
@@ -27,13 +28,27 @@ interface PropertyBookingCardProps {
 }
 
 export function PropertyBookingCard({
-  property,
-  sites,
+  property: initialProperty,
+  sites: initialSites,
   initialGuests = 0,
   initialPets = 0,
   initialCheckIn,
   initialCheckOut,
 }: PropertyBookingCardProps) {
+  const queryClient = useQueryClient();
+  const { socket } = useSocket();
+
+  // Dynamic fetch of property and sites to allow background refresh when host updates them
+  const { data: propertyWithSitesData } = useQuery<{ property: Property; sites: Site[]; siteCount: number }>({
+    queryKey: ['property-with-sites', initialProperty._id],
+    queryFn: () => getPropertyWithSites(initialProperty._id) as any,
+    initialData: { property: initialProperty, sites: initialSites, siteCount: initialSites.length },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const property = propertyWithSitesData.property;
+  const sites = propertyWithSitesData.sites;
+
   // Use shared booking state synced with URL
   const booking = usePropertyBookingState({
     initialGuests,
@@ -97,6 +112,34 @@ export function PropertyBookingCard({
     }
     return [];
   }, [sites]);
+
+  // Listen for real-time changes
+  useEffect(() => {
+    if (!socket) return;
+
+    const handlePropertyChange = (payload: { propertyId: string }) => {
+      if (payload.propertyId === property._id) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[SOCKET] Property changed: ${payload.propertyId}. Invalidate queries...`);
+        }
+        queryClient.invalidateQueries({
+          queryKey: ['property-with-sites', property._id],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ['property-blocked-dates', property._id],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ['site-blocked-dates', siteIdsForAvailability],
+        });
+      }
+    };
+
+    socket.on('property_data_changed', handlePropertyChange);
+
+    return () => {
+      socket.off('property_data_changed', handlePropertyChange);
+    };
+  }, [socket, property._id, siteIdsForAvailability, queryClient]);
 
   // Fetch blocked dates for all sites (designated) or group (undesignated)
   // We'll fetch availability for a 6-month window from today

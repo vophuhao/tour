@@ -118,3 +118,15 @@ export function getIO(): Server {
   }
   return ioInstance;
 }
+
+export function notifyPropertyChange(propertyId: string) {
+  try {
+    const io = getIO();
+    io.emit("property_data_changed", { propertyId });
+    if (NODE_ENV === "development") {
+      console.log(`[SOCKET] Broadcasted property_data_changed for property: ${propertyId}`);
+    }
+  } catch (err) {
+    console.error("[SOCKET] Failed to notify property change:", err);
+  }
+}

@@ -101,7 +101,7 @@ export function PropertyReviewsSection({
   );
 
   const ratingBreakdown = [5, 4, 3, 2, 1].map(stars => {
-    const count = ratingDistribution[5 - stars];
+    const count = ratingDistribution[stars - 1];
     return {
       stars,
       count,

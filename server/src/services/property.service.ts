@@ -17,6 +17,7 @@ import type {
 } from "@/validators/property.validator";
 import type { RouteSearchInput } from "../validators/route-search.validator";
 import mongoose, { isValidObjectId } from "mongoose";
+import { notifyPropertyChange } from "../socket";
 
 export class PropertyService {
   /**
@@ -130,6 +131,8 @@ export class PropertyService {
     Object.assign(property, input);
     await property!.save();
 
+    notifyPropertyChange(propertyId);
+
     return property;
   }
 
@@ -143,6 +146,8 @@ export class PropertyService {
     property.status = "blocked";
     property.isActive = false;
     await property.save();
+
+    notifyPropertyChange(propertyId);
 
     // Notify host
     try {
@@ -167,6 +172,8 @@ export class PropertyService {
     property.status = "active";
     property.isActive = true;
     await property.save();
+
+    notifyPropertyChange(propertyId);
 
     // Notify host
     try {
@@ -195,6 +202,8 @@ export class PropertyService {
     property.status = "active";
     property.isActive = true;
     await property.save();
+
+    notifyPropertyChange(propertyId);
 
     // Notify host
     try {
@@ -248,6 +257,8 @@ export class PropertyService {
     // Deactivate property and all its sites
     await property.deactivate();
     await SiteModel.updateMany({ property: propertyId }, { isActive: false });
+
+    notifyPropertyChange(propertyId);
   }
 
   /**
@@ -278,6 +289,7 @@ export class PropertyService {
     appAssert(siteCount > 0, ErrorFactory.badRequest("Property phải có ít nhất 1 site hoạt động"));
 
     await property.activate();
+    notifyPropertyChange(propertyId);
     return property;
   }
 
@@ -1232,6 +1244,8 @@ export class PropertyService {
       createdBy: hostId,
     });
 
+    notifyPropertyChange(propertyId.toString());
+
     return blocked;
   }
 
@@ -1250,6 +1264,7 @@ export class PropertyService {
     );
 
     await PropertyAvailabilityModel.findByIdAndDelete(blockId);
+    notifyPropertyChange(property._id.toString());
   }
 
   /**

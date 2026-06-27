@@ -15,6 +15,7 @@ import type { BookingNotificationService } from "./booking-notification.service"
 import type { CancelBookingInput, CreateBookingInput, RequestDissatisfactionInput, ProcessDissatisfactionInput } from "@/validators/booking.validator";
 import { sendMail } from "../utils/send-mail";
 import WalletService from "./wallet.service";
+import { notifyPropertyChange } from "../socket";
 
 const { PayOS } = require("@payos/node");
 
@@ -225,6 +226,8 @@ export class BookingService {
       console.error("Failed to send booking notification:", error);
     }
 
+    notifyPropertyChange(propertyId);
+
     return booking!;
   }
 
@@ -350,6 +353,8 @@ export class BookingService {
       input.cancellationReason
     );
 
+    notifyPropertyChange(booking.property.toString());
+
     return booking;
   }
 
@@ -389,6 +394,8 @@ export class BookingService {
       booking.fullnameGuest || "Khách",
       booking.property.toString()
     );
+
+    notifyPropertyChange(booking.property.toString());
 
     return booking;
   }
@@ -434,6 +441,8 @@ export class BookingService {
     await booking.save();
 
     await this.unblockDatesForBooking(booking.site.toString(), booking.checkIn, booking.checkOut);
+
+    notifyPropertyChange(booking.property.toString());
 
     return booking;
   }
@@ -622,6 +631,7 @@ export class BookingService {
     }
 
     await booking.save();
+    notifyPropertyChange(booking.property.toString());
     return booking;
   }
 
@@ -713,6 +723,7 @@ export class BookingService {
     }
 
     await booking.save();
+    notifyPropertyChange(booking.property.toString());
     return booking;
   }
 
@@ -752,6 +763,8 @@ export class BookingService {
     };
     await booking.save();
 
+    notifyPropertyChange(booking.property.toString());
+
     return booking;
   }
 
@@ -790,6 +803,7 @@ export class BookingService {
     if (adminNote) booking.refundRequest!.adminNote = adminNote;
 
     await booking.save();
+    notifyPropertyChange(booking.property.toString());
     return booking;
   }
 
@@ -818,6 +832,8 @@ export class BookingService {
     await booking.save();
 
     await this.unblockDatesForBooking(booking.site.toString(), booking.checkIn, booking.checkOut);
+
+    notifyPropertyChange(booking.property.toString());
 
     return booking;
   }
@@ -875,6 +891,8 @@ export class BookingService {
     };
     booking.status = "refund_requested";
     await booking.save();
+
+    notifyPropertyChange(booking.property.toString());
 
     return booking;
   }
@@ -963,6 +981,7 @@ export class BookingService {
     }
 
     await booking.save();
+    notifyPropertyChange(booking.property.toString());
     return booking;
   }
 

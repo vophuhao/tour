@@ -11,9 +11,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePropertyBookingState } from '@/hooks/usePropertyBookingState';
 import { getBlockedDates } from '@/lib/client-actions';
-import { getPropertyBlockedDates } from '@/lib/property-site-api';
+import { getPropertyBlockedDates, getPropertyWithSites } from '@/lib/property-site-api';
 import type { Property, Site } from '@/types/property-site';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSocket } from '@/provider/socketProvider';
 import { differenceInDays, parseISO } from 'date-fns';
 import useEmblaCarousel from 'embla-carousel-react';
 import {
@@ -127,6 +128,8 @@ function calculateSiteSubtotal(site: Site, checkIn: Date, checkOut: Date) {
   let subtotal = 0;
   let hasWeekendPrice = false;
   let hasSeasonalPrice = false;
+  let hasLongStayDiscount = false;
+  let discountPercent = 0;
 
   const currentDate = new Date(checkIn);
   while (currentDate < checkOut) {
@@ -171,8 +174,6 @@ function calculateSiteSubtotal(site: Site, checkIn: Date, checkOut: Date) {
   }
 
   // Apply discounts
-  let hasLongStayDiscount = false;
-  let discountPercent = 0;
   const nights = Math.round(
     (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)
   );
@@ -207,14 +208,28 @@ interface SitesListSectionProps {
 }
 
 export function SitesListSection({
-  sites,
-  property,
+  sites: initialSites,
+  property: initialProperty,
   propertySlug,
   initialCheckIn,
   initialCheckOut,
   initialGuests = 2,
   initialPets = 0,
 }: SitesListSectionProps) {
+  const queryClient = useQueryClient();
+  const { socket } = useSocket();
+
+  // Dynamic fetch of property and sites to allow background refresh when host updates them
+  const { data: propertyWithSitesData } = useQuery<{ property: Property; sites: Site[]; siteCount: number }>({
+    queryKey: ['property-with-sites', initialProperty._id],
+    queryFn: () => getPropertyWithSites(initialProperty._id) as any,
+    initialData: { property: initialProperty, sites: initialSites, siteCount: initialSites.length },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const property = propertyWithSitesData.property;
+  const sites = propertyWithSitesData.sites;
+
   // Use shared booking state from URL
   const booking = usePropertyBookingState({
     initialGuests,
@@ -292,6 +307,8 @@ export function SitesListSection({
       setAdults(newAdults);
     }
   }, [booking.guests]); // Only run when URL guests changes
+
+
 
   // Filter State
   const [filterType] = useState<string | null>(null);
@@ -417,6 +434,37 @@ export function SitesListSection({
     }
     return [];
   }, [sites]);
+
+  // Listen for real-time changes
+  useEffect(() => {
+    if (!socket) return;
+
+    const handlePropertyChange = (payload: { propertyId: string }) => {
+      if (payload.propertyId === property._id) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[SOCKET] Property changed: ${payload.propertyId}. Invalidate queries...`);
+        }
+        queryClient.invalidateQueries({
+          queryKey: ['property-with-sites', property._id],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ['property-blocked-dates', property._id],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ['site-blocked-dates', siteIdsForAvailability],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ['site-selected-dates-blocked', siteIdsForAvailability],
+        });
+      }
+    };
+
+    socket.on('property_data_changed', handlePropertyChange);
+
+    return () => {
+      socket.off('property_data_changed', handlePropertyChange);
+    };
+  }, [socket, property._id, siteIdsForAvailability, queryClient]);
 
   // Fetch blocked dates for a 6-month window from today (for calendar display)
   const availabilityWindow = useMemo(() => {
@@ -1006,37 +1054,49 @@ export function SitesListSection({
                                   <div className="flex flex-col">
                                     <p className="text-md font-bold">
                                       {averagePricePerNight.toLocaleString()} VND
-                                      <span className="text-sm font-normal text-gray-600">
-                                        {' '}
-                                        / đêm
-                                      </span>
+                                      <span className="text-sm font-normal text-gray-600"> / đêm</span>
                                     </p>
                                     {hasSelectedDates ? (
-                                      <div className="flex flex-col gap-0.5 mt-0.5">
-                                        <p className="text-xs text-gray-500 font-medium">
+                                      <div className="flex flex-col gap-1 mt-1">
+                                        <p className="text-xs text-gray-500 font-semibold">
                                           Tổng cộng: {totalPrice.toLocaleString()} ₫
                                         </p>
                                         {(calculated?.hasSeasonalPrice ||
                                           calculated?.hasWeekendPrice ||
                                           calculated?.hasLongStayDiscount) && (
-                                          <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
-                                            ✨ Áp dụng:
-                                            {calculated.hasSeasonalPrice && ' Giá mùa vụ'}
-                                            {calculated.hasWeekendPrice && ' Giá cuối tuần'}
-                                            {calculated.hasLongStayDiscount && ` Giảm dài ngày (-${calculated.discountPercent}%)`}
-                                          </span>
+                                          <div className="flex flex-wrap gap-1 mt-0.5">
+                                            {calculated.hasSeasonalPrice && (
+                                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-850 bg-amber-50 border border-amber-200/60 rounded px-1.5 py-0.5 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50">
+                                                <Flame className="w-2.5 h-2.5 text-amber-600" />
+                                                Giá mùa vụ
+                                              </span>
+                                            )}
+                                            {calculated.hasWeekendPrice && (
+                                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/60 rounded px-1.5 py-0.5 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/50">
+                                                <CalendarIcon className="w-2.5 h-2.5 text-emerald-600" />
+                                                Giá cuối tuần
+                                              </span>
+                                            )}
+                                            {calculated.hasLongStayDiscount && (
+                                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-800 bg-indigo-50 border border-indigo-200/60 rounded px-1.5 py-0.5 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900/50">
+                                                ✨ Giảm dài ngày (-{calculated.discountPercent}%)
+                                              </span>
+                                            )}
+                                          </div>
                                         )}
                                       </div>
                                     ) : (
-                                      <div className="flex flex-wrap gap-1 mt-0.5">
+                                      <div className="flex flex-wrap gap-1.5 mt-1">
                                         {site.pricing.weekendPrice && site.pricing.weekendPrice !== site.pricing.basePrice && (
-                                          <span className="text-[10px] text-gray-500 bg-gray-50 border border-gray-100 rounded px-1">
+                                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200/60 rounded-md px-2 py-0.5 shadow-sm dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/50">
+                                            <CalendarIcon className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                                             Cuối tuần: {site.pricing.weekendPrice.toLocaleString()} VND
                                           </span>
                                         )}
                                         {site.pricing.seasonalPricing && site.pricing.seasonalPricing.length > 0 && (
-                                          <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-100 rounded px-1">
-                                            Lễ, tết...
+                                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-850 bg-amber-50 border border-amber-200/60 rounded-md px-2 py-0.5 shadow-sm dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50">
+                                            <Flame className="w-3 h-3 text-amber-600 dark:text-amber-450" />
+                                            Lễ, Tết: Có giá riêng
                                           </span>
                                         )}
                                       </div>
@@ -1260,31 +1320,46 @@ export function SitesListSection({
                                         </span>
                                       </div>
                                       {hasSelectedDates ? (
-                                        <div className="flex flex-col gap-0.5 mt-0.5">
-                                          <p className="text-xs text-gray-500">
+                                        <div className="flex flex-col gap-1 mt-1">
+                                          <p className="text-xs text-gray-500 font-semibold">
                                             {totalPrice.toLocaleString()} ₫ tổng
                                           </p>
                                           {(calculated?.hasSeasonalPrice ||
                                             calculated?.hasWeekendPrice ||
                                             calculated?.hasLongStayDiscount) && (
-                                            <span className="text-[9px] text-emerald-600 font-medium">
-                                              ✨ Áp dụng:
-                                              {calculated.hasSeasonalPrice && ' mùa vụ'}
-                                              {calculated.hasWeekendPrice && ' cuối tuần'}
-                                              {calculated.hasLongStayDiscount && ` giảm dài ngày (-${calculated.discountPercent}%)`}
-                                            </span>
+                                            <div className="flex flex-wrap gap-1 mt-0.5">
+                                              {calculated.hasSeasonalPrice && (
+                                                <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-amber-850 bg-amber-50 border border-amber-200/60 rounded px-1 py-0.2 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50">
+                                                  <Flame className="w-2.5 h-2.5 text-amber-600 animate-pulse" />
+                                                  Mùa vụ
+                                                </span>
+                                              )}
+                                              {calculated.hasWeekendPrice && (
+                                                <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/60 rounded px-1 py-0.2 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/50">
+                                                  <CalendarIcon className="w-2.5 h-2.5 text-emerald-600" />
+                                                  Cuối tuần
+                                                </span>
+                                              )}
+                                              {calculated.hasLongStayDiscount && (
+                                                <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-indigo-800 bg-indigo-50 border border-indigo-200/60 rounded px-1 py-0.2 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900/50">
+                                                  ✨ -{calculated.discountPercent}%
+                                                </span>
+                                              )}
+                                            </div>
                                           )}
                                         </div>
                                       ) : (
-                                        <div className="flex flex-col gap-0.5 mt-0.5">
+                                        <div className="flex flex-col gap-1.5 mt-1">
                                           {site.pricing.weekendPrice && site.pricing.weekendPrice !== site.pricing.basePrice && (
-                                            <span className="text-[9px] text-gray-500">
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200/60 rounded px-1.5 py-0.5 w-fit shadow-xs dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/50">
+                                              <CalendarIcon className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
                                               Cuối tuần: {site.pricing.weekendPrice.toLocaleString()} ₫
                                             </span>
                                           )}
                                           {site.pricing.seasonalPricing && site.pricing.seasonalPricing.length > 0 && (
-                                            <span className="text-[9px] text-amber-700 font-medium">
-                                              Có giá mùa vụ
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-850 bg-amber-50 border border-amber-200/60 rounded px-1.5 py-0.5 w-fit shadow-xs dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50">
+                                              <Flame className="w-2.5 h-2.5 text-amber-600 dark:text-amber-450" />
+                                              Lễ, Tết: Có giá riêng
                                             </span>
                                           )}
                                         </div>

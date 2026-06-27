@@ -16,7 +16,7 @@
   --popover-foreground: oklch(0.15 0.01 240);
 
   /* Primary: Forest Green — professional, natural, easy on eyes */
-  --primary: oklch(55% 0.11 160);
+  --primary: oklch(61.481% 0.17893 40.225);
   --primary-foreground: oklch(0.98 0 0);
 
   /* Secondary: Warm Amber accent */
@@ -576,6 +576,7 @@ html {
 body {
   top: 0px !important;
 }
+
 .skiptranslate iframe,
 iframe[class*="goog-te-banner-frame"],
 .goog-te-banner-frame {
@@ -583,15 +584,18 @@ iframe[class*="goog-te-banner-frame"],
   visibility: hidden !important;
   height: 0px !important;
 }
+
 body {
   top: 0px !important;
   position: static !important;
 }
+
 #goog-gt-tt,
 .goog-te-balloon-frame {
   display: none !important;
   visibility: hidden !important;
 }
+
 .goog-text-highlight {
   background: none !important;
   box-shadow: none !important;

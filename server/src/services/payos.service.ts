@@ -4,6 +4,7 @@ import { BookingModel } from "@/models";
 import appAssert from "../utils/app-assert";
 import { sendBookingSuccessEmail } from "../utils/send-booking-email";
 import { PAYOS_CHECKSUM_KEY } from "../constants";
+import { notifyPropertyChange } from "../socket";
 
 /**
  * Verify PayOS webhook signature using HMAC-SHA256
@@ -82,6 +83,8 @@ export default class PayOSService {
           console.error("Lỗi khi gửi email xác nhận đặt chỗ:", mailErr);
         }
 
+        notifyPropertyChange(booking.property._id.toString());
+
         return {
           success: true,
           code: "PAYMENT_SUCCESS",
@@ -91,6 +94,8 @@ export default class PayOSService {
       } else {
         booking.paymentStatus = "failed";
         await booking.save();
+
+        notifyPropertyChange(booking.property._id.toString());
 
         return {
           success: false,

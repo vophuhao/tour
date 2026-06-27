@@ -15,6 +15,7 @@ import type {
   UpdateSiteInput,
 } from "@/validators/site.validator";
 import { isValidObjectId } from "mongoose";
+import { notifyPropertyChange } from "../socket";
 
 export class SiteService {
   /**
@@ -45,6 +46,8 @@ export class SiteService {
     await PropertyModel.findByIdAndUpdate(input.property, {
       $inc: { totalSites: 1 },
     });
+
+    notifyPropertyChange(input.property.toString());
 
     return site;
   }
@@ -133,6 +136,8 @@ export class SiteService {
     Object.assign(site, input);
     await site.save();
 
+    notifyPropertyChange(site.property.toString());
+
     return site;
   }
 
@@ -148,6 +153,8 @@ export class SiteService {
     site.isActive = false;
     site.isAvailableForBooking = false;
     await site.save();
+
+    notifyPropertyChange(property._id.toString());
 
     // Notify host
     try {
@@ -176,6 +183,8 @@ export class SiteService {
     site.isActive = true;
     site.isAvailableForBooking = true;
     await site.save();
+
+    notifyPropertyChange(property._id.toString());
 
     // Notify host
     try {
@@ -215,6 +224,8 @@ export class SiteService {
     await PropertyModel.findByIdAndUpdate(site.property, {
       $inc: { totalSites: -1 },
     });
+
+    notifyPropertyChange(site.property.toString());
   }
 
   /**
@@ -239,6 +250,7 @@ export class SiteService {
     }
 
     await site.activate();
+    notifyPropertyChange(site.property.toString());
     return site;
   }
 
@@ -797,6 +809,8 @@ export class SiteService {
     if (ops.length > 0) {
       await AvailabilityModel.bulkWrite(ops);
     }
+
+    notifyPropertyChange(property._id.toString());
   }
 
   /**
@@ -823,6 +837,8 @@ export class SiteService {
       date: { $in: dateObjects },
       blockType: { $ne: "booked" }, // Do not delete actual guest bookings!
     });
+
+    notifyPropertyChange(property._id.toString());
   }
 
   /**
@@ -851,6 +867,9 @@ export class SiteService {
 
     site.pricing.seasonalPricing = formattedSeasonalPricing as any;
     await site.save();
+
+    notifyPropertyChange(property._id.toString());
+
     return site;
   }
 
