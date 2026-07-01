@@ -4,6 +4,23 @@ import type { Site } from '@/types/property-site';
 import { CheckCircle2 } from 'lucide-react';
 import { useMemo } from 'react';
 
+const categoryTranslations: Record<string, string> = {
+  comfort: 'Tiện nghi',
+  special: 'Đặc biệt',
+  basic: 'Cơ bản',
+  outdoor: 'Ngoài trời',
+  safety: 'An toàn',
+  kitchen: 'Ăn uống & Nhà bếp',
+  bathroom: 'Vệ sinh & Phòng tắm',
+  general: 'Tiện ích chung',
+  activities: 'Hoạt động ngoài trời',
+};
+
+const getCategoryLabel = (category: string) => {
+  const normalized = category.toLowerCase();
+  return categoryTranslations[normalized] || category;
+};
+
 interface Amenity {
   _id: string;
   name: string;
@@ -66,7 +83,7 @@ export function SiteAmenitiesSection({ sites }: SiteAmenitiesSectionProps) {
       <div className="space-y-6">
         {Object.entries(groupedAmenities).map(([category, amenities]) => (
           <div key={category}>
-            <h3 className="mb-3 font-semibold capitalize">{category}</h3>
+            <h3 className="mb-3 font-semibold capitalize">{getCategoryLabel(category)}</h3>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {amenities.map(amenity => (
                 <div

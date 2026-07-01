@@ -153,16 +153,20 @@ export default function MyPostsPage() {
         <div className="flex flex-col gap-4">
           {posts.map((post: any) => {
             const badge = STATUS_BADGE[post.status] ?? STATUS_BADGE.published;
+            const displayImage = post.imageUrl || 
+                                 (post.images && post.images.length > 0 ? post.images[0] : null) ||
+                                 (post.content ? post.content.match(/<img[^>]+src=["']([^"']+)["']/i)?.[1] : null) ||
+                                 null;
             return (
               <div
                 key={post._id}
                 className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row gap-4 items-start shadow-sm"
               >
                 {/* Cover image */}
-                {post.coverImage && (
+                {displayImage && (
                   <div className="relative w-full sm:w-24 h-40 sm:h-20 flex-shrink-0 overflow-hidden rounded-xl">
                     <Image
-                      src={post.coverImage}
+                      src={displayImage}
                       alt={post.title || ''}
                       fill
                       sizes="(max-width: 768px) 100vw, 96px"

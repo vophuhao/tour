@@ -97,9 +97,9 @@ export default function HostSidebar({ collapsed, setCollapsed }: SidebarProps) {
         collapsed ? "justify-center" : "justify-center"
       )}>
         {!collapsed && (
-          <span className="text-xl font-bold text-white tracking-wide truncate">
+          <Link href={'/'} className="text-xl font-bold text-white tracking-wide truncate">
             HDCAMPING
-          </span>
+          </Link>
         )}
         <button
           onClick={() => setCollapsed(!collapsed)}

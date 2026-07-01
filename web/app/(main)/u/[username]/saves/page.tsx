@@ -107,12 +107,8 @@ export default function SavesPage() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="mb-2 flex items-center gap-2 text-2xl font-bold">
-          <Heart className="h-6 w-6 fill-red-500 text-red-500" />
-          Danh sách của bạn
+          Danh sách của tôi
         </h1>
-        <p className="text-muted-foreground">
-          Bạn đã lưu {allFavorites?.length || 0} địa điểm và thích {likedPosts?.length || 0} bài viết
-        </p>
       </div>
 
       {/* Tabs for Properties, Sites, and Liked Posts */}
@@ -170,12 +166,12 @@ export default function SavesPage() {
 
                         {/* Type Badge */}
                         <div className="absolute top-3 right-3 z-10">
-                          <Badge
-                            variant={isProperty ? 'default' : 'secondary'}
-                            className="rounded-full"
-                          >
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold shadow-sm backdrop-blur-sm ${isProperty
+                            ? "bg-blue-600/90 text-white"
+                            : "bg-white/90 text-slate-800 dark:bg-slate-900/90 dark:text-slate-200"
+                            }`}>
                             {isProperty ? 'Khu đất' : 'Địa điểm'}
-                          </Badge>
+                          </span>
                         </div>
 
                         <Image
@@ -535,13 +531,27 @@ function EmptyStatePosts() {
 }
 
 function LikedPostCard({ post }: { post: any }) {
+  const getPostImage = (p: any) => {
+    if (p.imageUrl) return p.imageUrl;
+    if (p.images && p.images.length > 0) return p.images[0];
+    if (p.content) {
+      const match = p.content.match(/<img[^>]+src=["']([^"']+)["']/i);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+    return null;
+  };
+
+  const displayImage = getPostImage(post);
+
   return (
     <Card className="group overflow-hidden transition-shadow hover:shadow-lg">
       <Link href={`/forum/${post.slug || post._id}`}>
         <div className="relative h-48 w-full overflow-hidden bg-muted">
-          {post.coverImage ? (
+          {displayImage ? (
             <Image
-              src={post.coverImage}
+              src={displayImage}
               alt={post.title || ''}
               fill
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -560,9 +570,9 @@ function LikedPostCard({ post }: { post: any }) {
           </div>
           {post.subject && (
             <div className="absolute top-3 right-3 z-10">
-              <Badge variant="secondary" className="rounded-full bg-primary/10 text-primary border-transparent">
+              <span className="flex items-center rounded-full bg-white/90 px-3 py-1 text-xs font-bold text-slate-800 shadow-sm backdrop-blur-sm dark:bg-slate-900/90 dark:text-slate-200">
                 {post.subject}
-              </Badge>
+              </span>
             </div>
           )}
         </div>

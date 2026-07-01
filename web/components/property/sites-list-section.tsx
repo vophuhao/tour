@@ -29,6 +29,10 @@ import {
   Utensils,
   Wifi,
   Zap,
+  Bed,
+  Droplets,
+  ShowerHead,
+  Toilet,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -271,6 +275,32 @@ export function SitesListSection({
     emblaApi.on('reInit', onSelect);
   }, [emblaApi, onSelect]);
 
+  // Helper to get site unit based on accommodation type
+  const getSiteUnit = (type: string) => {
+    const t = type?.toLowerCase() || '';
+    if (t.includes('rv') || t.includes('trailer') || t.includes('van') || t.includes('airstream')) {
+      return 'xe';
+    }
+    if (t.includes('cabin') || t.includes('house') || t.includes('home') || t.includes('dome') || t.includes('pod')) {
+      return 'căn';
+    }
+    return 'lều';
+  };
+
+  // Helper to check if today falls inside any seasonal pricing period
+  const isTodayInSeason = (site: Site) => {
+    if (!site.pricing.seasonalPricing || site.pricing.seasonalPricing.length === 0) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return site.pricing.seasonalPricing.some((season: any) => {
+      const start = new Date(season.startDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(season.endDate);
+      end.setHours(0, 0, 0, 0);
+      return today >= start && today <= end;
+    });
+  };
+
   // Helper to get amenity icon
   const getAmenityIcon = (amenityName: string) => {
     const name = amenityName.toLowerCase();
@@ -278,10 +308,30 @@ export function SitesListSection({
       return <Wifi className="h-3.5 w-3.5" />;
     if (name.includes('điện') || name.includes('electric'))
       return <Zap className="h-3.5 w-3.5" />;
-    if (name.includes('lửa') || name.includes('fire') || name.includes('bếp'))
+    if (
+      name.includes('lửa') ||
+      name.includes('fire') ||
+      name.includes('bếp') ||
+      name.includes('bbq') ||
+      name.includes('nướng') ||
+      name.includes('grill')
+    )
       return <Flame className="h-3.5 w-3.5" />;
     if (name.includes('cây') || name.includes('tree') || name.includes('shade'))
       return <TreePine className="h-3.5 w-3.5" />;
+    if (
+      name.includes('nước nóng') ||
+      name.includes('tắm') ||
+      name.includes('shower') ||
+      name.includes('vòi sen')
+    )
+      return <ShowerHead className="h-3.5 w-3.5" />;
+    if (name.includes('nước') || name.includes('water'))
+      return <Droplets className="h-3.5 w-3.5" />;
+    if (name.includes('toilet') || name.includes('vệ sinh') || name.includes('wc') || name.includes('nhà tắm'))
+      return <Toilet className="h-3.5 w-3.5" />;
+    if (name.includes('giường') || name.includes('ngủ') || name.includes('bed') || name.includes('đệm'))
+      return <Bed className="h-3.5 w-3.5" />;
     if (
       name.includes('ăn') ||
       name.includes('food') ||
@@ -296,7 +346,7 @@ export function SitesListSection({
       return <Car className="h-3.5 w-3.5" />;
     if (name.includes('pet') || name.includes('thú'))
       return <Dog className="h-3.5 w-3.5" />;
-    return <span className="text-emerald-600">•</span>;
+    return <span className="h-1.5 w-1.5 rounded-full bg-current shrink-0" />;
   };
 
   // Sync local adults state when booking.guests changes from URL
@@ -854,7 +904,7 @@ export function SitesListSection({
                 }}
               />
 
-              <Button
+              {/* <Button
                 variant={instantBook ? 'default' : 'outline'}
                 size="sm"
                 className={`h-9 rounded-full transition-all ${instantBook
@@ -864,7 +914,7 @@ export function SitesListSection({
                 onClick={() => setInstantBook(!instantBook)}
               >
                 ⚡ Đặt ngay
-              </Button>
+              </Button> */}
             </div>
 
             {/* Filter Buttons Row */}
@@ -922,8 +972,24 @@ export function SitesListSection({
                       const calculated = hasSelectedDates
                         ? calculateSiteSubtotal(site, dateRange.from!, dateRange.to!)
                         : null;
-                      const totalPrice = calculated ? calculated.subtotal : site.pricing.basePrice * nights;
-                      const averagePricePerNight = hasSelectedDates ? totalPrice / nights : site.pricing.basePrice;
+
+                      // Check if today falls in a seasonal period when no dates are selected
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      const activeSeason = !hasSelectedDates && site.pricing.seasonalPricing?.find((season: any) => {
+                        const start = new Date(season.startDate);
+                        start.setHours(0, 0, 0, 0);
+                        const end = new Date(season.endDate);
+                        end.setHours(0, 0, 0, 0);
+                        return today >= start && today <= end;
+                      });
+                      const dayOfWeek = today.getDay();
+                      const isTodayWeekendDay = dayOfWeek === 5 || dayOfWeek === 6;
+                      const hasWeekendPrice = site.pricing.weekendPrice && site.pricing.weekendPrice !== site.pricing.basePrice;
+                      const defaultPrice = activeSeason ? activeSeason.price : (isTodayWeekendDay && hasWeekendPrice) ? site.pricing.weekendPrice! : site.pricing.basePrice;
+
+                      const totalPrice = calculated ? calculated.subtotal : defaultPrice * nights;
+                      const averagePricePerNight = hasSelectedDates ? totalPrice / nights : defaultPrice;
 
                       return (
                         <Card
@@ -946,7 +1012,7 @@ export function SitesListSection({
 
                             {/* Site Info - Max height matches image */}
                             <div
-                              className="flex flex-1 flex-col justify-between overflow-hidden"
+                              className="flex flex-1 flex-col justify-between overflow-hidden py-3 pr-4"
                               style={{ maxHeight: '248px' }}
                             >
                               <div>
@@ -958,12 +1024,17 @@ export function SitesListSection({
                                         {site.name}
                                       </h4>
                                       {site.siteClass === 'vip' ? (
-                                        <Badge className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-semibold text-sx uppercase shadow-sm">
+                                        <Badge className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-semibold text-[10px] uppercase shadow-sm shrink-0 whitespace-nowrap">
                                           VIP
                                         </Badge>
                                       ) : (
-                                        <Badge variant="outline" className="text-sx text-gray-600 bg-gray-100 dark:bg-slate-800">
+                                        <Badge variant="outline" className="text-[10px] text-gray-600 bg-gray-100 dark:bg-slate-800 shrink-0 whitespace-nowrap">
                                           Cơ bản
+                                        </Badge>
+                                      )}
+                                      {site.capacity.maxConcurrentBookings > 1 && (
+                                        <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold shrink-0 whitespace-nowrap dark:bg-emerald-950/30 dark:text-emerald-450 dark:border-emerald-900/50">
+                                          Còn {site.capacity.maxConcurrentBookings} {getSiteUnit(site.accommodationType)}
                                         </Badge>
                                       )}
                                       {/* {site.bookingSettings.instantBook && (
@@ -1035,10 +1106,12 @@ export function SitesListSection({
                                           return (
                                             <span
                                               key={idx}
-                                              className="flex items-center gap-1.5 truncate"
+                                              className="flex items-center gap-2.5 truncate py-0.5"
                                             >
-                                              {icon}
-                                              <span className="truncate">
+                                              <span className="flex h-4 w-4 shrink-0 items-center justify-center text-black dark:text-white">
+                                                {icon}
+                                              </span>
+                                              <span className="truncate text-slate-700 dark:text-slate-350">
                                                 {amenityName}
                                               </span>
                                             </span>
@@ -1050,74 +1123,62 @@ export function SitesListSection({
 
                               {/* Price & CTA */}
                               <div className="flex items-end justify-between">
-                                <div>
-                                  <div className="flex flex-col">
-                                    <p className="text-md font-bold">
-                                      {averagePricePerNight.toLocaleString()} VND
-                                      <span className="text-sm font-normal text-gray-600"> / đêm</span>
+                                <div className="flex flex-col">
+                                  <div className="flex items-baseline gap-1">
+                                    <p className="text-lg font-bold">
+                                      {averagePricePerNight.toLocaleString()}{' '}
+                                      <span className="text-sm font-normal">₫</span>
                                     </p>
-                                    {hasSelectedDates ? (
-                                      <div className="flex flex-col gap-1 mt-1">
-                                        <p className="text-xs text-gray-500 font-semibold">
-                                          Tổng cộng: {totalPrice.toLocaleString()} ₫
-                                        </p>
-                                        {(calculated?.hasSeasonalPrice ||
-                                          calculated?.hasWeekendPrice ||
-                                          calculated?.hasLongStayDiscount) && (
-                                          <div className="flex flex-wrap gap-1 mt-0.5">
-                                            {calculated.hasSeasonalPrice && (
-                                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-850 bg-amber-50 border border-amber-200/60 rounded px-1.5 py-0.5 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50">
-                                                <Flame className="w-2.5 h-2.5 text-amber-600" />
-                                                Giá mùa vụ
-                                              </span>
-                                            )}
-                                            {calculated.hasWeekendPrice && (
-                                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/60 rounded px-1.5 py-0.5 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/50">
-                                                <CalendarIcon className="w-2.5 h-2.5 text-emerald-600" />
-                                                Giá cuối tuần
-                                              </span>
-                                            )}
-                                            {calculated.hasLongStayDiscount && (
-                                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-800 bg-indigo-50 border border-indigo-200/60 rounded px-1.5 py-0.5 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900/50">
-                                                ✨ Giảm dài ngày (-{calculated.discountPercent}%)
-                                              </span>
-                                            )}
-                                          </div>
-                                        )}
-                                      </div>
-                                    ) : (
-                                      <div className="flex flex-wrap gap-1.5 mt-1">
-                                        {site.pricing.weekendPrice && site.pricing.weekendPrice !== site.pricing.basePrice && (
-                                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200/60 rounded-md px-2 py-0.5 shadow-sm dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/50">
-                                            <CalendarIcon className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                                            Cuối tuần: {site.pricing.weekendPrice.toLocaleString()} VND
+                                    <span className="text-sm text-gray-500">
+                                      / đêm
+                                      {!hasSelectedDates && activeSeason && (
+                                        <span className="text-sm font-normal text-amber-600 dark:text-amber-400 ml-1">
+                                          {' '}(Giá  {activeSeason.name})
+                                        </span>
+                                      )}
+                                      {!hasSelectedDates && hasWeekendPrice && !activeSeason && (
+                                        <span className="text-sm font-normal text-emerald-600 dark:text-emerald-455 ml-1">
+                                          {' '}(Cuối tuần: {site.pricing.weekendPrice?.toLocaleString()} ₫)
+                                        </span>
+                                      )}
+                                    </span>
+                                  </div>
+                                  {hasSelectedDates &&
+                                    (calculated?.hasSeasonalPrice ||
+                                      calculated?.hasWeekendPrice ||
+                                      calculated?.hasLongStayDiscount) && (
+                                      <div className="flex flex-wrap gap-1 mt-1.5">
+                                        {calculated.hasSeasonalPrice && (
+                                          <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-amber-850 bg-amber-50 border border-amber-200/60 rounded px-1 py-0.2 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50">
+                                            <Flame className="w-2.5 h-2.5 text-black dark:text-white animate-pulse" />
+                                            Mùa vụ
                                           </span>
                                         )}
-                                        {site.pricing.seasonalPricing && site.pricing.seasonalPricing.length > 0 && (
-                                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-850 bg-amber-50 border border-amber-200/60 rounded-md px-2 py-0.5 shadow-sm dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50">
-                                            <Flame className="w-3 h-3 text-amber-600 dark:text-amber-450" />
-                                            Lễ, Tết: Có giá riêng
+                                        {calculated.hasWeekendPrice && !calculated.hasSeasonalPrice && (
+                                          <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/60 rounded px-1 py-0.2 dark:bg-emerald-950/30 dark:text-emerald-455 dark:border-emerald-900/50">
+                                            <CalendarIcon className="w-2.5 h-2.5 text-black dark:text-white" />
+                                            Cuối tuần
+                                          </span>
+                                        )}
+                                        {calculated.hasLongStayDiscount && (
+                                          <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-indigo-800 bg-indigo-50 border border-indigo-200/60 rounded px-1 py-0.2 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900/50">
+                                            ✨ -{calculated.discountPercent}%
                                           </span>
                                         )}
                                       </div>
                                     )}
-                                  </div>
-
-                                  {site.capacity.maxConcurrentBookings > 1 && (
-                                    <div className="mt-1 flex items-center gap-2">
-                                      <div className="flex items-center gap-1">
-                                        <div className="h-2 w-2 animate-pulse rounded-full bg-green-500" />
-                                        <span className="text-xs font-medium text-green-700">
-                                          {site.capacity.maxConcurrentBookings}{' '}
-                                          vị trí có sẵn
-                                        </span>
-                                      </div>
+                                  {/* {!hasSelectedDates && site.pricing.seasonalPricing && site.pricing.seasonalPricing.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1.5">
+                                      <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-amber-850 bg-amber-50 border border-amber-200/60 rounded px-1 py-0.2 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50">
+                                        <Flame className="w-2.5 h-2.5 text-black dark:text-white animate-pulse" />
+                                        Lễ, Tết: Có giá riêng
+                                      </span>
                                     </div>
-                                  )}
+                                  )} */}
                                 </div>
                                 <Button
                                   size="lg"
-                                  className="hover:bg-primary/90 m-2 px-8"
+                                  className="hover:bg-primary/90 px-8"
                                   asChild={hasSelectedDates}
                                   onClick={handleBookNowClick}
                                 >
@@ -1245,8 +1306,25 @@ export function SitesListSection({
                         const calculated = hasSelectedDates
                           ? calculateSiteSubtotal(site, dateRange.from!, dateRange.to!)
                           : null;
-                        const totalPrice = calculated ? calculated.subtotal : site.pricing.basePrice * nights;
-                        const averagePricePerNight = hasSelectedDates ? totalPrice / nights : site.pricing.basePrice;
+
+                        // Check if today falls in a seasonal period when no dates are selected
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const activeSeason = !hasSelectedDates && site.pricing.seasonalPricing?.find((season: any) => {
+                          const start = new Date(season.startDate);
+                          start.setHours(0, 0, 0, 0);
+                          const end = new Date(season.endDate);
+                          end.setHours(0, 0, 0, 0);
+                          return today >= start && today <= end;
+                        });
+                        const dayOfWeek = today.getDay();
+                        const isTodayWeekendDay = dayOfWeek === 5 || dayOfWeek === 6;
+                        const hasWeekendPrice = site.pricing.weekendPrice && site.pricing.weekendPrice !== site.pricing.basePrice;
+                        const defaultPrice = activeSeason ? activeSeason.price : (isTodayWeekendDay && hasWeekendPrice) ? site.pricing.weekendPrice! : site.pricing.basePrice;
+
+                        const totalPrice = calculated ? calculated.subtotal : defaultPrice * nights;
+                        const averagePricePerNight = hasSelectedDates ? totalPrice / nights : defaultPrice;
+
                         return (
                           <div
                             key={site._id}
@@ -1278,11 +1356,11 @@ export function SitesListSection({
                                     {site.name}
                                   </h4>
                                   {site.siteClass === 'vip' ? (
-                                    <Badge className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-semibold text-[10px] uppercase shadow-sm">
+                                    <Badge className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-semibold text-[10px] uppercase shadow-sm shrink-0 whitespace-nowrap">
                                       VIP
                                     </Badge>
                                   ) : (
-                                    <Badge variant="secondary" className="text-[10px] text-gray-500 bg-gray-100 dark:bg-slate-800">
+                                    <Badge variant="secondary" className="text-[10px] text-gray-500 bg-gray-100 dark:bg-slate-800 shrink-0 whitespace-nowrap">
                                       Cơ bản
                                     </Badge>
                                   )}
@@ -1308,63 +1386,59 @@ export function SitesListSection({
                                     site.capacity.maxVehicles > 0 &&
                                     ` · Xe dưới ${site.capacity.rvMaxLength || 35} ft`}
                                 </p>
-                                <div className="flex items-end justify-between">
-                                  <div>
-                                    <div className="flex flex-col">
-                                      <div className="flex items-baseline gap-1">
-                                        <p className="text-lg font-bold">
-                                          {averagePricePerNight.toLocaleString()}{' '}
-                                        </p>
-                                        <span className="text-sm text-gray-500">
-                                          / đêm
-                                        </span>
-                                      </div>
-                                      {hasSelectedDates ? (
-                                        <div className="flex flex-col gap-1 mt-1">
-                                          <p className="text-xs text-gray-500 font-semibold">
-                                            {totalPrice.toLocaleString()} ₫ tổng
-                                          </p>
-                                          {(calculated?.hasSeasonalPrice ||
-                                            calculated?.hasWeekendPrice ||
-                                            calculated?.hasLongStayDiscount) && (
-                                            <div className="flex flex-wrap gap-1 mt-0.5">
-                                              {calculated.hasSeasonalPrice && (
-                                                <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-amber-850 bg-amber-50 border border-amber-200/60 rounded px-1 py-0.2 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50">
-                                                  <Flame className="w-2.5 h-2.5 text-amber-600 animate-pulse" />
-                                                  Mùa vụ
-                                                </span>
-                                              )}
-                                              {calculated.hasWeekendPrice && (
-                                                <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/60 rounded px-1 py-0.2 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/50">
-                                                  <CalendarIcon className="w-2.5 h-2.5 text-emerald-600" />
-                                                  Cuối tuần
-                                                </span>
-                                              )}
-                                              {calculated.hasLongStayDiscount && (
-                                                <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-indigo-800 bg-indigo-50 border border-indigo-200/60 rounded px-1 py-0.2 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900/50">
-                                                  ✨ -{calculated.discountPercent}%
-                                                </span>
-                                              )}
-                                            </div>
-                                          )}
-                                        </div>
-                                      ) : (
-                                        <div className="flex flex-col gap-1.5 mt-1">
-                                          {site.pricing.weekendPrice && site.pricing.weekendPrice !== site.pricing.basePrice && (
-                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200/60 rounded px-1.5 py-0.5 w-fit shadow-xs dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/50">
-                                              <CalendarIcon className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
-                                              Cuối tuần: {site.pricing.weekendPrice.toLocaleString()} ₫
+                                <div className="flex items-end justify-between mt-4">
+                                  <div className="flex flex-col">
+                                    <div className="flex items-baseline gap-1">
+                                      <p className="text-lg font-bold">
+                                        {averagePricePerNight.toLocaleString()}{' '}
+                                        <span className="text-sm font-normal">₫</span>
+                                      </p>
+                                      <span className="text-sm text-gray-500">
+                                        / đêm
+                                        {!hasSelectedDates && activeSeason && (
+                                          <span className="text-xs font-normal text-amber-600 dark:text-amber-400 ml-1">
+                                            {' '}(giá {activeSeason.name})
+                                          </span>
+                                        )}
+                                        {!hasSelectedDates && hasWeekendPrice && !activeSeason && (
+                                          <span className="text-xs font-normal text-emerald-600 dark:text-emerald-455 ml-1">
+                                            {' '}(Cuối tuần: {site.pricing.weekendPrice?.toLocaleString()} ₫)
+                                          </span>
+                                        )}
+                                      </span>
+                                    </div>
+                                    {hasSelectedDates &&
+                                      (calculated?.hasSeasonalPrice ||
+                                        calculated?.hasWeekendPrice ||
+                                        calculated?.hasLongStayDiscount) && (
+                                        <div className="flex flex-wrap gap-1 mt-1.5">
+                                          {calculated.hasSeasonalPrice && (
+                                            <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-amber-850 bg-amber-50 border border-amber-200/60 rounded px-1 py-0.2 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50">
+                                              <Flame className="w-2.5 h-2.5 text-black dark:text-white animate-pulse" />
+                                              Mùa vụ
                                             </span>
                                           )}
-                                          {site.pricing.seasonalPricing && site.pricing.seasonalPricing.length > 0 && (
-                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-850 bg-amber-50 border border-amber-200/60 rounded px-1.5 py-0.5 w-fit shadow-xs dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50">
-                                              <Flame className="w-2.5 h-2.5 text-amber-600 dark:text-amber-450" />
-                                              Lễ, Tết: Có giá riêng
+                                          {calculated.hasWeekendPrice && !calculated.hasSeasonalPrice && (
+                                            <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/60 rounded px-1 py-0.2 dark:bg-emerald-950/30 dark:text-emerald-455 dark:border-emerald-900/50">
+                                              <CalendarIcon className="w-2.5 h-2.5 text-black dark:text-white" />
+                                              Cuối tuần
+                                            </span>
+                                          )}
+                                          {calculated.hasLongStayDiscount && (
+                                            <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-indigo-800 bg-indigo-50 border border-indigo-200/60 rounded px-1 py-0.2 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900/50">
+                                              ✨ -{calculated.discountPercent}%
                                             </span>
                                           )}
                                         </div>
                                       )}
-                                    </div>
+                                    {!hasSelectedDates && site.pricing.seasonalPricing && site.pricing.seasonalPricing.length > 0 && (
+                                      <div className="flex flex-wrap gap-1 mt-1.5">
+                                        <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-amber-850 bg-amber-50 border border-amber-200/60 rounded px-1 py-0.2 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50">
+                                          <Flame className="w-2.5 h-2.5 text-black dark:text-white animate-pulse" />
+                                          Lễ, Tết: Có giá riêng
+                                        </span>
+                                      </div>
+                                    )}
                                   </div>
                                   {isBlocked &&
                                     booking.dateRange?.from &&

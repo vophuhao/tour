@@ -9,6 +9,8 @@ let ioInstance: Server | null = null;
 const isDev = NODE_ENV === "development";
 const socketLog = (msg: string) => { if (isDev) console.log(msg); };
 
+const onlineUsers = new Set<string>();
+
 export function initializeSocket(httpServer: HttpServer) {
   const io = new Server(httpServer, {
     cors: {
@@ -35,9 +37,26 @@ export function initializeSocket(httpServer: HttpServer) {
     const uid = socket.userId ?? "anonymous";
     socketLog(`[SOCKET] ✅ connected: socket=${socket.id} user=${uid} role=${socket.userRole || "?"} total=${connectionCount}`);
 
+    // Track online user
+    if (socket.userId) {
+      onlineUsers.add(socket.userId);
+      io.emit("user_status_changed", { userId: socket.userId, status: "online" });
+    }
+
     // ✅ Join personal room
     socket.join(`user:${uid}`);
     socketLog(`[SOCKET] 🚪 user:${uid} joined personal room`);
+
+    // ✅ CHECK ONLINE STATUS
+    socket.on("check_online_status", (targetUserId: string, callback?: Function) => {
+      const isOnline = onlineUsers.has(targetUserId);
+      if (callback) callback({ success: true, online: isOnline });
+    });
+
+    // ✅ GET ONLINE USERS LIST
+    socket.on("get_online_users", (callback?: Function) => {
+      if (callback) callback(Array.from(onlineUsers));
+    });
 
     // ✅ JOIN USER ROOM - for direct messages
     socket.on("join_user_room", (userId: string, callback?: Function) => {
@@ -102,6 +121,17 @@ export function initializeSocket(httpServer: HttpServer) {
     socket.on("disconnect", (reason) => {
       connectionCount--;
       socketLog(`[SOCKET] ❌ disconnected: socket=${socket.id} user=${uid} reason=${reason} total=${connectionCount}`);
+
+      if (socket.userId) {
+        // Check if there are other sockets for the same userId
+        const stillConnected = Array.from(io.sockets.sockets.values()).some(
+          (s: any) => s.userId === socket.userId && s.id !== socket.id
+        );
+        if (!stillConnected) {
+          onlineUsers.delete(socket.userId);
+          io.emit("user_status_changed", { userId: socket.userId, status: "offline" });
+        }
+      }
     });
 
     socket.on("error", (err) => {

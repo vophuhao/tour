@@ -93,7 +93,7 @@ export function Chatbot() {
       {!isOpen && (
         <Button
           onClick={() => setIsOpen(true)}
-          className="fixed right-6 bottom-24 z-50 h-14 w-14 rounded-full bg-emerald-600 shadow-lg transition-all duration-300 hover:bg-emerald-700 hover:shadow-xl"
+          className="fixed right-6 bottom-24 z-50 h-14 w-14 rounded-full bg-primary shadow-lg transition-all duration-300 hover:bg-primary/90 hover:shadow-xl"
           size="icon"
         >
           <MessageCircle className="h-6 w-6 text-white" />
@@ -105,7 +105,7 @@ export function Chatbot() {
       {isOpen && (
         <div className="fixed right-6 bottom-6 z-50 flex h-[600px] w-[380px] flex-col rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-900">
           {/* Header */}
-          <div className="flex items-center justify-between rounded-t-2xl border-b border-gray-200 bg-emerald-600 p-4 dark:border-gray-800">
+          <div className="flex items-center justify-between rounded-t-2xl border-b border-gray-200 bg-primary p-4 dark:border-gray-800">
             <div className="flex items-center gap-3">
               <div className="relative">
                 <Avatar className="h-10 w-10 border-2 border-white">
@@ -113,7 +113,7 @@ export function Chatbot() {
                     src="/assets/icons/chatbot-avatar.svg"
                     alt="Bot"
                   />
-                  <AvatarFallback className="bg-emerald-700 text-white">
+                  <AvatarFallback className="bg-primary-dark text-white">
                     <Bot className="h-5 w-5" />
                   </AvatarFallback>
                 </Avatar>
@@ -123,14 +123,14 @@ export function Chatbot() {
                 <h3 className="text-sm font-semibold text-white">
                   Trợ lý Campo
                 </h3>
-                <p className="text-xs text-emerald-100">Luôn sẵn sàng hỗ trợ</p>
+                <p className="text-xs text-white/90">Luôn sẵn sàng hỗ trợ</p>
               </div>
             </div>
             <Button
               onClick={() => setIsOpen(false)}
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-white hover:bg-emerald-700"
+              className="h-8 w-8 text-white hover:bg-white/10"
             >
               <X className="h-4 w-4" />
             </Button>
@@ -148,7 +148,7 @@ export function Chatbot() {
                         src="/assets/icons/chatbot-avatar.svg"
                         alt="Bot"
                       />
-                      <AvatarFallback className="bg-emerald-100 text-emerald-600 dark:bg-emerald-900 dark:text-emerald-400">
+                      <AvatarFallback className="bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary">
                         <Bot className="h-4 w-4" />
                       </AvatarFallback>
                     </Avatar>
@@ -179,7 +179,7 @@ export function Chatbot() {
                           variant="outline"
                           size="sm"
                           onClick={() => handleQuickReply(reply.message)}
-                          className="justify-start text-left text-xs hover:border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950"
+                          className="justify-start text-left text-xs hover:border-primary/30 hover:bg-primary/5 dark:hover:bg-primary/10"
                           disabled={isLoading}
                         >
                           <span className="mr-2">{reply.icon}</span>
@@ -212,8 +212,8 @@ export function Chatbot() {
                     <AvatarFallback
                       className={cn(
                         message.role === 'user'
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900 dark:text-emerald-400',
+                          ? 'bg-primary text-white'
+                          : 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary',
                       )}
                     >
                       {message.role === 'user' ? (
@@ -229,7 +229,7 @@ export function Chatbot() {
                       className={cn(
                         'rounded-2xl px-4 py-3 text-sm',
                         message.role === 'user'
-                          ? 'rounded-tr-none bg-emerald-600 text-white'
+                          ? 'rounded-tr-none bg-primary text-white'
                           : 'rounded-tl-none bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
                       )}
                     >
@@ -333,12 +333,12 @@ export function Chatbot() {
               {isLoading && (
                 <div className="flex gap-3">
                   <Avatar className="h-8 w-8 shrink-0">
-                    <AvatarFallback className="bg-emerald-100 text-emerald-600 dark:bg-emerald-900 dark:text-emerald-400">
+                    <AvatarFallback className="bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary">
                       <Bot className="h-4 w-4" />
                     </AvatarFallback>
                   </Avatar>
                   <div className="rounded-2xl rounded-tl-none bg-gray-100 px-4 py-3 dark:bg-gray-800">
-                    <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
                   </div>
                 </div>
               )}
@@ -383,7 +383,7 @@ export function Chatbot() {
                 type="submit"
                 size="icon"
                 disabled={isLoading || !input.trim()}
-                className="h-11 w-11 shrink-0 bg-emerald-600 hover:bg-emerald-700"
+                className="h-11 w-11 shrink-0 bg-primary hover:bg-primary-dark"
               >
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />

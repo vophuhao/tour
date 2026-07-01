@@ -90,8 +90,8 @@ export function CompareButton({
       onClick={handleClick}
       className={cn(
         'rounded-full transition-all duration-200',
-        isCompared && 'bg-primary text-white hover:bg-primary/95',
         className,
+        isCompared && 'bg-primary text-primary-foreground hover:bg-primary/90',
       )}
     >
       <GitCompare

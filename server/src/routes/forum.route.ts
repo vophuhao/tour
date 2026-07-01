@@ -9,10 +9,14 @@ const forumRoutes = Router();
 const forumService = container.resolve<ForumService>(TOKENS.ForumService);
 const forumController = new ForumController(forumService);
 
-// Public routes
-forumRoutes.get("/", forumController.getPosts);
+// Specific routes (authenticated/public) first
 forumRoutes.get("/trending", forumController.getTrending);
 forumRoutes.get("/categories", forumController.getCategories);
+forumRoutes.get("/saved", authenticate, forumController.getSavedPosts);
+forumRoutes.get("/liked", authenticate, forumController.getLikedPosts);
+
+// General/Parameterized routes
+forumRoutes.get("/", forumController.getPosts);
 forumRoutes.get("/:id", forumController.getPost);
 forumRoutes.get("/:userId/posts", forumController.getUserPosts);
 
@@ -28,7 +32,5 @@ forumRoutes.put("/:id", authenticate, upload.fields([
 forumRoutes.delete("/:id", authenticate, forumController.deletePost);
 forumRoutes.post("/:id/like", authenticate, forumController.toggleLike);
 forumRoutes.post("/:id/save", authenticate, forumController.toggleSave);
-forumRoutes.get("/saved", authenticate, forumController.getSavedPosts);
-forumRoutes.get("/liked", authenticate, forumController.getLikedPosts);
 
 export default forumRoutes;

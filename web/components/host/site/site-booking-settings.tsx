@@ -130,7 +130,7 @@ export function SiteBookingSettings({ data, onChange }: SiteBookingSettingsProps
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="flex items-center justify-between border-b pb-4">
+            {/* <div className="flex items-center justify-between border-b pb-4">
               <div className="space-y-1">
                 <Label htmlFor="instantBook" className="text-base">
                   Đặt chỗ ngay lập tức
@@ -144,7 +144,7 @@ export function SiteBookingSettings({ data, onChange }: SiteBookingSettingsProps
                 checked={settings.instantBook}
                 onCheckedChange={(checked) => updateField("instantBook", checked)}
               />
-            </div>
+            </div> */}
 
             <div className="flex items-center justify-between">
               <div className="space-y-1">

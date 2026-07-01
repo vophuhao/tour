@@ -75,9 +75,35 @@ export default function RoadtripPlannerPage() {
   const [destSuggestions, setDestSuggestions] = useState<PlaceSuggestion[]>([]);
   const [showDestSuggestions, setShowDestSuggestions] = useState(false);
 
-  const [days, setDays] = useState(3);
-  const [campingStyle, setCampingStyle] = useState('all');
-  const [spotType, setSpotType] = useState('all');
+  const [startDate, setStartDate] = useState<string>(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState<string>(() => {
+    const defaultEnd = new Date();
+    defaultEnd.setDate(defaultEnd.getDate() + 2); // default 3 days
+    return defaultEnd.toISOString().split('T')[0];
+  });
+
+  const calculateDays = useCallback(() => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const timeDiff = end.getTime() - start.getTime();
+    if (isNaN(timeDiff)) return 3;
+    const dayCount = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+    return dayCount > 0 ? dayCount : 1;
+  }, [startDate, endDate]);
+
+  const days = calculateDays();
+
+  const handleStartDateChange = (val: string) => {
+    setStartDate(val);
+    if (new Date(val) > new Date(endDate)) {
+      setEndDate(val);
+    }
+  };
+
+  const [vehicleType, setVehicleType] = useState<'car' | 'motorcycle'>('car');
   const [loading, setLoading] = useState(false);
   const [itinerary, setItinerary] = useState<StopItinerary[]>([]);
   const [routeInfo, setRouteInfo] = useState<{ totalDistance: number; totalDuration: number } | null>(null);
@@ -148,6 +174,7 @@ export default function RoadtripPlannerPage() {
 
     setLoading(true);
     try {
+      // 1. Lấy tuyến đường sơ bộ từ điểm đi đến điểm đến để thu thập tọa độ corridor
       const directionsUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${originCoords[0]},${originCoords[1]};${destinationCoords[0]},${destinationCoords[1]}?geometries=geojson&access_token=${MAPBOX_TOKEN}`;
       const routeRes = await fetch(directionsUrl);
       const routeData = await routeRes.json();
@@ -160,159 +187,255 @@ export default function RoadtripPlannerPage() {
 
       const route = routeData.routes[0];
       const totalDistance = Math.round(route.distance / 1000);
-      const totalDuration = Math.round(route.duration / 3600);
-      setRouteInfo({ totalDistance, totalDuration });
-
+      let totalDuration = Math.round(route.duration / 3600);
+      if (vehicleType === 'motorcycle') {
+        totalDuration = Math.round(totalDistance / 40);
+      }
       const coordinates: [number, number][] = route.geometry.coordinates;
       const totalPoints = coordinates.length;
 
-      const stops: StopItinerary[] = [];
-      const segmentSize = Math.floor(totalPoints / days);
+      // Lấy mẫu 8 điểm phân bổ dọc theo tuyến đường để tìm kiếm campsite
+      const sampledPoints: [number, number][] = [];
+      const sampleRate = Math.floor(totalPoints / 8) || 1;
+      for (let i = 0; i < totalPoints; i += sampleRate) {
+        sampledPoints.push(coordinates[i]);
+      }
+      if (sampledPoints.length < 8) {
+        sampledPoints.push(destinationCoords);
+      }
 
-      const weatherOptions = ['Nắng nhẹ, thời tiết mát mẻ 🌤️', 'Nhiệt độ hạ dần về đêm, trời quang mây 🌌', 'Có sương mù sáng sớm, mát lạnh 🌫️', 'Không mưa, gió mát thuận lợi 🍃'];
-      const aiTipsList = [
-        'AI khuyên bạn: Chặng đường đi bắt đầu leo dốc, hãy kiểm tra kỹ áp suất lốp trước khi khởi hành.',
-        'AI khuyên bạn: Nên cắm trại trước 17:00 chiều để chuẩn bị củi đốt và tránh sương mù bao phủ thung lũng.',
-        'AI khuyên bạn: Khu vực này có view bình minh rất đẹp, hãy dựng lều quay về hướng Đông để đón tia nắng đầu ngày.',
-        'AI khuyên bạn: Chặng lái xe hôm nay kéo dài qua rừng thông, hãy chuẩn bị bình giữ nhiệt ấm và đồ ăn nhẹ.'
-      ];
+      // 2. Tìm kiếm các campsite có phí dọc hành lang 40km
+      let candidates: any[] = [];
+      try {
+        const searchRes = await API.post('/properties/route-search', {
+          points: sampledPoints,
+          radius: 40,
+          limit: 15,
+          sortBy: 'rating'
+        });
+
+        if (searchRes.data && Array.isArray(searchRes.data)) {
+          candidates = searchRes.data.map((p: any) => ({
+            _id: p._id,
+            name: p.name,
+            slug: p.slug,
+            propertyType: p.propertyType || 'campsite',
+            location: p.location,
+            price: p.pricing?.basePrice || p.minPrice || 500000,
+            rating: (p.rating && typeof p.rating === 'object' && typeof p.rating.average === 'number')
+              ? p.rating.average
+              : (p.stats?.averageRating || 4.8),
+            reviewCount: p.stats?.totalReviews || 12
+          }));
+        }
+      } catch (searchErr) {
+        console.error('Error fetching properties along corridor:', searchErr);
+      }
+
+      // 3. Tìm kiếm các điểm cắm tự do (free spots) dọc tuyến đường
+      try {
+        const midIndex = Math.floor(totalPoints / 2);
+        const midCoords = coordinates[midIndex];
+        const freeRes = await API.get('/free-spots/nearby', {
+          params: {
+            lat: midCoords[1],
+            lng: midCoords[0],
+            radius: 60
+          }
+        });
+        const freeSpotsData = freeRes.data ?? freeRes;
+        if (Array.isArray(freeSpotsData)) {
+          const freeCandidates = freeSpotsData.map((s: any) => ({
+            _id: s._id,
+            name: s.title,
+            slug: s.slug,
+            propertyType: 'free_spot',
+            location: {
+              address: s.address,
+              city: s.city,
+              state: s.province || '',
+              coordinates: s.location?.coordinates ? [
+                s.location.coordinates[0],
+                s.location.coordinates[1]
+              ] : undefined
+            },
+            price: 0,
+            rating: 4.5,
+            reviewCount: s.commentCount || 0
+          }));
+          candidates = [...candidates, ...freeCandidates];
+        }
+      } catch (freeErr) {
+        console.error('Error fetching free spots along corridor:', freeErr);
+      }
+
+      // Đảm bảo có ít nhất vài điểm dừng giả lập nếu db trống để tránh lỗi AI
+      if (candidates.length === 0) {
+        candidates = sampledPoints.slice(1, -1).map((pt, idx) => ({
+          _id: `mock_camp_${idx}`,
+          name: `Trạm hạ trại ven đường chặng ${idx + 1}`,
+          slug: `mock-camp-${idx}`,
+          propertyType: "free_spot",
+          location: { address: `Dọc hành trình`, coordinates: pt },
+          price: 0,
+          rating: Number((4.5 + (idx * 0.1) % 0.4).toFixed(1)),
+          reviewCount: 3 + idx
+        }));
+      }
+
+      // 4. Gửi các campsite ứng viên lên AI để lựa chọn chặng dừng chân qua đêm
+      let suggestions: any[] = [];
+      try {
+        const aiRes: any = await API.post('/ai/roadtrip-suggestions', {
+          origin,
+          destination,
+          days,
+          vehicleType,
+          candidates
+        });
+
+        if (aiRes && aiRes.success && Array.isArray(aiRes.suggestions)) {
+          suggestions = aiRes.suggestions;
+        }
+      } catch (aiErr) {
+        console.error('Lỗi gọi Gemini AI roadtrip suggestions:', aiErr);
+      }
+
+      // Tạo fallback nếu AI lỗi
+      if (suggestions.length === 0) {
+        for (let d = 1; d <= days - 1; d++) {
+          const cand = candidates[(d - 1) % candidates.length];
+          suggestions.push({
+            dayNumber: d,
+            selectedCampsiteId: cand._id,
+            weather: "Nắng nhẹ, trời mát mẻ 🌤️ (22°C - 28°C)",
+            aiTip: `AI khuyên bạn: Hãy nghỉ đêm thứ ${d} tại ${cand.name}. Đây là địa điểm cắm trại đẹp nhất được tìm thấy dọc hành trình.`
+          });
+        }
+      }
+
+      // 5. Xây dựng danh sách các chặng dừng chân (Stops) và chuỗi tọa độ liên tuyến
+      const stopsList: StopItinerary[] = [];
+      const coordChain: [number, number][] = [originCoords];
 
       for (let d = 1; d <= days; d++) {
-        let toName = '';
+        let fromName = "";
+        let toName = "";
         let stopCoords: [number, number];
+        let campsites: Campsite[] = [];
+        let weather = "";
+        let aiTip = "";
 
-        if (d === days) {
+        if (d < days) {
+          // Ngày đi và dừng nghỉ chân tại campsite
+          const sug = suggestions.find(s => s.dayNumber === d);
+          const campsiteId = sug?.selectedCampsiteId;
+          let matchedCamp = candidates.find(c => c._id === campsiteId);
+          if (!matchedCamp) {
+            matchedCamp = candidates[(d - 1) % candidates.length];
+          }
+
+          let stopCoordsForLeg: [number, number] = [105, 21];
+          const loc = matchedCamp.location;
+          if (loc) {
+            if (loc.coordinates) {
+              if (Array.isArray(loc.coordinates)) {
+                stopCoordsForLeg = [loc.coordinates[0], loc.coordinates[1]];
+              } else if (loc.coordinates.coordinates && Array.isArray(loc.coordinates.coordinates)) {
+                stopCoordsForLeg = [loc.coordinates.coordinates[0], loc.coordinates.coordinates[1]];
+              } else if (loc.coordinates.lng !== undefined && loc.coordinates.lat !== undefined) {
+                stopCoordsForLeg = [loc.coordinates.lng, loc.coordinates.lat];
+              }
+            } else if (loc.lng !== undefined && loc.lat !== undefined) {
+              stopCoordsForLeg = [loc.lng, loc.lat];
+            }
+          }
+          stopCoords = stopCoordsForLeg;
+
+          fromName = d === 1 ? origin.split(',')[0] : stopsList[d - 2].toName;
+          toName = matchedCamp.name;
+          campsites = [{
+            _id: matchedCamp._id,
+            name: matchedCamp.name,
+            slug: matchedCamp.slug,
+            propertyType: matchedCamp.propertyType,
+            location: matchedCamp.location,
+            pricing: { basePrice: matchedCamp.price },
+            rating: matchedCamp.rating,
+            reviewCount: matchedCamp.reviewCount
+          }];
+          weather = sug?.weather || "Thời tiết tốt 🌤️";
+          aiTip = sug?.aiTip || `Hãy chuẩn bị cắm trại tối nay tại ${matchedCamp.name}.`;
+        } else {
+          // Ngày cuối: Đi từ campsite cuối cùng về điểm đích
+          fromName = stopsList[d - 2].toName;
           toName = destination.split(',')[0];
           stopCoords = destinationCoords;
-        } else {
-          const index = d * segmentSize;
-          stopCoords = coordinates[index];
-          try {
-            const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${stopCoords[0]},${stopCoords[1]}.json?access_token=${MAPBOX_TOKEN}&types=place,locality`;
-            const geoRes = await fetch(geocodeUrl);
-            const geoData = await geoRes.json();
-            toName = geoData.features?.[0]?.text || `Trạm dừng chân ${d}`;
-          } catch {
-            toName = `Trạm dừng chân ${d}`;
-          }
-        }
-
-        const fromName = d === 1 ? origin.split(',')[0] : stops[d - 2].toName;
-        const distanceKm = Math.round(totalDistance / days);
-        const durationHrs = Number((totalDuration / days).toFixed(1));
-
-        let campsites: Campsite[] = [];
-        let paidCampsites: Campsite[] = [];
-        let freeCampsites: Campsite[] = [];
-
-        // 1. Fetch paid spots if spotType is 'all' or 'paid'
-        if (spotType === 'all' || spotType === 'paid') {
-          try {
-            const searchRes = await API.post('/properties/route-search', {
-              points: [stopCoords],
-              radius: 40,
-              campingStyle: campingStyle !== 'all' ? [campingStyle] : undefined,
-              limit: 3,
-              sortBy: 'rating'
-            });
-
-            if (searchRes.data && Array.isArray(searchRes.data)) {
-              paidCampsites = searchRes.data.map((p: any) => ({
-                _id: p._id,
-                name: p.name,
-                slug: p.slug,
-                propertyType: p.propertyType,
-                location: p.location,
-                pricing: p.pricing || { basePrice: p.minPrice || 500000 },
-                images: p.images || (p.photos ? p.photos.map((ph: any) => ph.url) : []),
-                rating: (p.rating && typeof p.rating === 'object' && typeof p.rating.average === 'number')
-                  ? p.rating.average
-                  : (typeof p.rating === 'number'
-                    ? p.rating
-                    : (p.stats?.averageRating || 4.8)),
-                reviewCount: (p.rating && typeof p.rating === 'object' && typeof p.rating.count === 'number')
-                  ? p.rating.count
-                  : (typeof p.stats?.totalReviews === 'number'
-                    ? p.stats.totalReviews
-                    : 12),
-                stats: p.stats
-              }));
-            }
-          } catch (searchErr) {
-            console.error(`Error searching properties at stop ${d}:`, searchErr);
-          }
-        }
-
-        // 2. Fetch free spots if spotType is 'all' or 'free'
-        if (spotType === 'all' || spotType === 'free') {
-          try {
-            const freeRes = await API.get('/free-spots/nearby', {
-              params: {
-                lat: stopCoords[1],
-                lng: stopCoords[0],
-                radius: 40 // 40km radius
-              }
-            });
-
-            const freeSpotsData = freeRes.data ?? freeRes;
-            if (Array.isArray(freeSpotsData)) {
-              freeCampsites = freeSpotsData.map((s: any) => ({
-                _id: s._id,
-                name: s.title,
-                slug: s.slug,
-                propertyType: 'free_spot',
-                location: {
-                  address: s.address,
-                  city: s.city,
-                  state: s.province || '',
-                  coordinates: s.location?.coordinates ? {
-                    lat: s.location.coordinates[1],
-                    lng: s.location.coordinates[0]
-                  } : undefined
-                },
-                pricing: { basePrice: 0 },
-                images: s.images || [],
-                rating: s.likeCount > 0 ? Number((4.5 + Math.min(0.5, s.likeCount * 0.1)).toFixed(1)) : 4.5,
-                reviewCount: s.commentCount || 0,
-                stats: { totalSites: 1 }
-              }));
-            }
-          } catch (freeErr) {
-            console.error(`Error searching free spots at stop ${d}:`, freeErr);
-          }
-        }
-
-        // 3. Combine and limit results
-        if (spotType === 'paid') {
-          campsites = paidCampsites;
-        } else if (spotType === 'free') {
-          campsites = freeCampsites.slice(0, 3);
-        } else {
-          // 'all': Interleave results
           campsites = [];
-          const maxLen = Math.max(paidCampsites.length, freeCampsites.length);
-          for (let i = 0; i < maxLen; i++) {
-            if (i < freeCampsites.length) campsites.push(freeCampsites[i]);
-            if (i < paidCampsites.length) campsites.push(paidCampsites[i]);
-          }
-          campsites = campsites.slice(0, 3);
+          weather = "Thời tiết quang mây, gió mát 🍃";
+          aiTip = `AI chúc bạn: Có một hành trình kết thúc tuyệt vời tại điểm cuối ${toName}. Hãy kiểm tra lại đồ dùng trước khi ra về!`;
         }
 
-        stops.push({
+        coordChain.push(stopCoords);
+
+        stopsList.push({
           dayNumber: d,
           fromName,
           toName,
           stopCoords,
-          distanceKm,
-          durationHrs,
+          distanceKm: 0,
+          durationHrs: 0,
           campsites,
-          weather: weatherOptions[(d - 1) % weatherOptions.length],
-          aiTip: aiTipsList[(d - 1) % aiTipsList.length]
+          weather,
+          aiTip
         });
       }
 
-      setItinerary(stops);
-      toast.success('Đã lập lịch trình phượt thông minh thành công!');
+      // 6. Gọi Mapbox Directions để lấy lộ trình liên tuyến qua các campsite đã chọn
+      try {
+        const multiCoordsQuery = coordChain.map(c => `${c[0]},${c[1]}`).join(';');
+        const multiDirectionsUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${multiCoordsQuery}?geometries=geojson&access_token=${MAPBOX_TOKEN}`;
+        const multiRes = await fetch(multiDirectionsUrl);
+        const multiData = await multiRes.json();
+
+        if (multiData.routes && multiData.routes.length > 0) {
+          const multiRoute = multiData.routes[0];
+          const totalDistanceMulti = Math.round(multiRoute.distance / 1000);
+          let totalDurationMulti = Math.round(multiRoute.duration / 3600);
+          if (vehicleType === 'motorcycle') {
+            totalDurationMulti = Math.round(totalDistanceMulti / 40);
+          }
+          setRouteInfo({ totalDistance: totalDistanceMulti, totalDuration: totalDurationMulti });
+
+          // Cập nhật khoảng cách lái xe chi tiết cho từng ngày dựa trên các chặng (legs)
+          const legs = multiRoute.legs || [];
+          stopsList.forEach((s, idx) => {
+            const leg = legs[idx];
+            if (leg) {
+              s.distanceKm = Math.round(leg.distance / 1000);
+              if (vehicleType === 'motorcycle') {
+                s.durationHrs = Number((s.distanceKm / 40).toFixed(1));
+              } else {
+                s.durationHrs = Number((leg.duration / 3600).toFixed(1));
+              }
+            } else {
+              s.distanceKm = Math.round(totalDistanceMulti / days);
+              s.durationHrs = Number((s.distanceKm / (vehicleType === 'motorcycle' ? 40 : 60)).toFixed(1));
+            }
+          });
+        }
+      } catch (directionsErr) {
+        console.error('Error drawing multi-point route line:', directionsErr);
+        // Fallback: Chia đều nếu Mapbox API lỗi
+        stopsList.forEach((s) => {
+          s.distanceKm = Math.round(totalDistance / days);
+          s.durationHrs = Number((s.distanceKm / (vehicleType === 'motorcycle' ? 40 : 60)).toFixed(1));
+        });
+        setRouteInfo({ totalDistance, totalDuration });
+      }
+
+      setItinerary(stopsList);
+      toast.success('Đã lập lịch trình phượt cắm trại thông minh thành công!');
     } catch (err) {
       console.error(err);
       toast.error('Có lỗi xảy ra khi tạo kế hoạch đường đi');
@@ -411,53 +534,53 @@ export default function RoadtripPlannerPage() {
               )}
             </div>
 
-            {/* Select days */}
-            <div className="md:col-span-2">
-              <label className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-widest block mb-1.5">Số ngày đi</label>
-              <select
-                value={days}
-                onChange={(e) => setDays(Number(e.target.value))}
-                className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
-              >
-                <option value={2}>2 ngày 1 đêm</option>
-                <option value={3}>3 ngày 2 đêm</option>
-                <option value={4}>4 ngày 3 đêm</option>
-                <option value={5}>5 ngày 4 đêm</option>
-              </select>
+            {/* Start Date */}
+            <div className="md:col-span-3 relative">
+              <label className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-widest block mb-1.5">Ngày khởi hành</label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  type="date"
+                  value={startDate}
+                  min={new Date().toISOString().split('T')[0]}
+                  onChange={(e) => handleStartDateChange(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-primary/20 text-slate-800 dark:text-slate-100 cursor-pointer"
+                  required
+                />
+              </div>
             </div>
 
-            {/* Camping Style filter */}
-            <div className="md:col-span-2">
-              <label className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-widest block mb-1.5">Loại hình lều</label>
-              <select
-                value={campingStyle}
-                onChange={(e) => setCampingStyle(e.target.value)}
-                className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
-              >
-                <option value="all">Tất cả lều</option>
-                <option value="tent">Lều cắm trại (Tent)</option>
-                <option value="glamping">Lều Glamping sang xịn</option>
-                <option value="cabin">Nhà gỗ Cabin ấm cúng</option>
-                <option value="rv">Khu cắm trại RV</option>
-              </select>
+            {/* End Date */}
+            <div className="md:col-span-3 relative">
+              <label className="text-[10px] font-bold text-slate-455 dark:text-slate-500 uppercase tracking-widest block mb-1.5">Ngày kết thúc</label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  type="date"
+                  value={endDate}
+                  min={startDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-primary/20 text-slate-800 dark:text-slate-100 cursor-pointer"
+                  required
+                />
+              </div>
             </div>
 
-            {/* Spot Type filter */}
-            <div className="md:col-span-2">
-              <label className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-widest block mb-1.5">Loại địa điểm</label>
+            {/* Vehicle Type select */}
+            <div className="md:col-span-6">
+              <label className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-widest block mb-1.5">Phương tiện di chuyển</label>
               <select
-                value={spotType}
-                onChange={(e) => setSpotType(e.target.value)}
-                className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+                value={vehicleType}
+                onChange={(e) => setVehicleType(e.target.value as 'car' | 'motorcycle')}
+                className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer font-bold"
               >
-                <option value="all">Tất cả điểm cắm</option>
-                <option value="paid">GoCamping (Có phí)</option>
-                <option value="free">Tự do (Miễn phí)</option>
+                <option value="car">🚙 Ô tô (Tốc độ ~60 km/h, được đi cao tốc)</option>
+                <option value="motorcycle">🏍️ Xe máy (Tốc độ ~40 km/h, không đi cao tốc)</option>
               </select>
             </div>
 
             {/* Action Submit Button */}
-            <div className="md:col-span-12 mt-2">
+            <div className="md:col-span-6">
               <button
                 type="submit"
                 disabled={loading}
@@ -466,7 +589,7 @@ export default function RoadtripPlannerPage() {
                 {loading ? (
                   <>
                     <Loader2 className="h-4.5 w-4.5 animate-spin" />
-                    Đang thiết lập tuyến đường lái xe và quét campsite...
+                    Đang quét chặng nghỉ chân...
                   </>
                 ) : (
                   <>
@@ -515,7 +638,11 @@ export default function RoadtripPlannerPage() {
                       Ngày {stop.dayNumber}: {stop.fromName} <ArrowRight className="h-3.5 w-3.5 text-slate-400" /> {stop.toName}
                     </h3>
                     <div className="flex flex-wrap items-center gap-3 text-[10px] font-semibold text-slate-500 mt-1 block">
-                      <span className="flex items-center gap-1"><Car className="h-3.5 w-3.5" /> Chặng lái xe: {stop.distanceKm} km (~{stop.durationHrs} giờ)</span>
+                      <span className="flex items-center gap-1">
+                        <Car className="h-3.5 w-3.5" />
+                        Chặng di chuyển: {stop.distanceKm} km (~{stop.durationHrs} giờ)
+                        {stop.distanceKm > 0 && ` | Tốc độ TB: ${stop.durationHrs > 0 ? Math.round(stop.distanceKm / stop.durationHrs) : (vehicleType === 'motorcycle' ? 40 : 60)} km/h`}
+                      </span>
                       <span>•</span>
                       <span>Thời tiết gợi ý: {stop.weather}</span>
                     </div>

@@ -122,11 +122,11 @@ function NotificationItem({
           </div>
 
           {/* Priority badge */}
-          {notification.priority === "high" && (
+          {/* {notification.priority === "high" && (
             <Badge variant="destructive" className="text-xs">
               Quan trọng
             </Badge>
-          )}
+          )} */}
         </div>
       </div>
 

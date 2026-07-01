@@ -13,7 +13,6 @@ import {
 import * as XLSX from 'xlsx';
 
 const STATUS_MAP: Record<string, { label: string; class: string }> = {
-  pending: { label: 'Chờ xác nhận', class: 'bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-900/30' },
   confirmed: { label: 'Đã xác nhận', class: 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-450 border border-emerald-200/60 dark:border-emerald-900/30' },
   completed: { label: 'Hoàn thành', class: 'bg-primary/10 dark:bg-primary/20 text-primary border border-primary/20' },
   cancelled: { label: 'Đã hủy', class: 'bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-450 border border-rose-200/60 dark:border-rose-900/30' },

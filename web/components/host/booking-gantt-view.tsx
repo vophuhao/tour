@@ -51,7 +51,7 @@ interface BookingGanttViewProps {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-yellow-500',
+  unpaid: 'bg-yellow-500',
   confirmed: 'bg-green-500',
   cancelled: 'bg-red-500',
   completed: 'bg-blue-500',
@@ -229,6 +229,12 @@ export function BookingGanttView({
         const duration =
           endPos !== -1 ? endPos - startPos + 1 : booking.nights + 1;
 
+        const getBookingDisplayStatus = (b: any) => {
+          if (b.paymentStatus === 'pending') return 'unpaid';
+          return b.status;
+        };
+        const displayStatus = getBookingDisplayStatus(booking);
+
         return {
           booking,
           propertyName,
@@ -237,7 +243,7 @@ export function BookingGanttView({
           siteName: site?.name || 'Site',
           startPos,
           duration: duration > 0 ? duration : 1,
-          status: booking.status,
+          status: displayStatus,
         };
       })
       .filter(Boolean);
@@ -363,8 +369,8 @@ export function BookingGanttView({
   const stats = useMemo(() => {
     return {
       total: bookings.length,
-      pending: bookings.filter(b => b.status === 'pending').length,
-      confirmed: bookings.filter(b => b.status === 'confirmed').length,
+      unpaid: bookings.filter(b => b.paymentStatus === 'pending').length,
+      confirmed: bookings.filter(b => b.status === 'confirmed' && b.paymentStatus === 'paid').length,
       revenue: bookings
         .filter(b => b.paymentStatus === 'paid')
         .reduce((sum, b) => sum + b.pricing.total, 0),
@@ -442,8 +448,8 @@ export function BookingGanttView({
               <CalendarIcon className="h-5 w-5 text-yellow-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Chờ xác nhận</p>
-              <p className="text-xl font-bold">{stats.pending}</p>
+              <p className="text-sm text-gray-500">Chưa thanh toán</p>
+              <p className="text-xl font-bold">{stats.unpaid}</p>
             </div>
           </div>
         </Card>
@@ -484,7 +490,7 @@ export function BookingGanttView({
         </div>
         <div className="flex items-center gap-2">
           <div className="h-3 w-8 rounded bg-yellow-500" />
-          <span className="text-sm text-gray-600">Chờ xác nhận</span>
+          <span className="text-sm text-gray-600">Chưa thanh toán</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="h-3 w-8 rounded bg-green-500" />

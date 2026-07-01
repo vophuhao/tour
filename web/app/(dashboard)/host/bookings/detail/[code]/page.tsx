@@ -155,8 +155,8 @@ export default function BookingDetailPage() {
       setLoading(true);
       const res = await getBookingByCode(code);
       setBooking(res.data || [] as any);
-      
-    
+
+
     } catch (error) {
       console.error('Error fetching booking:', error);
       toast.error('Không thể tải thông tin booking');
@@ -483,8 +483,11 @@ export default function BookingDetailPage() {
   };
 
   const getStatusLabel = (status?: string) => {
+    if (booking && booking.paymentStatus === 'pending') {
+      return 'Chưa thanh toán';
+    }
     const labels: any = {
-      pending: 'Chờ xác nhận',
+      pending: 'Chưa thanh toán',
       confirmed: 'Đã xác nhận',
       cancelled: 'Đã hủy',
       completed: 'Hoàn thành',
@@ -495,7 +498,7 @@ export default function BookingDetailPage() {
 
   const getPaymentStatusLabel = (status?: string) => {
     const labels: any = {
-      pending: 'Chờ thanh toán',
+      pending: 'Chưa thanh toán',
       paid: 'Đã thanh toán',
       failed: 'Thanh toán thất bại',
       refunded: 'Đã hoàn tiền',
@@ -557,9 +560,23 @@ export default function BookingDetailPage() {
     );
   }
 
-  const statusConfig = {
+  const getBookingDisplayStatus = () => {
+    if (!booking) return 'confirmed';
+    if (booking.paymentStatus === 'pending') {
+      return 'unpaid';
+    }
+    return booking.status;
+  };
+  const displayStatus = getBookingDisplayStatus();
+
+  const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
+    unpaid: {
+      label: 'Chưa thanh toán',
+      color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      icon: Clock,
+    },
     pending: {
-      label: 'Chờ xác nhận',
+      label: 'Chưa thanh toán',
       color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
       icon: Clock,
     },
@@ -587,7 +604,7 @@ export default function BookingDetailPage() {
 
   const paymentStatusConfig = {
     pending: {
-      label: 'Chờ thanh toán',
+      label: 'Chưa thanh toán',
       color: 'bg-gradient-to-r from-yellow-400 to-orange-400',
       textColor: 'text-white',
       icon: CircleDollarSign,
@@ -616,7 +633,7 @@ export default function BookingDetailPage() {
     },
   };
 
-  const status = statusConfig[booking.status];
+  const status = statusConfig[displayStatus];
   const paymentStatus = paymentStatusConfig[booking.paymentStatus || 'pending'];
   const StatusIcon = status.icon;
   const PaymentIcon = paymentStatus.icon;
@@ -651,12 +668,12 @@ export default function BookingDetailPage() {
                 {status.label}
               </div>
 
-              <div
+              {/* <div
                 className={`${paymentStatus.color} ${paymentStatus.textColor} ${paymentStatus.glow} flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold`}
               >
                 <PaymentIcon className="h-5 w-5" />
                 {paymentStatus.label}
-              </div>
+              </div> */}
 
               {booking.paymentMethod && (
                 <Badge variant="outline" className="text-sm">
@@ -1470,7 +1487,7 @@ export default function BookingDetailPage() {
                     </div>
                   )}
 
-                  {booking.updatedAt !== booking.createdAt && (
+                  {booking.updatedAt && booking.updatedAt !== booking.createdAt && (
                     <div className="flex gap-3">
                       <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-100">
                         <Clock className="h-4 w-4 text-gray-600" />

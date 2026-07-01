@@ -284,7 +284,7 @@ const CommentList: React.FC<CommentListProps> = ({ targetId, onCommentCountChang
       setNewComment('');
       setPreviewImages([]);
       setUploadedImages([]);
-      
+
       const newCommentsList = [newCommentData, ...state.comments];
       onCommentCountChange(getTotalCommentCount(newCommentsList));
       toast.success('Đã gửi bình luận thành công!');
@@ -1210,7 +1210,7 @@ const CommentList: React.FC<CommentListProps> = ({ targetId, onCommentCountChang
             {searchQuery.trim() || filterType !== 'all' ? ` (đã lọc từ ${state.comments.length} bình luận)` : ''}
           </div>
 
-          <div className="comments-actions">
+          {/* <div className="comments-actions">
             <button
               className="stats-btn"
               onClick={() => setShowStats(!showStats)}
@@ -1228,7 +1228,7 @@ const CommentList: React.FC<CommentListProps> = ({ targetId, onCommentCountChang
               <Download size={16} />
               <span>Xuất</span>
             </button>
-          </div>
+          </div> */}
         </div>
 
         {/* Stats Panel */}

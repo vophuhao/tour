@@ -26,7 +26,7 @@ interface CalendarDay {
 }
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
-  pending: { bg: 'bg-amber-500', text: 'text-white', dot: 'bg-amber-400' },
+  unpaid: { bg: 'bg-amber-500', text: 'text-white', dot: 'bg-amber-400' },
   confirmed: { bg: 'bg-emerald-500', text: 'text-white', dot: 'bg-emerald-400' },
   cancelled: { bg: 'bg-red-500', text: 'text-white', dot: 'bg-red-400' },
   completed: { bg: 'bg-blue-500', text: 'text-white', dot: 'bg-blue-400' },
@@ -34,7 +34,7 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> =
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  pending: 'Chờ xác nhận', confirmed: 'Đã xác nhận',
+  unpaid: 'Chưa thanh toán', confirmed: 'Đã xác nhận',
   cancelled: 'Đã hủy', completed: 'Hoàn thành', refunded: 'Đã hoàn tiền',
 };
 
@@ -77,8 +77,8 @@ export function BookingCalendar({ bookings, onBookingClick }: BookingCalendarPro
     });
     return {
       total: mb.length,
-      pending: mb.filter(b => b.status === 'pending').length,
-      confirmed: mb.filter(b => b.status === 'confirmed').length,
+      unpaid: mb.filter(b => b.paymentStatus === 'pending').length,
+      confirmed: mb.filter(b => b.status === 'confirmed' && b.paymentStatus === 'paid').length,
       revenue: mb.filter(b => b.paymentStatus === 'paid').reduce((s, b) => s + b.pricing.total, 0),
     };
   }, [bookings, currentDate]);
@@ -88,8 +88,8 @@ export function BookingCalendar({ bookings, onBookingClick }: BookingCalendarPro
 
   const statCards = [
     { label: 'Tổng booking', value: monthStats.total, icon: CalendarIcon, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/30' },
-    { label: 'Chờ xác nhận', value: monthStats.pending, icon: TrendingUp, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/30' },
-    { label: 'Đã xác nhận', value: monthStats.confirmed, icon: Users, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/30' },
+    { label: 'Chưa thanh toán', value: monthStats.unpaid, icon: TrendingUp, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/30' },
+    { label: 'Đã xác nhận', value: monthStats.confirmed, icon: Users, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
     { label: 'Doanh thu', value: `${formatPrice(monthStats.revenue)}₫`, icon: DollarSign, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-900/30', small: true },
   ];
 
@@ -186,7 +186,12 @@ export function BookingCalendar({ bookings, onBookingClick }: BookingCalendarPro
                 {/* Bookings */}
                 <div className="space-y-0.5">
                   {day.bookings.slice(0, 2).map(booking => {
-                    const colors = STATUS_COLORS[booking.status] || STATUS_COLORS.pending;
+                    const getBookingDisplayStatus = (b: any) => {
+                      if (b.paymentStatus === 'pending') return 'unpaid';
+                      return b.status;
+                    };
+                    const displayStatus = getBookingDisplayStatus(booking);
+                    const colors = STATUS_COLORS[displayStatus] || STATUS_COLORS.unpaid;
                     const guest = typeof booking.guest === 'object' ? booking.guest : null;
                     const site = typeof booking.site === 'object' ? booking.site : null;
                     return (
@@ -250,8 +255,13 @@ export function BookingCalendar({ bookings, onBookingClick }: BookingCalendarPro
           </DialogHeader>
           <div className="max-h-[350px] overflow-y-auto space-y-3 pr-1">
             {selectedDay?.bookings.map((booking) => {
-              const colors = STATUS_COLORS[booking.status] || STATUS_COLORS.pending;
-              const label = STATUS_LABELS[booking.status] || 'Chờ xác nhận';
+              const getBookingDisplayStatus = (b: any) => {
+                if (b.paymentStatus === 'pending') return 'unpaid';
+                return b.status;
+              };
+              const displayStatus = getBookingDisplayStatus(booking);
+              const colors = STATUS_COLORS[displayStatus] || STATUS_COLORS.unpaid;
+              const label = STATUS_LABELS[displayStatus] || 'Chưa thanh toán';
               const guest = typeof booking.guest === 'object' ? booking.guest : null;
               const site = typeof booking.site === 'object' ? booking.site : null;
               

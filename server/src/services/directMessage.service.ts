@@ -283,11 +283,14 @@ export default class DirectMessageService {
 
     // Transform data
     const transformed = conversations.map((conv) => {
-      const otherParticipant = conv.getOtherParticipant(userIdObj);
+      const convObj = conv.toObject();
+      const otherParticipant = convObj.participants.find(
+        (p: any) => p.userId && String(p.userId._id || p.userId) !== String(userIdObj)
+      ) || null;
       const unreadCount = conv.getUnreadCount(userIdObj);
 
       return {
-        ...conv.toObject(),
+        ...convObj,
         otherParticipant,
         unreadCount,
       };

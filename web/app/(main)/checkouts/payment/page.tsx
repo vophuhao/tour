@@ -350,14 +350,12 @@ export default function PaymentPage() {
       const bookingId =
         (data?.data as { _id?: string; id?: string })?._id ||
         (data?.data as { _id?: string; id?: string })?.id;
-
+      console.log('data', data);
       const responseData = data?.data as { payOSCheckoutUrl?: string };
+      console.log('responseData', responseData);
+
       if (responseData?.payOSCheckoutUrl) {
         router.replace(responseData.payOSCheckoutUrl);
-      } else if (bookingId) {
-        router.replace(`/bookings/${bookingId}`);
-      } else {
-        router.replace('/bookings');
       }
     },
   });

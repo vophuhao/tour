@@ -10,8 +10,8 @@ import { FaHeart, FaBookmark } from 'react-icons/fa';
 import { FiArrowLeft, FiMessageSquare } from 'react-icons/fi';
 import { forumApi } from '../../../../lib/forumApi';
 // import { userApi } from '../../services/api/user';
-import  formatDistanceToNow  from 'date-fns/formatDistanceToNow';
-import  vi  from 'date-fns/locale/vi';
+import formatDistanceToNow from 'date-fns/formatDistanceToNow';
+import vi from 'date-fns/locale/vi';
 import { toast } from 'sonner';
 import Loader from "../../../../components/forum/ui/Loader";
 import ReportButton from '../../../../components/forum/ui/ReportButton';
@@ -19,8 +19,10 @@ import CommentList from '../../../../components/forum/ui/CommentList';
 import { ConfirmDialog } from '../../../../components/forum/ui/ConfirmDialog';
 import RichTextEditor from '../../../../components/forum/ui/RichTextEditor';
 import { useAuthStore } from '@/store/auth.store';
+import { useChatModal } from '@/store/chatstore';
 
 const ForumPostDetail: React.FC = () => {
+  const { openChat } = useChatModal();
   const { slug } = useParams<{ slug: string }>();
   const router = useRouter();
   const [post, setPost] = useState<any>(null);
@@ -506,7 +508,7 @@ const ForumPostDetail: React.FC = () => {
     }
   };
 
-   if (loading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
@@ -579,9 +581,9 @@ const ForumPostDetail: React.FC = () => {
 
           {/* LEFT COLUMN: Main Post Content / Editor, Action Bar */}
           <div className="lg:col-span-2 space-y-6">
-            
+
             <div className="bg-card border border-border rounded-3xl p-6 md:p-8 shadow-xs relative">
-              
+
               {/* Cover Image */}
               {post.imageUrl ? (
                 <div className="relative aspect-[21/9] w-full overflow-hidden rounded-2xl bg-muted mb-6 shadow-xs">
@@ -780,11 +782,10 @@ const ForumPostDetail: React.FC = () => {
                 <button
                   onClick={handleLike}
                   aria-label={isLiked ? 'Bỏ thích bài viết này' : 'Thích bài viết này'}
-                  className={`cursor-pointer inline-flex items-center gap-1.5 px-5 py-3 rounded-2xl border text-xs font-bold transition-all duration-200 focus-visible:ring-2 focus-visible:ring-rose-500/50 outline-hidden ${
-                    isLiked
-                      ? 'border-rose-500 bg-rose-500/10 text-rose-500 font-extrabold'
-                      : 'border-border bg-card text-foreground hover:bg-muted'
-                  }`}
+                  className={`cursor-pointer inline-flex items-center gap-1.5 px-5 py-3 rounded-2xl border text-xs font-bold transition-all duration-200 focus-visible:ring-2 focus-visible:ring-rose-500/50 outline-hidden ${isLiked
+                    ? 'border-rose-500 bg-rose-500/10 text-rose-500 font-extrabold'
+                    : 'border-border bg-card text-foreground hover:bg-muted'
+                    }`}
                 >
                   <FaHeart className={isLiked ? 'text-rose-500' : ''} />
                   <span>Thích ({likeCount})</span>
@@ -792,11 +793,10 @@ const ForumPostDetail: React.FC = () => {
                 <button
                   onClick={handleBookmark}
                   aria-label={isBookmarked ? 'Bỏ lưu bài viết này' : 'Lưu bài viết này'}
-                  className={`cursor-pointer inline-flex items-center gap-1.5 px-5 py-3 rounded-2xl border text-xs font-bold transition-all duration-200 focus-visible:ring-2 focus-visible:ring-amber-500/50 outline-hidden ${
-                    isBookmarked
-                      ? 'border-amber-500 bg-amber-500/10 text-amber-500 font-extrabold'
-                      : 'border-border bg-card text-foreground hover:bg-muted'
-                  }`}
+                  className={`cursor-pointer inline-flex items-center gap-1.5 px-5 py-3 rounded-2xl border text-xs font-bold transition-all duration-200 focus-visible:ring-2 focus-visible:ring-amber-500/50 outline-hidden ${isBookmarked
+                    ? 'border-amber-500 bg-amber-500/10 text-amber-500 font-extrabold'
+                    : 'border-border bg-card text-foreground hover:bg-muted'
+                    }`}
                 >
                   <FaBookmark className={isBookmarked ? 'text-amber-500' : ''} />
                   <span>Lưu lại ({saveCount})</span>
@@ -821,50 +821,40 @@ const ForumPostDetail: React.FC = () => {
           {/* RIGHT COLUMN: Sidebar (Author stats, related posts) */}
           <div className="lg:col-span-1">
             <div className="lg:sticky lg:top-24 space-y-6">
-              
+
               {/* Author Widget Card */}
               <div className="bg-card border border-border rounded-3xl p-6 shadow-sm text-center space-y-4">
-                
+
                 {/* Header info */}
                 <div className="space-y-3">
                   <div className="relative inline-block">
-                    <Link href={`/profile/${author?.username || author?._id}`} className="block focus-visible:ring-4 focus-visible:ring-primary/20 outline-hidden rounded-full">
-                      <img 
-                        src={avatarUrl} 
-                        alt={authorName} 
+                    <div className="block focus-visible:ring-4 focus-visible:ring-primary/20 outline-hidden rounded-full">
+                      <img
+                        src={avatarUrl}
+                        alt={authorName}
                         width={80}
                         height={80}
-                        className="h-20 w-20 rounded-full mx-auto object-cover border-3 border-primary/20 bg-muted hover:scale-102 transition-transform duration-300" 
+                        className="h-20 w-20 rounded-full mx-auto object-cover border-3 border-primary/20 bg-muted hover:scale-102 transition-transform duration-300"
                       />
-                    </Link>
+                    </div>
                   </div>
-                  
+
                   <div className="space-y-1">
-                    <Link href={`/profile/${author?.username || author?._id}`} className="hover:text-primary transition-colors focus-visible:ring-2 focus-visible:ring-primary/50 outline-hidden rounded-sm px-1.5 py-0.5">
+                    <div className="hover:text-primary transition-colors focus-visible:ring-2 focus-visible:ring-primary/50 outline-hidden rounded-sm px-1.5 py-0.5">
                       <h3 className="author-name font-bold text-base text-foreground leading-snug">{authorName}</h3>
-                    </Link>
-                    <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground font-semibold">
+                    </div>
+                    {/* <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground font-semibold">
                       <span className="px-2 py-0.5 rounded-sm bg-primary/10 text-primary font-bold">Level {author?.level || 1}</span>
                       <span>•</span>
                       <span>{author?.levelTitle || 'Mới tham gia'}</span>
-                    </div>
+                    </div> */}
                   </div>
 
-                  {author?.school ? (
-                    <div className="text-[11px] text-muted-foreground font-semibold bg-muted/40 p-2 rounded-xl border border-border/50 text-left space-y-0.5">
-                      <div className="truncate">🏫 Trường: {author.school}</div>
-                      {author.faculty ? <div className="truncate">🏢 Khoa: {author.faculty}</div> : null}
-                      {author.major ? <div className="truncate">📚 Ngành: {author.major}</div> : null}
-                    </div>
-                  ) : null}
 
-                  {author?.bio ? (
-                    <p className="text-xs text-muted-foreground italic leading-relaxed line-clamp-3 px-1">{author.bio}</p>
-                  ) : null}
                 </div>
 
                 {/* Stats widget grid */}
-                <div className="grid grid-cols-2 gap-px bg-border/50 rounded-2xl border border-border/50 overflow-hidden text-xs">
+                {/* <div className="grid grid-cols-2 gap-px bg-border/50 rounded-2xl border border-border/50 overflow-hidden text-xs">
                   <div className="bg-card p-3 flex flex-col items-center justify-center">
                     <span className="font-extrabold text-base text-foreground">{authorStats?.points ?? author?.points ?? 0}</span>
                     <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Điểm</span>
@@ -881,55 +871,35 @@ const ForumPostDetail: React.FC = () => {
                     <span className="font-extrabold text-base text-foreground">{authorStats?.postsCount ?? author?.stats?.postsCount ?? 0}</span>
                     <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Bài viết</span>
                   </div>
-                </div>
-
-                {/* Achievements block */}
-                {author?.achievements && author.achievements.length > 0 ? (
-                  <div className="text-left space-y-2 pt-2 border-t border-border">
-                    <h4 className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider">Thành tích gần đây</h4>
-                    <div className="flex flex-wrap gap-1.5">
-                      {author.achievements.slice(0, 3).map((achievement: any, index: number) => (
-                        <div key={index} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-xs font-semibold">
-                          <span>{achievement.achievementId?.icon || '🏆'}</span>
-                          <span className="text-[10px] truncate max-w-[80px]">{achievement.achievementId?.name || 'Thành tích'}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-
-                {/* Social media links */}
-                {(author?.socialLinks_github || author?.socialLinks_youtube || author?.socialLinks_facebook || author?.socialLinks_tiktok) ? (
-                  <div className="flex justify-center items-center gap-2 pt-2 border-t border-border">
-                    {author.socialLinks_github ? (
-                      <a href={author.socialLinks_github} target="_blank" rel="noopener" className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-primary/50 outline-hidden">
-                        <i className="fab fa-github text-sm"></i>
-                      </a>
-                    ) : null}
-                    {author.socialLinks_youtube ? (
-                      <a href={author.socialLinks_youtube} target="_blank" rel="noopener" className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-rose-500 hover:bg-rose-50 transition-colors focus-visible:ring-2 focus-visible:ring-primary/50 outline-hidden">
-                        <i className="fab fa-youtube text-sm"></i>
-                      </a>
-                    ) : null}
-                    {author.socialLinks_facebook ? (
-                      <a href={author.socialLinks_facebook} target="_blank" rel="noopener" className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-blue-600 hover:bg-blue-50 transition-colors focus-visible:ring-2 focus-visible:ring-primary/50 outline-hidden">
-                        <i className="fab fa-facebook text-sm"></i>
-                      </a>
-                    ) : null}
-                  </div>
-                ) : null}
-
+                </div> */}
                 {/* Social interaction buttons */}
                 {(() => {
                   const isOwnPost = user && author && user._id === author._id;
                   if (isOwnPost) return null;
-                  
+
                   return (
                     <div className="flex items-center gap-2 pt-2">
-                      <button className="flex-1 cursor-pointer inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-primary text-white font-bold text-xs shadow-md hover:bg-primary/95 transition-all focus-visible:ring-2 focus-visible:ring-primary/50 outline-hidden" onClick={handleFollow}>
+                      {/* <button className="flex-1 cursor-pointer inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-primary text-white font-bold text-xs shadow-md hover:bg-primary/95 transition-all focus-visible:ring-2 focus-visible:ring-primary/50 outline-hidden" onClick={handleFollow}>
                         {isFollowing ? 'Đang theo dõi' : 'Theo dõi'}
-                      </button>
-                      <button className="flex-1 cursor-pointer inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-border bg-card text-foreground font-bold text-xs hover:bg-muted transition-all focus-visible:ring-2 focus-visible:ring-primary/50 outline-hidden">
+                      </button> */}
+                      <button
+                        className="flex-1 cursor-pointer inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-border bg-card text-foreground font-bold text-xs hover:bg-muted transition-all focus-visible:ring-2 focus-visible:ring-primary/50 outline-hidden"
+                        onClick={() => {
+                          const currentUser = getCurrentUser();
+                          if (!currentUser) {
+                            toast.error('Vui lòng đăng nhập để gửi tin nhắn!');
+                            return;
+                          }
+                          if (author && author._id) {
+                            openChat(author._id, {
+                              username: author.username,
+                              avatarUrl: author.avatarUrl,
+                            });
+                          } else {
+                            toast.error('Không tìm thấy thông tin tác giả');
+                          }
+                        }}
+                      >
                         <FiMessageSquare size={13} />
                         <span>Nhắn tin</span>
                       </button>
@@ -942,7 +912,7 @@ const ForumPostDetail: React.FC = () => {
               {/* Related Posts Card */}
               <div className="bg-card border border-border rounded-3xl p-6 shadow-sm space-y-4">
                 <h3 className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider border-b border-border pb-2.5">Bài viết liên quan</h3>
-                
+
                 {loadingRelated ? (
                   <div className="flex items-center justify-center gap-2 py-6 text-muted-foreground text-sm font-semibold">
                     <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />

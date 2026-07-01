@@ -39,7 +39,7 @@ interface BookingDetailSheetProps {
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  pending: { label: 'Chờ xác nhận', color: 'bg-yellow-100 text-yellow-800' },
+  unpaid: { label: 'Chưa thanh toán', color: 'bg-yellow-100 text-yellow-800' },
   confirmed: { label: 'Đã xác nhận', color: 'bg-green-100 text-green-800' },
   cancelled: { label: 'Đã hủy', color: 'bg-red-100 text-red-800' },
   completed: { label: 'Hoàn thành', color: 'bg-blue-100 text-blue-800' },
@@ -47,15 +47,15 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 const PAYMENT_STATUS_LABELS: Record<string, { label: string; color: string }> =
-  {
-    pending: {
-      label: 'Chờ thanh toán',
-      color: 'bg-yellow-100 text-yellow-800',
-    },
-    paid: { label: 'Đã thanh toán', color: 'bg-green-100 text-green-800' },
-    refunded: { label: 'Đã hoàn tiền', color: 'bg-purple-100 text-purple-800' },
-    failed: { label: 'Thất bại', color: 'bg-red-100 text-red-800' },
-  };
+{
+  pending: {
+    label: 'Chưa thanh toán',
+    color: 'bg-yellow-100 text-yellow-800',
+  },
+  paid: { label: 'Đã thanh toán', color: 'bg-green-100 text-green-800' },
+  refunded: { label: 'Đã hoàn tiền', color: 'bg-purple-100 text-purple-800' },
+  failed: { label: 'Thất bại', color: 'bg-red-100 text-red-800' },
+};
 
 export function BookingDetailSheet({
   booking,
@@ -114,10 +114,10 @@ export function BookingDetailSheet({
                 className="object-cover"
               />
               <div className="absolute top-3 left-3 flex gap-2">
-                <Badge className={STATUS_LABELS[booking.status].color}>
-                  {STATUS_LABELS[booking.status].label}
+                <Badge className={STATUS_LABELS[booking.paymentStatus === 'pending' ? 'unpaid' : booking.status]?.color}>
+                  {STATUS_LABELS[booking.paymentStatus === 'pending' ? 'unpaid' : booking.status]?.label}
                 </Badge>
-                {booking.paymentStatus && (
+                {/* {booking.paymentStatus && (
                   <Badge
                     className={
                       PAYMENT_STATUS_LABELS[booking.paymentStatus].color
@@ -125,7 +125,7 @@ export function BookingDetailSheet({
                   >
                     {PAYMENT_STATUS_LABELS[booking.paymentStatus].label}
                   </Badge>
-                )}
+                )} */}
               </div>
             </div>
           )}
@@ -365,10 +365,10 @@ export function BookingDetailSheet({
               }}
             >
               <Eye className="mr-2 h-4 w-4" />
-              Xem trang chi tiết đầy đủ
+              Xem trang chi tiết
             </Button>
 
-            {canConfirm && onConfirm && (
+            {/* {canConfirm && onConfirm && (
               <Button
                 className="w-full bg-emerald-600 hover:bg-emerald-700"
                 onClick={() => {
@@ -393,7 +393,7 @@ export function BookingDetailSheet({
                 <XCircle className="mr-2 h-4 w-4" />
                 Từ chối booking
               </Button>
-            )}
+            )} */}
 
             {canComplete && onComplete && (
               <Button

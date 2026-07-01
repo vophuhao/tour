@@ -55,6 +55,20 @@ export class BookingDTO {
         email: booking.host.email,
         avatarUrl: booking.host.avatarUrl
       } : booking.host) : null,
+      payOSCheckoutUrl: booking.payOSCheckoutUrl,
+      payOSOrderCode: booking.payOSOrderCode,
+      paymentMethod: booking.paymentMethod,
+      hostMessage: booking.hostMessage,
+      cancelledBy: booking.cancelledBy,
+      cancelledAt: booking.cancelledAt,
+      cancellationReason: booking.cancellationReason,
+      cancellInformation: booking.cancellInformation,
+      refundAmount: booking.refundAmount,
+      reviewed: booking.reviewed,
+      review: booking.review,
+      transactionId: booking.transactionId,
+      paidAt: booking.paidAt,
+      updatedAt: booking.updatedAt,
       createdAt: booking.createdAt,
     };
   }

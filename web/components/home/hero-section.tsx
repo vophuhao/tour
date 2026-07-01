@@ -110,14 +110,14 @@ export default function HeroSection() {
 
         <div className="mx-10 rounded-2xl bg-white p-8 shadow-[0_12px_35px_rgba(0,0,0,0.12)]">
           {/* Tabs */}
-          <div className="mb-7 inline-flex rounded-full bg-[#efeee9] p-1">
+          {/* <div className="mb-7 inline-flex rounded-full bg-[#efeee9] p-1">
             <button className="rounded-full bg-white px-4 text-lg font-bold text-[#2f2d24] shadow-sm">
               Địa điểm
             </button>
             <button className="rounded-full px-4 text-lg font-bold text-[#6b675d]">
               Chuyến đi
             </button>
-          </div>
+          </div> */}
 
           {/* Search Bar */}
           <div className="mx-auto w-full max-w-6xl">

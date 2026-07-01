@@ -11,5 +11,6 @@ aiRoutes.get("/search-images", authenticate, aiController.searchImages);
 aiRoutes.post("/generate-image-prompt", authenticate, aiController.generateImagePrompt);
 aiRoutes.post("/generate-image", authenticate, aiController.generateImage);
 aiRoutes.get("/pricing-suggestions", authenticate, aiController.getPricingSuggestions);
+aiRoutes.post("/roadtrip-suggestions", aiController.generateRoadtripSuggestions);
 
 export default aiRoutes;

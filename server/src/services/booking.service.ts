@@ -190,7 +190,6 @@ export class BookingService {
 
         appAssert(newBooking, ErrorFactory.internalError("Không thể tạo booking"));
         booking = newBooking;
-
         await booking.calculateTotal(session);
 
         if (siteId) {

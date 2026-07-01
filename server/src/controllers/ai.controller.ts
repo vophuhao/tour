@@ -252,7 +252,7 @@ Output ONLY the DALL-E prompt string.`;
       });
 
       // Calculate base raw occupancy
-      const baseOccupancy = siteBookingsCount > 0 
+      const baseOccupancy = siteBookingsCount > 0
         ? Math.min(100, Math.round((siteBookingsCount * 3 / 30) * 100))
         : Math.min(80, Math.max(20, 30 + (site.name.length * 7) % 55));
 
@@ -261,7 +261,7 @@ Output ONLY the DALL-E prompt string.`;
       const refPrice = getReferencePrice(site.accommodationType || "tent");
       const currentPrice = site.pricing?.basePrice || refPrice;
       const priceRatio = currentPrice / refPrice;
-      
+
       // Occupancy is adjusted inversely proportional to price ratio raised to the 1.5 power
       let adjustedOccupancy = Math.round(baseOccupancy / Math.pow(priceRatio, 1.5));
       adjustedOccupancy = Math.max(10, Math.min(100, adjustedOccupancy));
@@ -310,7 +310,7 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc trong block co
 
     try {
       const generatedText = await this.generateContentWithGemini(prompt);
-      
+
       let cleanedText = generatedText.trim();
       if (cleanedText.startsWith("```json")) {
         cleanedText = cleanedText.slice(7);
@@ -326,7 +326,7 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc trong block co
       return res.json({ success: true, suggestions });
     } catch (err: any) {
       console.error("AI Pricing Suggestion error:", err);
-      
+
       const fallbackSuggestions = suggestionsList.map(s => {
         const isGlampingOrCabin = ["glamping", "cabin", "treehouse"].includes(s.accommodationType);
         const priceRatio = s.currentPrice / s.referencePrice;
@@ -373,7 +373,137 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc trong block co
   generateImage = catchErrors(async (_req, res) => {
     return res.status(404).json({ success: false, error: "DALL-E 3 image generation API is not configured on the server." });
   });
+
+  private async fetchRealWeather(lat: number, lng: number, dateOffset: number): Promise<string> {
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia/Ho_Chi_Minh`;
+      const response = await axios.get(url);
+      const daily = response.data?.daily;
+      if (!daily || !daily.time) {
+        return "Không có dữ liệu thời tiết thực tế";
+      }
+
+      const index = dateOffset >= 0 && dateOffset < daily.time.length ? dateOffset : 0;
+      const weatherCode = daily.weathercode?.[index];
+      const maxTemp = daily.temperature_2m_max?.[index];
+      const minTemp = daily.temperature_2m_min?.[index];
+
+      let description = "Thời tiết ôn hòa";
+      if (weatherCode === 0) description = "Nắng ráo, trời quang ☀️";
+      else if ([1, 2, 3].includes(weatherCode)) description = "Ít mây, trời nắng đẹp 🌤️";
+      else if ([45, 48].includes(weatherCode)) description = "Có sương mù 🌫️";
+      else if ([51, 53, 55, 56, 57].includes(weatherCode)) description = "Mưa phùn nhẹ 🌧️";
+      else if ([61, 63, 65, 66, 67].includes(weatherCode)) description = "Mưa rào rải rác 🌧️";
+      else if ([71, 73, 75, 77].includes(weatherCode)) description = "Có tuyết/mưa tuyết ❄️";
+      else if ([80, 81, 82].includes(weatherCode)) description = "Mưa rào lớn ⛈️";
+      else if ([95, 96, 99].includes(weatherCode)) description = "Có dông bão ⚡";
+
+      return `${description} (${minTemp}°C - ${maxTemp}°C)`;
+    } catch (error: any) {
+      console.error("Open-Meteo API Error:", error.message || error);
+      return "Thời tiết ôn hòa, thích hợp di chuyển";
+    }
+  }
+
+  generateRoadtripSuggestions = catchErrors(async (req, res) => {
+    const { origin, destination, days, vehicleType, candidates } = req.body;
+
+    if (!origin || !destination || !days || !candidates || !Array.isArray(candidates)) {
+      return res.status(400).json({ success: false, error: "Thiếu dữ liệu lộ trình hoặc danh sách ứng viên" });
+    }
+
+    const getCoords = (c: any): [number, number] | null => {
+      if (!c.location) return null;
+      const coordsObj = c.location.coordinates;
+      if (!coordsObj) {
+        if (c.location.lat !== undefined && c.location.lng !== undefined) {
+          return [c.location.lng, c.location.lat];
+        }
+        return null;
+      }
+      if (Array.isArray(coordsObj) && coordsObj.length >= 2) {
+        return [coordsObj[0], coordsObj[1]]; // [lng, lat]
+      }
+      if (Array.isArray(coordsObj.coordinates) && coordsObj.coordinates.length >= 2) {
+        return [coordsObj.coordinates[0], coordsObj.coordinates[1]]; // [lng, lat] nested in GeoJSON
+      }
+      return null;
+    };
+
+    // Lấy thời tiết thực tế cho tất cả các campsite ứng viên
+    const candidatesWithWeather = await Promise.all(
+      candidates.map(async (c: any) => {
+        let weatherInfo = "Thời tiết mát mẻ 🌤️";
+        const coords = getCoords(c);
+        if (coords) {
+          weatherInfo = await this.fetchRealWeather(coords[1], coords[0], 0); // offset 0
+        }
+        return {
+          ...c,
+          weather: weatherInfo
+        };
+      })
+    );
+
+    const prompt = `Bạn là một trợ lý ảo lập kế hoạch du lịch bụi, phượt dã ngoại (Roadtrip & Camping) thông minh tại Việt Nam.
+Hãy giúp tôi lựa chọn các địa điểm cắm trại (campsites) tốt nhất làm chặng dừng chân qua đêm cho hành trình sau:
+
+- Điểm xuất phát: "${origin}"
+- Điểm kết thúc: "${destination}"
+- Số ngày đi: ${days} ngày (${days - 1} đêm)
+- Phương tiện di chuyển: "${vehicleType === 'motorcycle' ? 'Xe máy' : 'Ô tô'}"
+
+Đặc thù phương tiện:
+${vehicleType === 'motorcycle'
+        ? '- Di chuyển bằng xe máy: Tốc độ trung bình khoảng 40 km/h, không được đi vào cao tốc tại Việt Nam. Dễ bị mệt mỏi khi đi xa, nên ưu tiên các chặng dừng chân sau mỗi 120km - 150km. Lời khuyên phượt cần lưu ý về an toàn xe máy, thời tiết mưa gió ảnh hưởng trực tiếp, trang phục bảo hộ và các chặng đèo hiểm trở.'
+        : '- Di chuyển bằng ô tô: Tốc độ trung bình khoảng 60 km/h, được phép đi vào đường cao tốc. Có thể di chuyển chặng dài hơn (200km - 300km/ngày). Cần lưu ý về trạm thu phí, bãi đỗ ô tô tại campsite.'
+      }
+
+Dưới đây là danh sách các khu cắm trại (campsite) thực tế có sẵn dọc hành lang tuyến đường, kèm theo thông tin thời tiết thực tế đo được tại khu vực đó:
+${candidatesWithWeather.map((c: any, idx: number) => `${idx + 1}. [Tên]: "${c.name}" | ID: "${c._id}" | Loại hình: "${c.propertyType}" | Giá: ${c.price} VND | Đánh giá: ${c.rating}⭐ | Địa phương: "${c.location?.city || c.location?.state || 'Dọc đường'}" | Thời tiết đo được: "${c.weather}"`).join('\n')}
+
+Hãy đóng vai trò chuyên gia điều phối lịch trình du lịch:
+1. Hãy lựa chọn ra chính xác ${days - 1} khu cắm trại từ danh sách trên để làm trạm dừng nghỉ đêm cho từng ngày (Ngày 1 chọn 1 khu cắm trại để ngủ đêm 1, Ngày 2 chọn 1 khu cắm trại để ngủ đêm 2...).
+   - NGUYÊN TẮC BẮT BUỘC: Mỗi đêm nghỉ phải dừng chân tại một khu cắm trại KHÁC NHAU. Tuyệt đối không được chọn trùng lặp một khu cắm trại cho nhiều đêm nghỉ khác nhau (ví dụ: Không thể chọn cùng một ID cho cả Ngày 1 và Ngày 2).
+   - Nếu đa số các khu cắm trại đều tập trung tại khu vực đích đến (như Đà Lạt) và quãng đường di chuyển khá ngắn, bạn hãy lựa chọn các khu cắm trại KHÁC NHAU tại Đà Lạt cho mỗi đêm nghỉ để người dùng được trải nghiệm nhiều địa điểm cắm trại khác nhau trong cùng chuyến đi (ví dụ: Đêm 1 ngủ ở campsite đồi, Đêm 2 ngủ ở campsite ven hồ).
+   - Phân bổ địa lý hợp lý: Đối với hành trình dài, chọn các khu cắm trại có vị trí địa lý phân bổ đều dọc theo lộ trình lái xe. Nếu đi bằng Xe máy, hãy đảm bảo khoảng cách lái xe giữa các chặng ngắn hơn và an toàn hơn so với Ô tô.
+   - Nếu danh sách ứng viên rỗng hoặc không đủ ${days - 1} địa điểm cắm trại khác nhau, bạn có thể tự đề xuất thêm trạm dừng cắm trại tự do (Free Spot) kèm theo tọa độ giả định và đặt ID là "free_spot_day_X".
+2. Với mỗi khu cắm trại được chọn, hãy viết một câu lời khuyên/mẹo phượt di chuyển hoặc chuẩn bị đồ dùng cá nhân hóa cực kỳ thiết thực dựa trên phương tiện di chuyển và thời tiết thực tế đo được tại campsite đó.
+
+Yêu cầu định dạng đầu ra:
+Trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc trong block code \`\`\`json, không chứa bất kỳ lời giải thích nào khác ngoài JSON) là một mảng các đối tượng đại diện cho điểm cắm trại được chọn cho từng đêm nghỉ:
+[
+  {
+    "dayNumber": number, // Ngày thứ mấy của hành trình (từ 1 đến ${days - 1})
+    "selectedCampsiteId": "string", // ID chính xác của campsite được chọn từ danh sách ứng viên được cung cấp ở trên (hoặc "free_spot_day_X")
+    "weather": "string", // Điền thông tin thời tiết đo được của campsite đó
+    "aiTip": "string" // Lời khuyên phượt cá nhân hóa tương ứng
+  }
+]`;
+
+    try {
+      const generatedText = await this.generateContentWithGemini(prompt);
+
+      let cleanedText = generatedText.trim();
+      if (cleanedText.startsWith("```json")) {
+        cleanedText = cleanedText.slice(7);
+      } else if (cleanedText.startsWith("```")) {
+        cleanedText = cleanedText.slice(3);
+      }
+      if (cleanedText.endsWith("```")) {
+        cleanedText = cleanedText.slice(0, -3);
+      }
+      cleanedText = cleanedText.trim();
+
+      const suggestions = JSON.parse(cleanedText);
+      return res.json({ success: true, suggestions });
+    } catch (err: any) {
+      console.error("AI Roadtrip Suggestions error:", err);
+      return res.status(500).json({ success: false, error: "Lỗi kết nối AI để tạo gợi ý lộ trình" });
+    }
+  });
 }
+
 
 
 export const aiController = new AIController();

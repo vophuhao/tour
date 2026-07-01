@@ -113,9 +113,11 @@ export function useDirectMessage() {
       console.log("[useDirectMessage] messages_read:", data);
       if (data.conversationId === conversationRef.current?._id) {
         setMessages((prev) =>
-          prev.map((m) =>
-            m.senderId?._id === user?._id ? { ...m, isRead: true, readAt: data.readAt } : m
-          )
+          prev.map((m) => {
+            const senderId = typeof m.senderId === 'object' && m.senderId ? m.senderId._id : m.senderId;
+            const isMine = String(senderId) === String(user?._id);
+            return isMine ? { ...m, isRead: true, readAt: data.readAt } : m;
+          })
         );
       }
     };

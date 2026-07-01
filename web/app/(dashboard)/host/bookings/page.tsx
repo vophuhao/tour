@@ -29,7 +29,7 @@ import QRCode from 'qrcode';
 import * as XLSX from 'xlsx';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
-  pending: { label: 'Chờ xác nhận', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300', dot: 'bg-amber-500' },
+  unpaid: { label: 'Chưa thanh toán', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300', dot: 'bg-amber-500' },
   confirmed: { label: 'Đã xác nhận', color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300', dot: 'bg-emerald-500' },
   cancelled: { label: 'Đã hủy', color: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300', dot: 'bg-red-500' },
   completed: { label: 'Hoàn thành', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300', dot: 'bg-blue-500' },
@@ -37,7 +37,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string 
 };
 
 const PAYMENT_CONFIG: Record<string, { label: string; color: string }> = {
-  pending: { label: 'Chờ thanh toán', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' },
+  pending: { label: 'Chưa thanh toán', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' },
   paid: { label: 'Đã thanh toán', color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' },
   refunded: { label: 'Đã hoàn tiền', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300' },
   failed: { label: 'Thất bại', color: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300' },
@@ -94,7 +94,15 @@ export default function BookingsPage() {
 
   useEffect(() => {
     let filtered = [...bookings];
-    if (activeTab !== 'all') filtered = filtered.filter(b => b.status === activeTab);
+    if (activeTab !== 'all') {
+      if (activeTab === 'unpaid') {
+        filtered = filtered.filter(b => b.paymentStatus === 'pending');
+      } else if (activeTab === 'confirmed') {
+        filtered = filtered.filter(b => b.status === 'confirmed' && b.paymentStatus === 'paid');
+      } else {
+        filtered = filtered.filter(b => b.status === activeTab);
+      }
+    }
     if (searchTerm) {
       const t = searchTerm.toLowerCase();
       filtered = filtered.filter(b =>
@@ -239,15 +247,15 @@ export default function BookingsPage() {
 
   const stats = {
     total: bookings.length,
-    pending: bookings.filter(b => b.status === 'pending').length,
-    confirmed: bookings.filter(b => b.status === 'confirmed').length,
+    unpaid: bookings.filter(b => b.paymentStatus === 'pending').length,
+    confirmed: bookings.filter(b => b.status === 'confirmed' && b.paymentStatus === 'paid').length,
     completed: bookings.filter(b => b.status === 'completed').length,
     totalRevenue: bookings.filter(b => b.paymentStatus === 'paid' && b.status === 'completed').reduce((s, b) => s + b.pricing.total, 0),
   };
 
   const tabs = [
     { value: 'all', label: 'Tất cả', count: stats.total },
-    { value: 'pending', label: 'Chờ xác nhận', count: stats.pending },
+    { value: 'unpaid', label: 'Chưa thanh toán', count: stats.unpaid },
     { value: 'confirmed', label: 'Đã xác nhận', count: stats.confirmed },
     { value: 'completed', label: 'Hoàn thành', count: stats.completed },
     { value: 'cancelled', label: 'Đã hủy', count: bookings.filter(b => b.status === 'cancelled').length },
@@ -256,7 +264,7 @@ export default function BookingsPage() {
 
   const statCards = [
     { label: 'Tổng booking', value: stats.total, icon: Calendar, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/30' },
-    { label: 'Chờ xác nhận', value: stats.pending, icon: Clock, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/30' },
+    { label: 'Chưa thanh toán', value: stats.unpaid, icon: Clock, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/30' },
     { label: 'Đã xác nhận', value: stats.confirmed, icon: CheckCircle, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/30' },
     { label: 'Doanh thu', value: `${formatPrice(stats.totalRevenue)}₫`, icon: DollarSign, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-900/30', small: true },
   ];
@@ -489,7 +497,12 @@ function LoadingSpinner() {
 }
 
 function BookingCard({ booking, formatPrice, formatDate, onAction, onDetail }: any) {
-  const status = STATUS_CONFIG[booking.status] || STATUS_CONFIG.pending;
+  const getBookingDisplayStatus = (b: any) => {
+    if (b.paymentStatus === 'pending') return 'unpaid';
+    return b.status;
+  };
+  const displayStatus = getBookingDisplayStatus(booking);
+  const status = STATUS_CONFIG[displayStatus] || STATUS_CONFIG.unpaid;
   const payment = PAYMENT_CONFIG[booking.paymentStatus] || PAYMENT_CONFIG.pending;
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [showQr, setShowQr] = useState(false);
