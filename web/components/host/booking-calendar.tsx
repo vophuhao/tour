@@ -38,9 +38,24 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: 'Đã hủy', completed: 'Hoàn thành', refunded: 'Đã hoàn tiền',
 };
 
+const getBookingConnectionClass = (booking: any, currentDate: Date) => {
+  const d = new Date(currentDate); d.setHours(0, 0, 0, 0);
+  const ci = new Date(booking.checkIn); ci.setHours(0, 0, 0, 0);
+  const co = new Date(booking.checkOut); co.setHours(0, 0, 0, 0);
+
+  const isStart = d.getTime() === ci.getTime();
+  const isEnd = d.getTime() === co.getTime();
+
+  if (isStart && isEnd) return 'rounded-md';
+  if (isStart) return 'rounded-l-md rounded-r-none';
+  if (isEnd) return 'rounded-r-md rounded-l-none';
+  return 'rounded-none';
+};
+
 export function BookingCalendar({ bookings, onBookingClick }: BookingCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null);
+  const [hoveredBookingId, setHoveredBookingId] = useState<string | null>(null);
 
   const calendarDays = useMemo(() => {
     const year = currentDate.getFullYear();
@@ -69,6 +84,56 @@ export function BookingCalendar({ bookings, onBookingClick }: BookingCalendarPro
     }
     return days;
   }, [currentDate, bookings]);
+
+  const bookingSlots = useMemo(() => {
+    // Sort all bookings to assign slots consistently:
+    // Sort by checkIn date ascending, then duration descending (longer stays get lower slots), then id
+    const sorted = [...bookings].sort((a, b) => {
+      const ciA = new Date(a.checkIn).getTime();
+      const ciB = new Date(b.checkIn).getTime();
+      if (ciA !== ciB) return ciA - ciB;
+      
+      const durA = new Date(a.checkOut).getTime() - ciA;
+      const durB = new Date(b.checkOut).getTime() - ciB;
+      if (durB !== durA) return durB - durA;
+
+      const idA = a._id || (a as any).id || '';
+      const idB = b._id || (b as any).id || '';
+      return idA.localeCompare(idB);
+    });
+
+    const slots: Record<string, number> = {};
+    const slotOccupied: { start: number; end: number }[][] = [];
+
+    sorted.forEach(booking => {
+      const start = new Date(booking.checkIn); start.setHours(0,0,0,0);
+      const end = new Date(booking.checkOut); end.setHours(0,0,0,0);
+      const startMs = start.getTime();
+      const endMs = end.getTime();
+
+      const bookingId = booking._id || (booking as any).id || '';
+
+      let assignedSlot = 0;
+      while (true) {
+        if (!slotOccupied[assignedSlot]) {
+          slotOccupied[assignedSlot] = [];
+        }
+        
+        const hasOverlap = slotOccupied[assignedSlot].some(interval => {
+          return startMs <= interval.end && interval.start <= endMs;
+        });
+
+        if (!hasOverlap) {
+          slotOccupied[assignedSlot].push({ start: startMs, end: endMs });
+          slots[bookingId] = assignedSlot;
+          break;
+        }
+        assignedSlot++;
+      }
+    });
+
+    return slots;
+  }, [bookings]);
 
   const monthStats = useMemo(() => {
     const mb = bookings.filter(b => {
@@ -185,45 +250,98 @@ export function BookingCalendar({ bookings, onBookingClick }: BookingCalendarPro
 
                 {/* Bookings */}
                 <div className="space-y-0.5">
-                  {day.bookings.slice(0, 2).map(booking => {
-                    const getBookingDisplayStatus = (b: any) => {
-                      if (b.paymentStatus === 'pending') return 'unpaid';
-                      return b.status;
-                    };
-                    const displayStatus = getBookingDisplayStatus(booking);
-                    const colors = STATUS_COLORS[displayStatus] || STATUS_COLORS.unpaid;
-                    const guest = typeof booking.guest === 'object' ? booking.guest : null;
-                    const site = typeof booking.site === 'object' ? booking.site : null;
-                    return (
-                      <button
-                        key={booking._id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onBookingClick(booking);
-                        }}
-                        className="w-full text-left group"
-                      >
-                        <div className={cn('rounded px-1.5 py-0.5 text-[10px] font-medium group-hover:opacity-80 transition-opacity', colors.bg, colors.text)}>
-                          <div className="truncate">{(guest as any)?.name || 'Khách'}</div>
-                          {site && <div className="truncate opacity-80">{site.name}</div>}
-                        </div>
-                      </button>
-                    );
-                  })}
-                  {day.bookings.length > 2 && (
-                    <div className="text-center mt-1">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedDay(day);
-                        }}
-                        className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-250/30 rounded px-1.5 py-0.5 transition-all shadow-sm"
-                      >
-                        +{day.bookings.length - 2} thêm
-                      </button>
-                    </div>
-                  )}
+                  {(() => {
+                    // Find max slot index for this day
+                    let maxSlotForDay = -1;
+                    day.bookings.forEach(booking => {
+                      const bId = booking._id || (booking as any).id || '';
+                      const slot = bookingSlots[bId] ?? 0;
+                      if (slot > maxSlotForDay) {
+                        maxSlotForDay = slot;
+                      }
+                    });
+
+                    if (maxSlotForDay === -1) return null;
+
+                    // Render slots from 0 to maxSlotForDay
+                    return Array.from({ length: maxSlotForDay + 1 }, (_, slotIndex) => {
+                      const booking = day.bookings.find(b => {
+                        const bId = b._id || (b as any).id || '';
+                        return bookingSlots[bId] === slotIndex;
+                      });
+
+                      if (!booking) {
+                        // Render empty placeholder to keep other slots aligned vertically
+                        return (
+                          <button
+                            key={`empty-${slotIndex}`}
+                            tabIndex={-1}
+                            aria-hidden="true"
+                            className="w-full text-left opacity-0 pointer-events-none select-none group cursor-default"
+                          >
+                            <div className="h-[30px] px-1.5 py-0.5 text-[10px] leading-[14px] font-medium flex flex-col justify-center">
+                              <div className="font-semibold leading-[14px]">{'\u00A0'}</div>
+                              <div className="text-[9px] leading-[12px]">{'\u00A0'}</div>
+                            </div>
+                          </button>
+                        );
+                      }
+
+                      const getBookingDisplayStatus = (b: any) => {
+                        if (b.paymentStatus === 'pending') return 'unpaid';
+                        return b.status;
+                      };
+                      const displayStatus = getBookingDisplayStatus(booking);
+                      const statusColors = STATUS_COLORS[displayStatus] || STATUS_COLORS.unpaid;
+                      const guest = typeof booking.guest === 'object' ? booking.guest : null;
+                      const site = typeof booking.site === 'object' ? booking.site : null;
+                      const connectionClass = getBookingConnectionClass(booking, day.date);
+
+                      // Check if we should show the booking text on this day:
+                      // Show text only on the actual check-in day, OR if the check-in day is before the calendar
+                      // start date, show it on the first day of the calendar view so it's not completely blank.
+                      const d = new Date(day.date); d.setHours(0,0,0,0);
+                      const ci = new Date(booking.checkIn); ci.setHours(0,0,0,0);
+                      const isStart = d.getTime() === ci.getTime();
+                      
+                      const firstCalendarDate = calendarDays[0].date;
+                      const isPastStart = ci.getTime() < firstCalendarDate.getTime();
+                      const isFirstVisibleDay = isPastStart && d.getTime() === firstCalendarDate.getTime();
+                      
+                      const showText = isStart || isFirstVisibleDay;
+                      const bId = booking._id || (booking as any).id || '';
+
+                      return (
+                        <button
+                          key={bId}
+                          onMouseEnter={() => setHoveredBookingId(bId)}
+                          onMouseLeave={() => setHoveredBookingId(null)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onBookingClick(booking);
+                          }}
+                          className="w-full text-left group cursor-pointer"
+                        >
+                          <div className={cn(
+                            'h-[30px] px-1.5 py-0.5 text-[10px] leading-[14px] font-medium group-hover:opacity-80 transition-all duration-150 flex flex-col justify-center',
+                            statusColors.bg,
+                            statusColors.text,
+                            connectionClass,
+                            hoveredBookingId === bId && 'brightness-[1.12] saturate-[1.08] shadow-sm font-semibold'
+                          )}>
+                            <div className="truncate font-semibold leading-[14px]">
+                              {showText ? ((guest as any)?.name || 'Khách') : '\u00A0'}
+                            </div>
+                            {site && (
+                              <div className="truncate opacity-80 text-[9px] leading-[12px]">
+                                {showText ? site.name : '\u00A0'}
+                              </div>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
             );
@@ -232,7 +350,7 @@ export function BookingCalendar({ bookings, onBookingClick }: BookingCalendarPro
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-4">
         <span className="text-xs font-semibold text-muted-foreground">Trạng thái:</span>
         {Object.entries(STATUS_COLORS).map(([status, colors]) => (
           <div key={status} className="flex items-center gap-1.5">
@@ -264,7 +382,7 @@ export function BookingCalendar({ bookings, onBookingClick }: BookingCalendarPro
               const label = STATUS_LABELS[displayStatus] || 'Chưa thanh toán';
               const guest = typeof booking.guest === 'object' ? booking.guest : null;
               const site = typeof booking.site === 'object' ? booking.site : null;
-              
+
               return (
                 <div
                   key={booking._id}

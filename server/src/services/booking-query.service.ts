@@ -320,7 +320,7 @@ export class BookingQueryService {
       ]);
 
     const totalRevenue = statusStats
-      .filter((s: any) => s._id === "completed")
+      .filter((s: any) => ["confirmed", "completed"].includes(s._id))
       .reduce((sum: number, s: any) => sum + s.revenue, 0);
 
     return {

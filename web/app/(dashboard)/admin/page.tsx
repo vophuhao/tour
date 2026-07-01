@@ -482,10 +482,9 @@ export default function AdminDashboardPage() {
       {/* ====================================
           1. TOP KPI CARDS (6 Cards Grid)
           ==================================== */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* KPI 1: Revenue */}
         <Card className="relative overflow-hidden border border-slate-200/80 dark:border-slate-850 hover:shadow-md transition-all duration-300 group">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-primary" />
           <CardContent className="p-4 flex flex-col justify-between h-full">
             <div className="space-y-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Tổng Doanh Thu</span>
@@ -500,7 +499,6 @@ export default function AdminDashboardPage() {
 
         {/* KPI 2: Bookings */}
         <Card className="relative overflow-hidden border border-slate-200/80 dark:border-slate-850 hover:shadow-md transition-all duration-300 group">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-indigo-500" />
           <CardContent className="p-4 flex flex-col justify-between h-full">
             <div className="space-y-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Tổng Bookings</span>
@@ -515,7 +513,6 @@ export default function AdminDashboardPage() {
 
         {/* KPI 3: Active Listings */}
         <Card className="relative overflow-hidden border border-slate-200/80 dark:border-slate-850 hover:shadow-md transition-all duration-300 group">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-emerald-500" />
           <CardContent className="p-4 flex flex-col justify-between h-full">
             <div className="space-y-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Listing Hoạt Động</span>
@@ -530,7 +527,6 @@ export default function AdminDashboardPage() {
 
         {/* KPI 4: Total Users */}
         <Card className="relative overflow-hidden border border-slate-200/80 dark:border-slate-850 hover:shadow-md transition-all duration-300 group">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-purple-500" />
           <CardContent className="p-4 flex flex-col justify-between h-full">
             <div className="space-y-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Tổng Thành Viên</span>
@@ -544,7 +540,7 @@ export default function AdminDashboardPage() {
         </Card>
 
         {/* KPI 5: New Users Today */}
-        <Card className="relative overflow-hidden border border-slate-200/80 dark:border-slate-850 hover:shadow-md transition-all duration-300 group">
+        {/* <Card className="relative overflow-hidden border border-slate-200/80 dark:border-slate-850 hover:shadow-md transition-all duration-300 group">
           <div className="absolute top-0 left-0 w-full h-[3px] bg-amber-500" />
           <CardContent className="p-4 flex flex-col justify-between h-full">
             <div className="space-y-1">
@@ -556,7 +552,7 @@ export default function AdminDashboardPage() {
               <Activity className="h-4 w-4 text-amber-500" />
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
 
 
       </div>
@@ -604,9 +600,9 @@ export default function AdminDashboardPage() {
           <TabsTrigger value="bookings" className="rounded-lg text-xs font-semibold px-3.5 py-2 hover:text-slate-900 dark:hover:text-slate-200 transition-all data-[state=active]:bg-primary data-[state=active]:text-white">
             Quản lý Booking
           </TabsTrigger>
-          <TabsTrigger value="payments" className="rounded-lg text-xs font-semibold px-3.5 py-2 hover:text-slate-900 dark:hover:text-slate-200 transition-all data-[state=active]:bg-primary data-[state=active]:text-white">
+          {/* <TabsTrigger value="payments" className="rounded-lg text-xs font-semibold px-3.5 py-2 hover:text-slate-900 dark:hover:text-slate-200 transition-all data-[state=active]:bg-primary data-[state=active]:text-white">
             Thanh toán
-          </TabsTrigger>
+          </TabsTrigger> */}
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 outline-hidden">

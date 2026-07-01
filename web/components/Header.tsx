@@ -22,7 +22,7 @@ import GoogleTranslator from '@/components/GoogleTranslator';
 const navItems = [
   { name: 'Trang chủ', href: '/' },
   { name: 'Tìm kiếm', href: '/search' },
-  // { name: 'Lập lộ trình', href: '/roadtrip' },
+  { name: 'Lập lộ trình', href: '/roadtrip' },
   { name: 'Điểm cắm trại', href: '/free-spots' },
   { name: 'Diễn đàn', href: '/forum' },
   // { name: 'Giới thiệu', href: '/about' },

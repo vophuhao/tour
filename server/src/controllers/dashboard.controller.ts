@@ -15,25 +15,26 @@ export default class DashboardController {
       totalHosts,
       totalProperties,
       totalBookings,
-
+      revenueResult,
+      pendingHosts,
+      confirmedBookings,
+      totalReviews,
     ] = await Promise.all([
       UserModel.countDocuments(),
       UserModel.countDocuments({ role: "host" }),
       PropertyModel.countDocuments({ status: "active" }),
-
       BookingModel.countDocuments(),
-
       // Booking revenue from pricing.total
       BookingModel.aggregate([
         { $match: { status: { $in: ["confirmed", "completed"] } } },
         { $group: { _id: null, total: { $sum: "$pricing.total" } } },
       ]),
-      // Order revenue from grandTotal
-
       HostModel.countDocuments({ status: "pending" }),
       BookingModel.countDocuments({ status: "confirmed" }),
       ReviewModel.countDocuments(),
     ]);
+
+    const totalRevenue = revenueResult[0]?.total || 0;
 
     const stats = {
       users: {
@@ -46,10 +47,17 @@ export default class DashboardController {
       },
       bookings: {
         total: totalBookings,
-
+        confirmed: confirmedBookings,
       },
-
-
+      revenue: {
+        total: totalRevenue,
+      },
+      pendingRequests: {
+        hosts: pendingHosts,
+      },
+      reviews: {
+        total: totalReviews,
+      }
     };
 
     return ResponseUtil.success(res, stats, "Lấy thống kê tổng quan thành công");

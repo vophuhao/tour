@@ -241,9 +241,7 @@ export default function PropertySitesPage() {
     const statusKey = (site.status ?? 'active') as keyof typeof statusConfig;
     const status = statusConfig[statusKey] || statusConfig.active;
 
-    const isPremiumType = ['glamping', 'cabin', 'yurt', 'treehouse'].includes(site.accommodationType);
-    const isHighPriced = (site.pricing?.basePrice ?? 0) >= 1000000;
-    const isVip = isPremiumType || isHighPriced;
+    const isVip = site.siteClass === 'vip';
 
     return (
       <Card

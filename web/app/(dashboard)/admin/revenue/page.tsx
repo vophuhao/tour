@@ -734,9 +734,9 @@ export default function AdminRevenuePage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/60 dark:border-slate-800/80 pb-6">
         <div>
 
-          <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+          <h2 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
             Quản Lý Doanh Thu
-          </h1>
+          </h2>
 
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -851,24 +851,24 @@ export default function AdminRevenuePage() {
             <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-850 rounded-2xl p-4 flex flex-col justify-between hover:-translate-y-0.5 hover:shadow-md transition-all shadow-inner relative group">
               <div className="absolute top-0 left-0 w-full h-[3px] bg-primary rounded-t-2xl" />
               <div className="flex justify-between items-start">
-                <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-widest block">Gross Revenue</span>
-                <span className="inline-flex items-center gap-0.5 text-[9px] font-extrabold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-1.5 py-0.5 rounded">
+                <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-widest block">Tổng doanh thu</span>
+                {/* <span className="inline-flex items-center gap-0.5 text-[9px] font-extrabold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-1.5 py-0.5 rounded">
                   <ArrowUpRight className="h-2.5 w-2.5" /> +12.4%
-                </span>
+                </span> */}
               </div>
               <div className="mt-3 flex items-end justify-between">
                 <div>
                   <span className="text-2xl font-black text-slate-900 dark:text-white block">{fmt(calculatedKPIs.gross)}₫</span>
-                  <span className="text-[10px] text-slate-400 mt-0.5 block">Tổng tiền bookings phát sinh</span>
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">Tổng doanh thu</span>
                 </div>
                 {/* Mini trend sparkline chart */}
-                <div className="w-16 h-8 opacity-80 group-hover:opacity-100 transition-opacity">
+                {/* <div className="w-16 h-8 opacity-80 group-hover:opacity-100 transition-opacity">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={sparklineData} margin={{ top: 2, right: 0, bottom: 2, left: 0 }}>
                       <Area type="monotone" dataKey="gross" stroke="var(--primary)" strokeWidth={1.5} fill="color-mix(in oklab, var(--primary) 12%, transparent)" />
                     </AreaChart>
                   </ResponsiveContainer>
-                </div>
+                </div> */}
               </div>
             </div>
 
@@ -877,9 +877,9 @@ export default function AdminRevenuePage() {
               <div className="absolute top-0 left-0 w-full h-[3px] bg-amber-500 rounded-t-2xl" />
               <div className="flex justify-between items-start">
                 <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-widest block">Doanh Thu Hôm Nay</span>
-                <span className="inline-flex items-center gap-0.5 text-[9px] font-extrabold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-1.5 py-0.5 rounded">
+                {/* <span className="inline-flex items-center gap-0.5 text-[9px] font-extrabold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-1.5 py-0.5 rounded">
                   <ArrowUpRight className="h-2.5 w-2.5" /> +5.2%
-                </span>
+                </span> */}
               </div>
               <div className="mt-3 flex items-end justify-between">
                 <div>
@@ -901,9 +901,9 @@ export default function AdminRevenuePage() {
               <div className="absolute top-0 left-0 w-full h-[3px] bg-blue-500 rounded-t-2xl" />
               <div className="flex justify-between items-start">
                 <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-widest block">Doanh Thu Tháng Này</span>
-                <span className="inline-flex items-center gap-0.5 text-[9px] font-extrabold text-rose-500 bg-rose-50 dark:bg-rose-950/20 px-1.5 py-0.5 rounded">
+                {/* <span className="inline-flex items-center gap-0.5 text-[9px] font-extrabold text-rose-500 bg-rose-50 dark:bg-rose-950/20 px-1.5 py-0.5 rounded">
                   <ArrowDownRight className="h-2.5 w-2.5" /> -2.4%
-                </span>
+                </span> */}
               </div>
               <div className="mt-3 flex items-end justify-between">
                 <div>
@@ -925,14 +925,14 @@ export default function AdminRevenuePage() {
               <div className="absolute top-0 left-0 w-full h-[3px] bg-indigo-500 rounded-t-2xl" />
               <div className="flex justify-between items-start">
                 <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-widest block">Service Fee Thu Được</span>
-                <span className="inline-flex items-center gap-0.5 text-[9px] font-extrabold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-1.5 py-0.5 rounded">
+                {/* <span className="inline-flex items-center gap-0.5 text-[9px] font-extrabold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-1.5 py-0.5 rounded">
                   <ArrowUpRight className="h-2.5 w-2.5" /> +15.1%
-                </span>
+                </span> */}
               </div>
               <div className="mt-3 flex items-end justify-between">
                 <div>
                   <span className="text-2xl font-black text-indigo-600 dark:text-indigo-550 block">{fmt(calculatedKPIs.serviceFee)}₫</span>
-                  <span className="text-[10px] text-slate-400 mt-0.5 block">Phí 5% dịch vụ từ Camper</span>
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">Thực nhận</span>
                 </div>
                 <div className="w-16 h-8 opacity-80 group-hover:opacity-100 transition-opacity">
                   <ResponsiveContainer width="100%" height="100%">
@@ -945,7 +945,7 @@ export default function AdminRevenuePage() {
             </div>
 
             {/* KPI 5: Commission from Host */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-850 rounded-2xl p-4 flex flex-col justify-between hover:-translate-y-0.5 hover:shadow-md transition-all shadow-inner relative group">
+            {/* <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-850 rounded-2xl p-4 flex flex-col justify-between hover:-translate-y-0.5 hover:shadow-md transition-all shadow-inner relative group">
               <div className="absolute top-0 left-0 w-full h-[3px] bg-purple-500 rounded-t-2xl" />
               <div className="flex justify-between items-start">
                 <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-widest block">Commission Host</span>
@@ -966,10 +966,10 @@ export default function AdminRevenuePage() {
                   </ResponsiveContainer>
                 </div>
               </div>
-            </div>
+            </div> */}
 
             {/* KPI 6: Total Refunds */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-850 rounded-2xl p-4 flex flex-col justify-between hover:-translate-y-0.5 hover:shadow-md transition-all shadow-inner relative group">
+            {/* <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-850 rounded-2xl p-4 flex flex-col justify-between hover:-translate-y-0.5 hover:shadow-md transition-all shadow-inner relative group">
               <div className="absolute top-0 left-0 w-full h-[3px] bg-rose-500 rounded-t-2xl" />
               <div className="flex justify-between items-start">
                 <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-widest block">Tổng Hoàn Tiền</span>
@@ -990,10 +990,10 @@ export default function AdminRevenuePage() {
                   </ResponsiveContainer>
                 </div>
               </div>
-            </div>
+            </div> */}
 
             {/* KPI 7: Escrow Balance */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-850 rounded-2xl p-4 flex flex-col justify-between hover:-translate-y-0.5 hover:shadow-md transition-all shadow-inner relative group">
+            {/* <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-850 rounded-2xl p-4 flex flex-col justify-between hover:-translate-y-0.5 hover:shadow-md transition-all shadow-inner relative group">
               <div className="absolute top-0 left-0 w-full h-[3px] bg-emerald-500 rounded-t-2xl" />
               <div className="flex justify-between items-start">
                 <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-widest block">Giữ Trong Escrow</span>
@@ -1014,10 +1014,10 @@ export default function AdminRevenuePage() {
                   </ResponsiveContainer>
                 </div>
               </div>
-            </div>
+            </div> */}
 
             {/* KPI 8: Net Profit */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-850 rounded-2xl p-4 flex flex-col justify-between hover:-translate-y-0.5 hover:shadow-md transition-all shadow-inner relative group">
+            {/* <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-850 rounded-2xl p-4 flex flex-col justify-between hover:-translate-y-0.5 hover:shadow-md transition-all shadow-inner relative group">
               <div className="absolute top-0 left-0 w-full h-[3px] bg-violet-600 rounded-t-2xl" />
               <div className="flex justify-between items-start">
                 <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-widest block">Lợi Nhuận Thực Tế</span>
@@ -1038,7 +1038,7 @@ export default function AdminRevenuePage() {
                   </ResponsiveContainer>
                 </div>
               </div>
-            </div>
+            </div> */}
           </div>
 
           {/* =========================================================
@@ -1157,7 +1157,7 @@ export default function AdminRevenuePage() {
             {/* Cash Flow and Anomaly panel */}
             <div className="space-y-6 flex flex-col">
               {/* Cash Flow Panel */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 shadow-xs flex-1">
+              {/* <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 shadow-xs flex-1">
                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider mb-4 flex items-center gap-2">
                   <CreditCard className="h-4 w-4 text-emerald-500" /> Quản Lý Dòng Tiền
                 </h3>
@@ -1191,7 +1191,7 @@ export default function AdminRevenuePage() {
                     <div className="w-2 h-8 bg-rose-500 rounded-full" />
                   </div>
                 </div>
-              </div>
+              </div> */}
 
               {/* Anomaly warnings */}
               <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 shadow-xs flex-1">
@@ -1488,91 +1488,94 @@ export default function AdminRevenuePage() {
             )}
           </div>
         </>
-      )}
+      )
+      }
 
       {/* =========================================================
           Selected Transaction details drawer/modal
           ========================================================= */}
-      {selectedTxn && (
-        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 flex justify-end transition-opacity duration-300" onClick={() => setSelectedTxn(null)}>
-          <div className="bg-white dark:bg-slate-900 w-full max-w-md h-full shadow-2xl p-6 flex flex-col justify-between overflow-y-auto transform transition-transform animate-slide-in" onClick={e => e.stopPropagation()}>
-            <div>
-              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-6">
-                <div>
-                  <span className="text-[10px] font-black text-primary bg-primary/10 dark:bg-primary/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
-                    {selectedTxn.id}
-                  </span>
-                  <h3 className="text-lg font-black text-slate-900 dark:text-white mt-1.5">
-                    Chi Tiết Giao Dịch Doanh Thu
-                  </h3>
+      {
+        selectedTxn && (
+          <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 flex justify-end transition-opacity duration-300" onClick={() => setSelectedTxn(null)}>
+            <div className="bg-white dark:bg-slate-900 w-full max-w-md h-full shadow-2xl p-6 flex flex-col justify-between overflow-y-auto transform transition-transform animate-slide-in" onClick={e => e.stopPropagation()}>
+              <div>
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-6">
+                  <div>
+                    <span className="text-[10px] font-black text-primary bg-primary/10 dark:bg-primary/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                      {selectedTxn.id}
+                    </span>
+                    <h3 className="text-lg font-black text-slate-900 dark:text-white mt-1.5">
+                      Chi Tiết Giao Dịch Doanh Thu
+                    </h3>
+                  </div>
+                  <button onClick={() => setSelectedTxn(null)} className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
+                    <X className="h-5 w-5" />
+                  </button>
                 </div>
-                <button onClick={() => setSelectedTxn(null)} className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
-                  <X className="h-5 w-5" />
+
+                <div className="space-y-6">
+                  {/* Status and Amount Card */}
+                  <div className="bg-slate-50 dark:bg-slate-950/35 border rounded-2xl p-4 flex flex-col items-center justify-center text-center">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Số tiền giao dịch</span>
+                    <span className="text-2xl font-black text-slate-900 dark:text-white mt-1">{fmt(selectedTxn.amount)}₫</span>
+                    <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-[9px] font-black border mt-2', STATUS_MAP[selectedTxn.status]?.class)}>
+                      {STATUS_MAP[selectedTxn.status]?.label.toUpperCase()}
+                    </span>
+                  </div>
+
+                  {/* Details Breakdown */}
+                  <div className="space-y-3.5 text-xs">
+                    <h4 className="text-[10px] font-black text-slate-450 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-1.5">
+                      Thông tin đặt chỗ
+                    </h4>
+                    <div className="flex justify-between"><span className="text-slate-400">Mã Booking:</span> <span className="font-bold text-slate-800 dark:text-slate-200">{selectedTxn.bookingCode}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-400">Campsite:</span> <span className="font-semibold text-slate-700 dark:text-slate-350">{selectedTxn.propertyName}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-400">Khu vực:</span> <span className="font-medium text-slate-750 dark:text-slate-350">{selectedTxn.region}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-400">Ngày giao dịch:</span> <span className="font-semibold text-slate-700 dark:text-slate-350">{fmtDateTime(selectedTxn.createdAt)}</span></div>
+                  </div>
+
+                  <div className="space-y-3.5 text-xs">
+                    <h4 className="text-[10px] font-black text-slate-450 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-1.5">
+                      Đối tác liên quan
+                    </h4>
+                    <div className="flex justify-between"><span className="text-slate-400">Camper (Khách hàng):</span> <span className="font-bold text-slate-800 dark:text-slate-200">{selectedTxn.camperName}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-400">Host (Chủ vườn):</span> <span className="font-semibold text-slate-700 dark:text-slate-300">{selectedTxn.hostName}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-400">Phương thức thanh toán:</span> <span className="font-medium text-slate-650 dark:text-slate-400">{selectedTxn.paymentMethod}</span></div>
+                  </div>
+
+                  {/* Cost Breakdown logic */}
+                  <div className="space-y-3.5 text-xs bg-slate-50 dark:bg-slate-950/30 p-4 border rounded-2xl">
+                    <h4 className="text-[10px] font-black text-primary uppercase tracking-widest flex items-center gap-1">
+                      <Info className="h-3 w-3" /> Phân chia dòng tiền platform
+                    </h4>
+                    <div className="flex justify-between text-slate-400"><span>Tổng thu từ Camper:</span> <span>{fmt(selectedTxn.amount)}₫</span></div>
+                    <div className="flex justify-between text-slate-400"><span>Service Fee Camper (5%):</span> <span className="font-semibold text-slate-700 dark:text-slate-305">{fmt(selectedTxn.serviceFee)}₫</span></div>
+                    <div className="flex justify-between text-slate-400"><span>Commission Host (7%):</span> <span className="font-semibold text-slate-700 dark:text-slate-305">{fmt(selectedTxn.commission)}₫</span></div>
+
+                    <div className="border-t border-slate-200/50 dark:border-slate-800/80 pt-2 flex justify-between font-bold text-slate-900 dark:text-slate-100">
+                      <span>Host nhận (Net Host):</span>
+                      <span className="text-indigo-650 dark:text-indigo-400">{fmt(selectedTxn.hostNet)}₫</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-slate-900 dark:text-slate-100">
+                      <span>Lợi nhuận Platform (Net):</span>
+                      <span className="text-primary">{fmt(selectedTxn.serviceFee + selectedTxn.commission)}₫</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6 border-t border-slate-150 dark:border-slate-800/80 pt-4">
+                <button
+                  onClick={() => setSelectedTxn(null)}
+                  className="w-full py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-650 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-850 cursor-pointer"
+                >
+                  Đóng chi tiết
                 </button>
               </div>
-
-              <div className="space-y-6">
-                {/* Status and Amount Card */}
-                <div className="bg-slate-50 dark:bg-slate-950/35 border rounded-2xl p-4 flex flex-col items-center justify-center text-center">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Số tiền giao dịch</span>
-                  <span className="text-2xl font-black text-slate-900 dark:text-white mt-1">{fmt(selectedTxn.amount)}₫</span>
-                  <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-[9px] font-black border mt-2', STATUS_MAP[selectedTxn.status]?.class)}>
-                    {STATUS_MAP[selectedTxn.status]?.label.toUpperCase()}
-                  </span>
-                </div>
-
-                {/* Details Breakdown */}
-                <div className="space-y-3.5 text-xs">
-                  <h4 className="text-[10px] font-black text-slate-450 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-1.5">
-                    Thông tin đặt chỗ
-                  </h4>
-                  <div className="flex justify-between"><span className="text-slate-400">Mã Booking:</span> <span className="font-bold text-slate-800 dark:text-slate-200">{selectedTxn.bookingCode}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">Campsite:</span> <span className="font-semibold text-slate-700 dark:text-slate-350">{selectedTxn.propertyName}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">Khu vực:</span> <span className="font-medium text-slate-750 dark:text-slate-350">{selectedTxn.region}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">Ngày giao dịch:</span> <span className="font-semibold text-slate-700 dark:text-slate-350">{fmtDateTime(selectedTxn.createdAt)}</span></div>
-                </div>
-
-                <div className="space-y-3.5 text-xs">
-                  <h4 className="text-[10px] font-black text-slate-450 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-1.5">
-                    Đối tác liên quan
-                  </h4>
-                  <div className="flex justify-between"><span className="text-slate-400">Camper (Khách hàng):</span> <span className="font-bold text-slate-800 dark:text-slate-200">{selectedTxn.camperName}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">Host (Chủ vườn):</span> <span className="font-semibold text-slate-700 dark:text-slate-300">{selectedTxn.hostName}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">Phương thức thanh toán:</span> <span className="font-medium text-slate-650 dark:text-slate-400">{selectedTxn.paymentMethod}</span></div>
-                </div>
-
-                {/* Cost Breakdown logic */}
-                <div className="space-y-3.5 text-xs bg-slate-50 dark:bg-slate-950/30 p-4 border rounded-2xl">
-                  <h4 className="text-[10px] font-black text-primary uppercase tracking-widest flex items-center gap-1">
-                    <Info className="h-3 w-3" /> Phân chia dòng tiền platform
-                  </h4>
-                  <div className="flex justify-between text-slate-400"><span>Tổng thu từ Camper:</span> <span>{fmt(selectedTxn.amount)}₫</span></div>
-                  <div className="flex justify-between text-slate-400"><span>Service Fee Camper (5%):</span> <span className="font-semibold text-slate-700 dark:text-slate-305">{fmt(selectedTxn.serviceFee)}₫</span></div>
-                  <div className="flex justify-between text-slate-400"><span>Commission Host (7%):</span> <span className="font-semibold text-slate-700 dark:text-slate-305">{fmt(selectedTxn.commission)}₫</span></div>
-
-                  <div className="border-t border-slate-200/50 dark:border-slate-800/80 pt-2 flex justify-between font-bold text-slate-900 dark:text-slate-100">
-                    <span>Host nhận (Net Host):</span>
-                    <span className="text-indigo-650 dark:text-indigo-400">{fmt(selectedTxn.hostNet)}₫</span>
-                  </div>
-                  <div className="flex justify-between font-bold text-slate-900 dark:text-slate-100">
-                    <span>Lợi nhuận Platform (Net):</span>
-                    <span className="text-primary">{fmt(selectedTxn.serviceFee + selectedTxn.commission)}₫</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 mt-6 border-t border-slate-150 dark:border-slate-800/80 pt-4">
-              <button
-                onClick={() => setSelectedTxn(null)}
-                className="w-full py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-650 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-850 cursor-pointer"
-              >
-                Đóng chi tiết
-              </button>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 }
