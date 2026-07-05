@@ -23,6 +23,7 @@ import { useParams, useRouter } from 'next/navigation';
 // Backend Booking type matching the populated response
 interface BookingData {
   _id: string;
+  id?: string;
   code?: string;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'refunded';
   checkIn: string;
@@ -163,7 +164,7 @@ export default function ConfirmationPage() {
               {getStatusBadge(booking.status)}
             </div>
             <p className="text-muted-foreground text-sm">
-              Mã đặt chỗ: {booking.code || booking._id}
+              Mã đặt chỗ: {booking.code || booking.id || booking._id}
             </p>
           </CardHeader>
           <CardContent className="space-y-6">

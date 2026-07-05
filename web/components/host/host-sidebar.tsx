@@ -47,7 +47,7 @@ export default function HostSidebar({ collapsed, setCollapsed }: SidebarProps) {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const { user } = useAuthStore();
-  const { data: unreadData } = useUnreadCount();
+  const { data: unreadData } = useUnreadCount({ role: 'host' });
   const unreadCount = unreadData?.unreadCount || 0;
   const { data: unreadMessagesData } = useUnreadMessagesCount();
   const unreadMessagesCount = unreadMessagesData?.unreadCount || 0;

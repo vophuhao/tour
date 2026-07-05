@@ -348,7 +348,9 @@ export class BookingQueryService {
     numberOfUnits: number = 1
   ): Promise<boolean> {
     const checkInDate = new Date(checkIn);
+    checkInDate.setHours(12, 0, 0, 0);
     const checkOutDate = new Date(checkOut);
+    checkOutDate.setHours(10, 0, 0, 0);
 
     // Get all availability records in range (full blocks + partial blocks)
     const availQuery = AvailabilityModel.find({
@@ -539,7 +541,23 @@ export class BookingQueryService {
 
     let servicesFee = 0;
     if (services && services.length > 0) {
-      servicesFee = services.reduce((sum, srv) => sum + (srv.price * srv.quantity), 0);
+      servicesFee = services.reduce((sum, srv: any) => {
+        let multiplier = 1;
+        if (srv.timeUnit) {
+          if (srv.timeUnit === "dem" || srv.timeUnit === "ngay") {
+            const val = Number(srv.timeValue) || 1;
+            multiplier = Math.ceil(nights / val);
+          }
+        } else {
+          // Legacy support
+          if (srv.unit === "per_night" || srv.unit === "per_guest_per_night") {
+            multiplier = nights;
+          }
+        }
+        
+        const itemFee = srv.price * srv.quantity * multiplier;
+        return sum + itemFee;
+      }, 0);
     }
 
     const netSubtotal = Math.max(0, subtotal - comboDiscount - promoDiscount);

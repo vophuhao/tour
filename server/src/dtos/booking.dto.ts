@@ -10,6 +10,7 @@ export class BookingDTO {
       numberOfGuests: booking.numberOfGuests,
       numberOfPets: booking.numberOfPets,
       numberOfVehicles: booking.numberOfVehicles,
+      numberOfUnits: booking.numberOfUnits,
       pricing: booking.pricing ? {
         basePrice: booking.pricing.basePrice,
         weekendPrice: booking.pricing.weekendPrice,
@@ -19,6 +20,9 @@ export class BookingDTO {
         cleaningFee: booking.pricing.cleaningFee,
         petFee: booking.pricing.petFee,
         extraGuestFee: booking.pricing.extraGuestFee,
+        servicesFee: booking.pricing.servicesFee,
+        serviceFee: booking.pricing.serviceFee,
+        tax: booking.pricing.tax,
         total: booking.pricing.total,
       } : null,
       status: booking.status,
@@ -27,6 +31,7 @@ export class BookingDTO {
       phone: booking.phone,
       email: booking.email,
       guestMessage: booking.guestMessage,
+      services: booking.services,
       site: booking.site ? (typeof booking.site === 'object' && '_id' in booking.site ? {
         id: booking.site._id,
         name: booking.site.name,

@@ -918,6 +918,7 @@ export function SitesListSection({
     instantBook,
     booking.dateRange,
     siteBlockedMap,
+    sitesAvailableUnits,
   ]);
 
   // Group sites by accommodation type
@@ -1488,6 +1489,10 @@ export function SitesListSection({
                     {sitesInGroup.map(site => {
                       const dateRange = booking.dateRange;
                       const hasSelectedDates = !!(dateRange?.from && dateRange?.to);
+                      const isSoldOut = hasSelectedDates &&
+                        sitesAvailableUnits &&
+                        sitesAvailableUnits[site._id] !== undefined &&
+                        sitesAvailableUnits[site._id] <= 0;
                       const calculated = hasSelectedDates
                         ? calculateSiteSubtotal(site, dateRange.from!, dateRange.to!)
                         : null;
@@ -1576,6 +1581,16 @@ export function SitesListSection({
                             {site.photos && site.photos.length > 0 && (
                               <div className="relative flex h-62 shrink-0 basis-[45%] overflow-hidden rounded-lg bg-gray-100">
                                 <SiteImageSlider photos={site.photos} name={site.name} />
+                                {isSoldOut && (
+                                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 pointer-events-none z-10">
+                                    <Badge
+                                      variant="destructive"
+                                      className="text-sm px-3 py-1 font-semibold uppercase tracking-wider"
+                                    >
+                                      Hết chỗ
+                                    </Badge>
+                                  </div>
+                                )}
                               </div>
                             )}
 
@@ -1706,82 +1721,94 @@ export function SitesListSection({
                                     )}
 
                                   </div>
-                                  <Button
-                                    size="lg"
-                                    className="hover:bg-primary/90 px-8"
-                                    asChild={hasSelectedDates}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleBookNowClick(e);
-                                    }}
-                                  >
-                                    {hasSelectedDates ? (
-                                      <Link
-                                        href={
-                                          `/checkouts/payment?` +
-                                          new URLSearchParams({
-                                            siteId: site._id,
-                                            propertyId:
-                                              typeof site.property === 'string'
-                                                ? site.property
-                                                : site.property._id,
-                                            name: site.name,
-                                            location: `${property.location.city}, ${property.location.state}`,
-                                            image:
-                                              site.photos?.find(p => p.isCover)
-                                                ?.url ||
-                                              site.photos?.[0]?.url ||
-                                              '',
-                                            checkIn:
-                                              booking.dateRange!.from!.toISOString(),
-                                            checkOut:
-                                              booking.dateRange!.to!.toISOString(),
-                                            basePrice:
-                                              site.pricing.basePrice.toString(),
-                                            nights: nights.toString(),
-                                            cleaningFee: (
-                                              site.pricing.cleaningFee || 0
-                                            ).toString(),
-                                            petFee: booking.pets
-                                              ? (
-                                                (site.pricing.petFee || 0) *
-                                                booking.pets
-                                              ).toString()
-                                              : '0',
-                                            additionalGuestFee:
-                                              booking.guests >
-                                                site.capacity.maxGuests
-                                                ? (
-                                                  (site.pricing
-                                                    .additionalGuestFee || 0) *
-                                                  (booking.guests -
-                                                    site.capacity.maxGuests)
-                                                ).toString()
-                                                : '0',
-                                            total: totalPrice.toString(),
-                                            currency:
-                                              site.pricing.currency || 'VND',
-                                            guests: booking.guests.toString(),
-                                            pets: booking.pets.toString(),
-                                            vehicles: '1',
-                                          }).toString()
-                                        }
-                                        onClick={e => {
-                                          const isAuthenticated =
-                                            useAuthStore.getState()
-                                              .isAuthenticated;
-                                          if (!isAuthenticated) {
-                                            e.preventDefault();
-                                            setShowLoginPrompt(true);
+                                  {(() => {
+                                    const isSoldOut = hasSelectedDates &&
+                                      sitesAvailableUnits &&
+                                      sitesAvailableUnits[site._id] !== undefined &&
+                                      sitesAvailableUnits[site._id] <= 0;
+
+                                    return (
+                                      <Button
+                                        size="lg"
+                                        className={isSoldOut ? "px-8 bg-slate-300 text-slate-500 dark:bg-slate-700 dark:text-slate-400 cursor-not-allowed" : "hover:bg-primary/90 px-8"}
+                                        disabled={isSoldOut}
+                                        asChild={hasSelectedDates && !isSoldOut}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (!isSoldOut) {
+                                            handleBookNowClick(e);
                                           }
                                         }}
                                       >
-                                        Đặt ngay
-                                      </Link>
-                                    ) : (
-                                      <span>Đặt ngay</span>
-                                    )}
-                                  </Button>
+                                        {hasSelectedDates && !isSoldOut ? (
+                                          <Link
+                                            href={
+                                              `/checkouts/payment?` +
+                                              new URLSearchParams({
+                                                siteId: site._id,
+                                                propertyId:
+                                                  typeof site.property === 'string'
+                                                    ? site.property
+                                                    : site.property._id,
+                                                name: site.name,
+                                                location: `${property.location.city}, ${property.location.state}`,
+                                                image:
+                                                  site.photos?.find(p => p.isCover)
+                                                    ?.url ||
+                                                  site.photos?.[0]?.url ||
+                                                  '',
+                                                checkIn:
+                                                  booking.dateRange!.from!.toISOString(),
+                                                checkOut:
+                                                  booking.dateRange!.to!.toISOString(),
+                                                basePrice:
+                                                  site.pricing.basePrice.toString(),
+                                                nights: nights.toString(),
+                                                cleaningFee: (
+                                                  site.pricing.cleaningFee || 0
+                                                ).toString(),
+                                                petFee: booking.pets
+                                                  ? (
+                                                    (site.pricing.petFee || 0) *
+                                                    booking.pets
+                                                  ).toString()
+                                                  : '0',
+                                                additionalGuestFee:
+                                                  booking.guests >
+                                                    site.capacity.maxGuests
+                                                    ? (
+                                                      (site.pricing
+                                                        .additionalGuestFee || 0) *
+                                                      (booking.guests -
+                                                        site.capacity.maxGuests)
+                                                    ).toString()
+                                                    : '0',
+                                                total: totalPrice.toString(),
+                                                currency:
+                                                  site.pricing.currency || 'VND',
+                                                guests: booking.guests.toString(),
+                                                pets: booking.pets.toString(),
+                                                vehicles: '1',
+                                              }).toString()
+                                            }
+                                            onClick={e => {
+                                              const isAuthenticated =
+                                                useAuthStore.getState()
+                                                  .isAuthenticated;
+                                              if (!isAuthenticated) {
+                                                e.preventDefault();
+                                                setShowLoginPrompt(true);
+                                              }
+                                            }}
+                                          >
+                                            Đặt ngay
+                                          </Link>
+                                        ) : (
+                                          <span>{isSoldOut ? 'Hết chỗ' : 'Đặt ngay'}</span>
+                                        )}
+                                      </Button>
+                                    );
+                                  })()}
                                 </div>
                               </div>
                             </div>
@@ -1840,6 +1867,10 @@ export function SitesListSection({
                         const combinedCapacity = (site.capacity.maxGuests || 0) * (site.capacity.maxConcurrentBookings || 1);
                         const isCapacityExceeded = booking.guests > combinedCapacity;
                         const isUnavailable = isCapacityExceeded || (isBlocked && hasSelectedDates);
+                        const isSoldOut = hasSelectedDates &&
+                          sitesAvailableUnits &&
+                          sitesAvailableUnits[site._id] !== undefined &&
+                          sitesAvailableUnits[site._id] <= 0;
 
                         const calculated = hasSelectedDates
                           ? calculateSiteSubtotal(site, dateRange.from!, dateRange.to!)
@@ -1917,15 +1948,17 @@ export function SitesListSection({
                               {site.photos && site.photos.length > 0 && (
                                 <div className="relative h-[220px] w-full overflow-hidden">
                                   <SiteImageSlider photos={site.photos} name={site.name} />
-                                  {isUnavailable && (
+                                  {(isUnavailable || isSoldOut) && (
                                     <div className="absolute inset-0 flex items-center justify-center bg-black/50 pointer-events-none">
                                       <Badge
                                         variant="destructive"
                                         className="text-sm"
                                       >
-                                        {isCapacityExceeded
-                                          ? 'Không đáp ứng đủ số người'
-                                          : (siteUnavailableReason.get(site._id) || 'Không khả dụng')}
+                                        {isSoldOut
+                                          ? 'Hết chỗ'
+                                          : isCapacityExceeded
+                                            ? 'Không đáp ứng đủ số người'
+                                            : (siteUnavailableReason.get(site._id) || 'Không khả dụng')}
                                       </Badge>
                                     </div>
                                   )}
@@ -2013,80 +2046,93 @@ export function SitesListSection({
                                     >
                                       Không khả dụng
                                     </Button>
-                                  ) : (
-                                    <Button
-                                      size="default"
-                                      asChild={hasSelectedDates}
-                                      onClick={handleBookNowClick}
-                                    >
-                                      {hasSelectedDates ? (
-                                        <Link
-                                          href={
-                                            `/checkouts/payment?` +
-                                            new URLSearchParams({
-                                              siteId: site._id,
-                                              propertyId:
-                                                typeof site.property === 'string'
-                                                  ? site.property
-                                                  : site.property._id,
-                                              name: site.name,
-                                              location: `${property.location.city}, ${property.location.state}`,
-                                              image:
-                                                site.photos?.find(p => p.isCover)
-                                                  ?.url ||
-                                                site.photos?.[0]?.url ||
-                                                '',
-                                              checkIn:
-                                                booking.dateRange!.from!.toISOString(),
-                                              checkOut:
-                                                booking.dateRange!.to!.toISOString(),
-                                              basePrice:
-                                                site.pricing.basePrice.toString(),
-                                              nights: nights.toString(),
-                                              cleaningFee: (
-                                                site.pricing.cleaningFee || 0
-                                              ).toString(),
-                                              petFee: booking.pets
-                                                ? (
-                                                  (site.pricing.petFee || 0) *
-                                                  booking.pets
-                                                ).toString()
-                                                : '0',
-                                              additionalGuestFee:
-                                                booking.guests >
-                                                  site.capacity.maxGuests
+                                  ) : (() => {
+                                    const isSoldOut = hasSelectedDates &&
+                                      sitesAvailableUnits &&
+                                      sitesAvailableUnits[site._id] !== undefined &&
+                                      sitesAvailableUnits[site._id] <= 0;
+
+                                    return (
+                                      <Button
+                                        size="default"
+                                        className={isSoldOut ? "bg-slate-300 text-slate-500 dark:bg-slate-700 dark:text-slate-400 cursor-not-allowed" : ""}
+                                        disabled={isSoldOut}
+                                        asChild={hasSelectedDates && !isSoldOut}
+                                        onClick={(e) => {
+                                          if (!isSoldOut) {
+                                            handleBookNowClick(e);
+                                          }
+                                        }}
+                                      >
+                                        {hasSelectedDates && !isSoldOut ? (
+                                          <Link
+                                            href={
+                                              `/checkouts/payment?` +
+                                              new URLSearchParams({
+                                                siteId: site._id,
+                                                propertyId:
+                                                  typeof site.property === 'string'
+                                                    ? site.property
+                                                    : site.property._id,
+                                                name: site.name,
+                                                location: `${property.location.city}, ${property.location.state}`,
+                                                image:
+                                                  site.photos?.find(p => p.isCover)
+                                                    ?.url ||
+                                                  site.photos?.[0]?.url ||
+                                                  '',
+                                                checkIn:
+                                                  booking.dateRange!.from!.toISOString(),
+                                                checkOut:
+                                                  booking.dateRange!.to!.toISOString(),
+                                                basePrice:
+                                                  site.pricing.basePrice.toString(),
+                                                nights: nights.toString(),
+                                                cleaningFee: (
+                                                  site.pricing.cleaningFee || 0
+                                                ).toString(),
+                                                petFee: booking.pets
                                                   ? (
-                                                    (site.pricing
-                                                      .additionalGuestFee || 0) *
-                                                    (booking.guests -
-                                                      site.capacity.maxGuests)
+                                                    (site.pricing.petFee || 0) *
+                                                    booking.pets
                                                   ).toString()
                                                   : '0',
-                                              total: totalPrice.toString(),
-                                              currency:
-                                                site.pricing.currency || 'VND',
-                                              guests: booking.guests.toString(),
-                                              pets: booking.pets.toString(),
-                                              vehicles: '1',
-                                            }).toString()
-                                          }
-                                          onClick={e => {
-                                            const isAuthenticated =
-                                              useAuthStore.getState()
-                                                .isAuthenticated;
-                                            if (!isAuthenticated) {
-                                              e.preventDefault();
-                                              setShowLoginPrompt(true);
+                                                additionalGuestFee:
+                                                  booking.guests >
+                                                    site.capacity.maxGuests
+                                                    ? (
+                                                      (site.pricing
+                                                        .additionalGuestFee || 0) *
+                                                      (booking.guests -
+                                                        site.capacity.maxGuests)
+                                                    ).toString()
+                                                    : '0',
+                                                total: totalPrice.toString(),
+                                                currency:
+                                                  site.pricing.currency || 'VND',
+                                                guests: booking.guests.toString(),
+                                                pets: booking.pets.toString(),
+                                                vehicles: '1',
+                                              }).toString()
                                             }
-                                          }}
-                                        >
-                                          Đặt ngay
-                                        </Link>
-                                      ) : (
-                                        <span>Đặt ngay</span>
-                                      )}
-                                    </Button>
-                                  )}
+                                            onClick={e => {
+                                              const isAuthenticated =
+                                                useAuthStore.getState()
+                                                  .isAuthenticated;
+                                              if (!isAuthenticated) {
+                                                e.preventDefault();
+                                                setShowLoginPrompt(true);
+                                              }
+                                            }}
+                                          >
+                                            Đặt ngay
+                                          </Link>
+                                        ) : (
+                                          <span>{isSoldOut ? 'Hết chỗ' : 'Đặt ngay'}</span>
+                                        )}
+                                      </Button>
+                                    );
+                                  })()}
                                 </div>
                               </CardContent>
                             </Card>

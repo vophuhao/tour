@@ -283,6 +283,24 @@ export async function getAvailableUnits(
 }
 
 /**
+ * Get service availability and maximum remaining inventory for a date range at a property
+ */
+export async function getPropertyServicesAvailability(
+  propertyId: string,
+  checkIn: string,
+  checkOut: string
+): Promise<ApiResponse<Array<{
+  name: string;
+  description?: string;
+  pricing: Array<{ price: number; unit: string }>;
+  isInventoryTracked: boolean;
+  totalInventory: number;
+  availableCount: number;
+}>>> {
+  return apiClient.get(`/properties/${propertyId}/services/availability?checkIn=${checkIn}&checkOut=${checkOut}`);
+}
+
+/**
  * Search sites with optional filters
  * This is the main search function that accepts all filter parameters
  */
@@ -653,4 +671,35 @@ export async function unblockSiteDates(siteId: string, dates: string[]) {
 export async function getCompareProperties(ids: string): Promise<any[]> {
   const response = await apiClient.get(`/properties/compare/list?ids=${ids}`) as any;
   return response.data || [];
+}
+
+/**
+ * Create service block (host only)
+ */
+export async function createServiceBlock(data: {
+  propertyId: string;
+  serviceName: string;
+  checkIn: string;
+  checkOut: string;
+  quantity: number;
+  note?: string;
+}) {
+  const response = await apiClient.post('/properties/service-blocks', data);
+  return response.data;
+}
+
+/**
+ * Get host's service blocks (host only)
+ */
+export async function getMyServiceBlocks() {
+  const response = await apiClient.get('/properties/service-blocks/my');
+  return response.data;
+}
+
+/**
+ * Delete service block (host only)
+ */
+export async function deleteServiceBlock(blockId: string) {
+  const response = await apiClient.delete(`/properties/service-blocks/${blockId}`);
+  return response.data;
 }

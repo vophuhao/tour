@@ -269,33 +269,44 @@ server.listen(PORT, async () => {
   await connectToDatabase();
   await connectRedis();
 
-  // Run startup booking cleanup jobs immediately on application launch (useful for development catch-up)
-  // (async () => {
-  //   console.log("🔄 Running startup booking cleanup jobs...");
-  //   try {
-  //     const expiredResult = await bookingLifecycleService.cancelExpiredPendingBookings();
-  //     if (expiredResult.remindersSent > 0 || expiredResult.bookingsCancelled > 0) {
-  //       console.log(
-  //         `✅ Startup Expired bookings job: sent ${expiredResult.remindersSent} reminders, cancelled ${expiredResult.bookingsCancelled} bookings`
-  //       );
-  //     } else {
-  //       console.log("✅ Startup Expired bookings job completed (no action needed)");
-  //     }
-  //   } catch (err) {
-  //     console.error("❌ Startup Expired bookings job failed:", err);
-  //   }
+  // Cleanup incorrect checkout day availability blocks from existing database records
+  (async () => {
+    try {
+      console.log("🧹 Running startup checkout blocks cleanup...");
+      const { BookingModel, AvailabilityModel } = await import("./models");
+      const blockedRecords = await AvailabilityModel.find({ blockType: "booked" });
+      let deletedCount = 0;
 
-  //   try {
-  //     const checkinResult = await bookingLifecycleService.cancelUnpaidBookingsOnCheckinDay();
-  //     if (checkinResult.cancelled > 0) {
-  //       console.log(
-  //         `✅ Startup Cleanup completed: cancelled ${checkinResult.cancelled}/${checkinResult.total} unpaid bookings`
-  //       );
-  //     } else {
-  //       console.log("✅ Startup Cleanup completed (no action needed)");
-  //     }
-  //   } catch (err) {
-  //     console.error("❌ Startup Cleanup unpaid bookings job failed:", err);
-  //   }
-  // })();
+      for (const record of blockedRecords) {
+        const recordDate = new Date(record.date);
+        recordDate.setHours(0, 0, 0, 0);
+
+        const bookings = await BookingModel.find({
+          site: record.site,
+          status: { $in: ["pending", "confirmed", "completed"] },
+        });
+
+        const isStillBooked = bookings.some(booking => {
+          const ci = new Date(booking.checkIn);
+          ci.setHours(0, 0, 0, 0);
+          const co = new Date(booking.checkOut);
+          co.setHours(0, 0, 0, 0);
+
+          return recordDate >= ci && recordDate < co;
+        });
+
+        if (!isStillBooked) {
+          await AvailabilityModel.deleteOne({ _id: record._id });
+          deletedCount++;
+        }
+      }
+      if (deletedCount > 0) {
+        console.log(`✅ Cleaned up ${deletedCount} incorrect checkout day availability blocks.`);
+      } else {
+        console.log("✅ Checkout blocks cleanup completed (no action needed).");
+      }
+    } catch (err) {
+      console.error("❌ Checkout blocks cleanup failed:", err);
+    }
+  })();
 });

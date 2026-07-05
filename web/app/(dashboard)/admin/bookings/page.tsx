@@ -926,7 +926,7 @@ export default function AdminBookingsPage() {
                 Đóng
               </button>
               <button
-                onClick={() => handleAction(modal.type, modal.booking._id, { adminNote: actionNote })}
+                onClick={() => handleAction(modal.type, modal.booking.id || modal.booking._id, { adminNote: actionNote })}
                 disabled={acting}
                 className={cn(
                   'px-4 py-2 rounded-xl text-xs font-extrabold text-white transition-all shadow-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',

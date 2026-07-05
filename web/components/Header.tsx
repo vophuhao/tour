@@ -180,7 +180,7 @@ export default function Header() {
                 <Button asChild variant="ghost" size="sm">
                   <Link href="/sign-in">Đăng nhập</Link>
                 </Button>
-                <Button asChild variant="secondary" size="sm">
+                <Button asChild size="sm">
                   <Link href="/sign-up">Đăng ký</Link>
                 </Button>
               </div>
@@ -302,7 +302,7 @@ export default function Header() {
                       Đăng nhập
                     </Link>
                   </Button>
-                  <Button asChild className="w-full">
+                  <Button asChild variant="outline" className="w-full">
                     <Link
                       href="/sign-up"
                       onClick={() => setMobileMenuOpen(false)}

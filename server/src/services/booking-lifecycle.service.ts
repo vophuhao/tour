@@ -279,9 +279,14 @@ export class BookingLifecycleService {
         const maxConcurrent = site?.capacity?.maxConcurrentBookings || 1;
 
         if (maxConcurrent === 1) {
+          const start = new Date(booking.checkIn);
+          start.setHours(0, 0, 0, 0);
+          const end = new Date(booking.checkOut);
+          end.setHours(0, 0, 0, 0);
+
           await AvailabilityModel.deleteMany({
             site: booking.site,
-            date: { $gte: booking.checkIn, $lte: booking.checkOut },
+            date: { $gte: start, $lt: end },
             blockType: "booked",
           });
         }

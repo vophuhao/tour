@@ -23,7 +23,7 @@ export function NotificationBell({
   showPreview = false,
 }: NotificationBellProps) {
   const [open, setOpen] = useState(false);
-  const { data } = useUnreadCount();
+  const { data } = useUnreadCount({ role: 'host' });
   const unreadCount = data?.unreadCount || 0;
 
   return (

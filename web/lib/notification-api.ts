@@ -11,14 +11,15 @@ export const notificationApi = {
     page?: number;
     limit?: number;
     unreadOnly?: boolean;
+    role?: string;
   }): Promise<NotificationsResponse> => {
     const response = await apiClient.get("/notifications", { params });
     return response.data;
   },
 
   // Get unread count
-  getUnreadCount: async (): Promise<UnreadCountResponse> => {
-    const response = await apiClient.get("/notifications/unread-count");
+  getUnreadCount: async (params?: { role?: string }): Promise<UnreadCountResponse> => {
+    const response = await apiClient.get("/notifications/unread-count", { params });
     return response.data;
   },
 

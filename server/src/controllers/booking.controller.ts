@@ -323,4 +323,45 @@ export default class BookingController {
     const booking = await this.bookingService.processDissatisfaction(adminId, id || "", input);
     return ResponseUtil.success(res, BookingDTO.toResponse(booking), "Đã xử lý yêu cầu hoàn tiền");
   });
+
+  cleanupCheckoutDiagnostics = catchErrors(async (req, res) => {
+    const { BookingModel, AvailabilityModel } = await import("@/models");
+    const blockedRecords = await AvailabilityModel.find({ blockType: "booked" });
+    let deletedCount = 0;
+    const deletedDetails: any[] = [];
+
+    for (const record of blockedRecords) {
+      const recordDate = new Date(record.date);
+      recordDate.setHours(0, 0, 0, 0);
+
+      const bookings = await BookingModel.find({
+        site: record.site,
+        status: { $in: ["pending", "confirmed", "completed", "refund_requested"] },
+      });
+
+      const isStillBooked = bookings.some(booking => {
+        const ci = new Date(booking.checkIn);
+        ci.setHours(0, 0, 0, 0);
+        const co = new Date(booking.checkOut);
+        co.setHours(0, 0, 0, 0);
+
+        return recordDate >= ci && recordDate < co;
+      });
+
+      if (!isStillBooked) {
+        await AvailabilityModel.deleteOne({ _id: record._id });
+        deletedCount++;
+        deletedDetails.push({
+          site: record.site,
+          date: record.date,
+        });
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      deletedCount,
+      deletedDetails,
+    });
+  });
 }

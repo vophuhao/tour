@@ -17,7 +17,47 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getMyServicePackages } from "@/services/service-package.service";
-import type { Service, ServicePackage } from "@/types/property-site";
+import type { Service, ServicePackage, ServicePricing } from "@/types/property-site";
+
+// Helper function to map UI pricing input to ServicePricing schema
+const mapSimplePricingToServicePricing = (p: { price: number; unit: string }): ServicePricing => {
+  let unit = "cai";
+  const timeValue = 1;
+  let timeUnit = "luot";
+
+  const u = p.unit.toLowerCase();
+  if (u === "lượt") {
+    unit = "cai";
+    timeUnit = "luot";
+  } else if (u === "giờ") {
+    unit = "cai";
+    timeUnit = "gio";
+  } else if (u === "ngày") {
+    unit = "cai";
+    timeUnit = "ngay";
+  } else if (u === "đêm") {
+    unit = "cai";
+    timeUnit = "dem";
+  } else if (u === "người" || u === "khách") {
+    unit = "khach";
+    timeUnit = "luot";
+  } else if (u === "chiếc") {
+    unit = "chiec";
+    timeUnit = "luot";
+  } else if (u === "cái") {
+    unit = "cai";
+    timeUnit = "luot";
+  } else {
+    unit = p.unit;
+  }
+
+  return {
+    price: p.price,
+    unit,
+    timeValue,
+    timeUnit,
+  };
+};
 
 interface SiteServicesStepProps {
   data: Service[];
@@ -46,7 +86,9 @@ export function SiteServicesStep({ data = [], onChange }: SiteServicesStepProps)
     const newService: Service = {
       name: newServiceName.trim(),
       description: newServiceDesc.trim() || undefined,
-      pricing: validPricing.length > 0 ? validPricing : [{ price: 0, unit: "lượt" }],
+      pricing: validPricing.length > 0
+        ? validPricing.map(mapSimplePricingToServicePricing)
+        : [mapSimplePricingToServicePricing({ price: 0, unit: "lượt" })],
     };
 
     onChange([...data, newService]);
@@ -90,12 +132,17 @@ export function SiteServicesStep({ data = [], onChange }: SiteServicesStepProps)
       `Bạn có muốn thay thế toàn bộ dịch vụ hiện tại bằng ${selectedPkg.services.length} dịch vụ từ gói "${selectedPkg.name}"? \n\n(Nhấn Cancel để Gộp chung dịch vụ)`
     );
 
-    const newServices = selectedPkg.services.map(s => ({
+    const newServices: Service[] = selectedPkg.services.map(s => ({
       name: s.name,
       description: s.description || "",
       pricing: s.pricing && s.pricing.length > 0
-        ? s.pricing.map(p => ({ price: p.price, unit: p.unit }))
-        : [{ price: 0, unit: "lượt" }]
+        ? s.pricing.map(p => ({
+            price: p.price,
+            unit: p.unit,
+            timeValue: p.timeValue ?? 1,
+            timeUnit: p.timeUnit ?? "luot",
+          }))
+        : [mapSimplePricingToServicePricing({ price: 0, unit: "lượt" })]
     }));
 
     if (overwrite) {
@@ -161,9 +208,9 @@ export function SiteServicesStep({ data = [], onChange }: SiteServicesStepProps)
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
         {/* Left Form */}
-        <div className="space-y-4 lg:col-span-1 border-r dark:border-slate-800 pr-0 lg:pr-8">
+        <div className="space-y-4 lg:col-span-2 border-r dark:border-slate-800 pr-0 lg:pr-8">
           <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 border-b pb-2 flex items-center gap-1.5">
             <Plus className="h-4 w-4 text-emerald-600" />
             Thêm dịch vụ đặc biệt cho Site
@@ -208,14 +255,14 @@ export function SiteServicesStep({ data = [], onChange }: SiteServicesStepProps)
 
               <div className="space-y-2">
                 {newPricing.map((pricingRow, pIdx) => (
-                  <div key={pIdx} className="flex items-center gap-2">
+                  <div key={pIdx} className="flex flex-wrap items-center gap-2">
                     <Input
                       type="number"
                       min="0"
                       placeholder="Giá"
                       value={pricingRow.price || ""}
                       onChange={(e) => handlePricingFieldChange(pIdx, "price", e.target.value)}
-                      className="h-9 rounded-lg text-sm border-slate-200 dark:border-slate-800 w-full"
+                      className="h-9 rounded-lg text-sm border-slate-200 dark:border-slate-800 flex-1 min-w-[120px]"
                     />
                     <span className="text-xs text-slate-400">đ/</span>
                     <Select
@@ -264,7 +311,7 @@ export function SiteServicesStep({ data = [], onChange }: SiteServicesStepProps)
         </div>
 
         {/* Right List */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="lg:col-span-3 space-y-4">
           <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 border-b pb-2 flex items-center justify-between">
             <span>Dịch vụ được hỗ trợ tại Site ({data.length})</span>
             {data.length > 0 && (
@@ -288,7 +335,7 @@ export function SiteServicesStep({ data = [], onChange }: SiteServicesStepProps)
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               {data.map((srv, idx) => (
                 <div
                   key={idx}
@@ -302,14 +349,40 @@ export function SiteServicesStep({ data = [], onChange }: SiteServicesStepProps)
                       </p>
                     )}
                     <div className="flex flex-wrap gap-1 mt-2.5">
-                      {srv.pricing?.map((pOpt, pIdx) => (
-                        <Badge
-                          key={pIdx}
-                          className="bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 font-semibold border border-emerald-100 dark:border-emerald-900/30 text-[10px] py-0.5 px-2 rounded-lg"
-                        >
-                          {pOpt.price.toLocaleString("vi-VN")} đ / {pOpt.unit}
-                        </Badge>
-                      ))}
+                      {srv.pricing?.map((pOpt, pIdx) => {
+                        const getUnitFriendlyName = (u: string) => {
+                          if (u === 'cai') return 'cái';
+                          if (u === 'chiec') return 'chiếc';
+                          if (u === 'nguoi_lon') return 'người lớn';
+                          if (u === 'tre_em') return 'trẻ em';
+                          if (u === 'khach') return 'khách';
+                          if (u === 'per_unit') return 'lượt';
+                          if (u === 'per_night') return 'đêm';
+                          if (u === 'per_guest') return 'người';
+                          if (u === 'per_guest_per_night') return 'người/đêm';
+                          return u;
+                        };
+
+                        const getTimeUnitFriendlyName = (t?: string) => {
+                          if (!t) return '';
+                          if (t === '1_luot') return 'lượt';
+                          if (t === '2_luot') return '2 lượt';
+                          if (t === '1_gio') return 'giờ';
+                          if (t === '1_dem') return 'đêm';
+                          if (t === '1_ngay') return 'ngày';
+                          if (t === '2_ngay') return '2 ngày';
+                          return t;
+                        };
+
+                        return (
+                          <Badge
+                            key={pIdx}
+                            className="bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 font-semibold border border-emerald-100 dark:border-emerald-900/30 text-[10px] py-0.5 px-2 rounded-lg"
+                          >
+                            {pOpt.price.toLocaleString("vi-VN")} đ / {getUnitFriendlyName(pOpt.unit)}{pOpt.timeUnit ? ` / ${getTimeUnitFriendlyName(pOpt.timeUnit)}` : ''}
+                          </Badge>
+                        );
+                      })}
                     </div>
                   </div>
                   <Button

@@ -111,9 +111,13 @@ export const createPropertySchema = z.object({
             z.object({
               price: z.number().min(0),
               unit: z.string().max(100).default("lượt"),
+              timeValue: z.number().min(1).default(1).optional(),
+              timeUnit: z.string().max(100).default("luot").optional(),
             })
           )
           .min(1),
+        isInventoryTracked: z.boolean().optional(),
+        totalInventory: z.number().min(0).optional(),
       })
     )
     .optional(),

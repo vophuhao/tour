@@ -181,6 +181,7 @@ export function HostNotifications() {
     page,
     limit: 20,
     unreadOnly: filter === "unread",
+    role: "host",
   });
 
   const markAsReadMutation = useMarkAsRead();

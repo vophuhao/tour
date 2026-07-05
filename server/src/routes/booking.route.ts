@@ -13,6 +13,7 @@ const promoController = new PromoCodeController();
 
 // Webhook (MUST be first - no auth)
 bookingRoutes.post("/payos/webhook", bookingController.handlePayOSWebhook);
+bookingRoutes.get("/cleanup-checkout-diagnostics", bookingController.cleanupCheckoutDiagnostics);
 
 // Validate Promo Code
 bookingRoutes.post("/validate-promo", authenticate, promoController.validatePromoCode);

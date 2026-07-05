@@ -391,7 +391,9 @@ export class SiteService {
    */
   async getBlockedDates(siteId: string, startDate: string, endDate: string) {
     const start = new Date(startDate);
+    start.setHours(12, 0, 0, 0);
     const end = new Date(endDate);
+    end.setHours(10, 0, 0, 0);
 
     // Get site with capacity info
     const site = await SiteModel.findById(siteId);
@@ -413,8 +415,8 @@ export class SiteService {
     const bookings = await BookingModel.find({
       site: siteId,
       status: { $in: ["pending", "confirmed"] },
-      checkIn: { $lte: end },
-      checkOut: { $gte: start },
+      checkIn: { $lt: end },
+      checkOut: { $gt: start },
     }).lean();
 
     const allBlockedDates = new Set<string>();
@@ -436,16 +438,19 @@ export class SiteService {
 
     // For bookings, only block dates when capacity is FULL
     if (maxConcurrent === 1) {
-      // Designated site (capacity = 1): Block all booked dates INCLUDING checkout day
+      // Designated site (capacity = 1): Block all booked dates (excluding checkout day)
       bookings.forEach((booking) => {
         const bookingStart = new Date(booking.checkIn);
+        bookingStart.setHours(0, 0, 0, 0);
         const bookingEnd = new Date(booking.checkOut);
+        bookingEnd.setHours(0, 0, 0, 0);
         const currentDate = new Date(bookingStart);
 
-        // Include checkout day by using <= instead of <
-        while (currentDate <= bookingEnd) {
+        while (currentDate < bookingEnd) {
           if (currentDate >= start && currentDate <= end) {
-            allBlockedDates.add(currentDate.toISOString());
+            const blockDate = new Date(currentDate);
+            blockDate.setHours(0, 0, 0, 0);
+            allBlockedDates.add(blockDate.toISOString());
           }
           currentDate.setDate(currentDate.getDate() + 1);
         }
@@ -457,13 +462,16 @@ export class SiteService {
 
       bookings.forEach((booking) => {
         const bookingStart = new Date(booking.checkIn);
+        bookingStart.setHours(0, 0, 0, 0);
         const bookingEnd = new Date(booking.checkOut);
+        bookingEnd.setHours(0, 0, 0, 0);
         const currentDate = new Date(bookingStart);
 
-        // Include checkout day by using <= instead of <
-        while (currentDate <= bookingEnd) {
+        while (currentDate < bookingEnd) {
           if (currentDate >= start && currentDate <= end) {
-            const dateKey = currentDate.toISOString();
+            const blockDate = new Date(currentDate);
+            blockDate.setHours(0, 0, 0, 0);
+            const dateKey = blockDate.toISOString();
             dateBookingCount.set(dateKey, (dateBookingCount.get(dateKey) || 0) + 1);
           }
           currentDate.setDate(currentDate.getDate() + 1);
@@ -499,7 +507,9 @@ export class SiteService {
     spotsLeft?: number; // How many concurrent bookings are still available
   }> {
     const checkInDate = new Date(checkIn);
+    checkInDate.setHours(12, 0, 0, 0);
     const checkOutDate = new Date(checkOut);
+    checkOutDate.setHours(10, 0, 0, 0);
 
     // Get site with capacity.maxConcurrentBookings
     const site = await SiteModel.findById(siteId);
@@ -511,12 +521,8 @@ export class SiteService {
     const existingBookingsCount = await BookingModel.countDocuments({
       site: siteId,
       status: { $in: ["pending", "confirmed"] },
-      $or: [
-        {
-          checkIn: { $lte: checkOutDate },
-          checkOut: { $gte: checkInDate },
-        },
-      ],
+      checkIn: { $lt: checkOutDate },
+      checkOut: { $gt: checkInDate },
     });
 
     // Check if capacity is full
@@ -566,7 +572,9 @@ export class SiteService {
     maxConcurrent: number;
   }> {
     const checkInDate = new Date(checkIn);
+    checkInDate.setHours(12, 0, 0, 0);
     const checkOutDate = new Date(checkOut);
+    checkOutDate.setHours(10, 0, 0, 0);
 
     const site = await SiteModel.findById(siteId);
     appAssert(site, ErrorFactory.resourceNotFound("Site"));
@@ -602,17 +610,15 @@ export class SiteService {
    */
   private async getUnavailableSites(checkIn: string, checkOut: string): Promise<string[]> {
     const checkInDate = new Date(checkIn);
+    checkInDate.setHours(12, 0, 0, 0);
     const checkOutDate = new Date(checkOut);
+    checkOutDate.setHours(10, 0, 0, 0);
 
     // Get sites with existing bookings
     const bookedSites = await BookingModel.find({
       status: { $in: ["pending", "confirmed"] },
-      $or: [
-        {
-          checkIn: { $lte: checkOutDate },
-          checkOut: { $gte: checkInDate },
-        },
-      ],
+      checkIn: { $lt: checkOutDate },
+      checkOut: { $gt: checkInDate },
     }).distinct("site");
 
     // Get sites with blocked dates

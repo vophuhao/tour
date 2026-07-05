@@ -19,6 +19,9 @@ declare interface User {
   _id: string;
   email: string;
   username: string;
+  fullName?: string;
+  phoneNumber?: string;
+  phone?: string;
   avatarUrl?: string;
   bio?: string;
   role: string;

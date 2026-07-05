@@ -1,6 +1,6 @@
-import { catchErrors } from "@/errors";
+import { catchErrors, ErrorFactory } from "@/errors";
 import type { PropertyService } from "@/services/property.service";
-import { ResponseUtil } from "../utils";
+import { ResponseUtil, appAssert } from "../utils";
 import { mongoIdSchema } from "@/validators";
 import {
   createPropertySchema,
@@ -329,5 +329,224 @@ export default class PropertyController {
     const data = await this.propertyService.compareProperties(ids);
 
     return ResponseUtil.success(res, data, "Lấy danh sách so sánh thành công");
+  });
+
+  /**
+   * Get service availability and maximum remaining inventory for a date range
+   * @route GET /api/properties/:id/services/availability
+   */
+  getPropertyServicesAvailability = catchErrors(async (req, res) => {
+    const { id } = req.params;
+    const { checkIn, checkOut } = req.query;
+
+    if (!id) {
+      return res.status(400).json({ success: false, message: "id là bắt buộc" });
+    }
+
+    if (!checkIn || !checkOut) {
+      return res.status(400).json({ success: false, message: "checkIn và checkOut là bắt buộc" });
+    }
+
+    const mongoose = await import("mongoose");
+    const { PropertyModel, BookingModel, ServiceBlockModel } = await import("@/models");
+    
+    const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
+    const property = await PropertyModel.findOne({
+      $or: [
+        { _id: isValidObjectId ? new mongoose.Types.ObjectId(id) : null },
+        { slug: id }
+      ]
+    });
+
+    if (!property) {
+      return res.status(404).json({ success: false, message: "Property not found" });
+    }
+
+    const checkInDate = new Date(checkIn as string);
+    checkInDate.setHours(12, 0, 0, 0);
+    const checkOutDate = new Date(checkOut as string);
+    checkOutDate.setHours(10, 0, 0, 0);
+
+    const services = property.services || [];
+    const results = [];
+
+    // Fetch overlapping bookings
+    const overlappingBookings = await BookingModel.find({
+      property: property._id,
+      status: { $in: ["pending", "confirmed", "completed", "refund_requested"] },
+      checkIn: { $lt: checkOutDate },
+      checkOut: { $gt: checkInDate }
+    }).select("checkIn checkOut services");
+
+    // Fetch overlapping service blocks
+    const overlappingBlocks = await ServiceBlockModel.find({
+      property: property._id,
+      checkIn: { $lt: checkOutDate },
+      checkOut: { $gt: checkInDate }
+    });
+
+    for (const srv of services) {
+      if (!srv.isInventoryTracked) {
+        results.push({
+          name: srv.name,
+          description: srv.description || "",
+          pricing: srv.pricing,
+          isInventoryTracked: false,
+          totalInventory: srv.totalInventory || 0,
+          availableCount: 9999 // Unlimited
+        });
+        continue;
+      }
+
+      const totalInventory = srv.totalInventory || 0;
+      let minAvailable = totalInventory;
+
+      // Loop through each night in the range
+      const startDate = new Date(checkInDate);
+      const endDate = new Date(checkOutDate);
+
+      while (startDate < endDate) {
+        const nightStart = new Date(startDate);
+        nightStart.setHours(12, 0, 0, 0);
+        const nightEnd = new Date(startDate);
+        nightEnd.setDate(nightEnd.getDate() + 1);
+        nightEnd.setHours(10, 0, 0, 0);
+
+        let bookedCountForNight = 0;
+
+        for (const booking of overlappingBookings) {
+          const bIn = new Date(booking.checkIn);
+          const bOut = new Date(booking.checkOut);
+
+          if (bIn < nightEnd && bOut > nightStart) {
+            const bSrv = booking.services?.find(s => s.name === srv.name);
+            if (bSrv) {
+              bookedCountForNight += (bSrv.quantity || 1);
+            }
+          }
+        }
+
+        for (const block of overlappingBlocks) {
+          if (block.serviceName === srv.name) {
+            const blockIn = new Date(block.checkIn);
+            const blockOut = new Date(block.checkOut);
+            if (blockIn < nightEnd && blockOut > nightStart) {
+              bookedCountForNight += block.quantity;
+            }
+          }
+        }
+
+        const availableForNight = Math.max(0, totalInventory - bookedCountForNight);
+        if (availableForNight < minAvailable) {
+          minAvailable = availableForNight;
+        }
+
+        startDate.setDate(startDate.getDate() + 1);
+      }
+
+      results.push({
+        name: srv.name,
+        description: srv.description || "",
+        pricing: srv.pricing,
+        isInventoryTracked: true,
+        totalInventory,
+        availableCount: minAvailable
+      });
+    }
+
+    return ResponseUtil.success(res, results, "Lấy thông tin tồn kho dịch vụ thành công");
+  });
+
+  /**
+   * Create service block
+   * @route POST /api/properties/service-blocks
+   */
+  createServiceBlock = catchErrors(async (req, res) => {
+    const { createServiceBlockSchema } = await import("@/validators/service-block.validator");
+    const input = createServiceBlockSchema.parse(req.body);
+    const hostId = mongoIdSchema.parse(req.userId);
+
+    const { PropertyModel, ServiceBlockModel } = await import("@/models");
+
+    // Verify ownership of the property
+    const property = await PropertyModel.findById(input.propertyId);
+    appAssert(property, ErrorFactory.resourceNotFound("Property"));
+    appAssert(
+      property.host.toString() === hostId,
+      ErrorFactory.forbidden("Bạn không có quyền quản lý khu đất này")
+    );
+
+    // Verify service exists on property
+    const serviceExists = property.services?.some(s => s.name === input.serviceName);
+    appAssert(serviceExists, ErrorFactory.badRequest(`Dịch vụ "${input.serviceName}" không tồn tại ở khu đất này`));
+
+    // Resolve date range
+    const checkInDate = new Date(input.checkIn);
+    const checkOutDate = new Date(input.checkOut);
+    checkInDate.setHours(12, 0, 0, 0);
+    checkOutDate.setHours(10, 0, 0, 0);
+
+    // Save block
+    const block = await ServiceBlockModel.create({
+      property: input.propertyId,
+      serviceName: input.serviceName,
+      checkIn: checkInDate,
+      checkOut: checkOutDate,
+      quantity: input.quantity,
+      note: input.note,
+    });
+
+    const notifyPropertyChange = (await import("../socket")).notifyPropertyChange;
+    notifyPropertyChange(input.propertyId);
+
+    return ResponseUtil.created(res, block, "Khóa tồn kho dịch vụ thành công");
+  });
+
+  /**
+   * Get my service blocks
+   * @route GET /api/properties/service-blocks/my
+   */
+  getMyServiceBlocks = catchErrors(async (req, res) => {
+    const hostId = mongoIdSchema.parse(req.userId);
+    const { PropertyModel, ServiceBlockModel } = await import("@/models");
+
+    // Fetch host's property IDs
+    const myProperties = await PropertyModel.find({ host: hostId }).select("_id");
+    const propIds = myProperties.map(p => p._id);
+
+    // Fetch active blocks for these properties
+    const blocks = await ServiceBlockModel.find({ property: { $in: propIds } })
+      .populate("property", "name location")
+      .sort({ createdAt: -1 });
+
+    return ResponseUtil.success(res, blocks, "Lấy danh sách khóa kho thành công");
+  });
+
+  /**
+   * Delete service block
+   * @route DELETE /api/properties/service-blocks/:blockId
+   */
+  deleteServiceBlock = catchErrors(async (req, res) => {
+    const hostId = mongoIdSchema.parse(req.userId);
+    const { blockId } = req.params;
+    const { PropertyModel, ServiceBlockModel } = await import("@/models");
+
+    const block = await ServiceBlockModel.findById(blockId);
+    appAssert(block, ErrorFactory.resourceNotFound("ServiceBlock"));
+
+    // Verify ownership
+    const property = await PropertyModel.findById(block.property);
+    appAssert(property, ErrorFactory.resourceNotFound("Property"));
+    appAssert(
+      property.host.toString() === hostId,
+      ErrorFactory.forbidden("Bạn không có quyền quản lý khu đất này")
+    );
+
+    await ServiceBlockModel.findByIdAndDelete(blockId);
+
+    const notifyPropertyChange = (await import("../socket")).notifyPropertyChange;
+    notifyPropertyChange(block.property.toString());
+
+    return ResponseUtil.success(res, null, "Xóa đợt khóa kho thành công");
   });
 }

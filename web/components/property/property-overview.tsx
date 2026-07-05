@@ -250,12 +250,12 @@ export function PropertyOverview({ property }: PropertyOverviewProps) {
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   {srv.pricing && srv.pricing.map((pOpt: any, pIdx: number) => (
                     <Badge key={pIdx} variant="outline" className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-350 font-semibold border-0 text-[10px] sm:text-xs py-0.5 px-2 rounded-lg shrink-0 whitespace-nowrap">
-                      {pOpt.price.toLocaleString("vi-VN")} đ / {pOpt.unit}
+                      {formatServicePricing(pOpt)}
                     </Badge>
                   ))}
                   {!srv.pricing && typeof srv.price === "number" && (
                     <Badge variant="outline" className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-350 font-semibold border-0 text-[10px] sm:text-xs py-0.5 px-2 rounded-lg shrink-0 whitespace-nowrap">
-                      {srv.price.toLocaleString("vi-VN")} đ / {srv.unit || "lượt"}
+                      {formatServicePricing(srv)}
                     </Badge>
                   )}
                 </div>
@@ -267,3 +267,31 @@ export function PropertyOverview({ property }: PropertyOverviewProps) {
     </div>
   );
 }
+
+const getUnitFriendlyName = (u: string) => {
+  if (u === 'cai') return 'cái';
+  if (u === 'chiec') return 'chiếc';
+  if (u === 'nguoi_lon') return 'người lớn';
+  if (u === 'tre_em') return 'trẻ em';
+  if (u === 'khach') return 'khách';
+  return u;
+};
+
+const getTimeUnitFriendlyName = (t?: string) => {
+  if (!t) return '';
+  const cleanT = t.replace(/^\d+_/, '');
+  if (cleanT === 'luot') return 'lượt';
+  if (cleanT === 'gio') return 'giờ';
+  if (cleanT === 'dem') return 'đêm';
+  if (cleanT === 'ngay') return 'ngày';
+  return cleanT;
+};
+
+const formatServicePricing = (pOpt: any) => {
+  if (pOpt.price === 0) return 'Miễn phí';
+  const unit = getUnitFriendlyName(pOpt.unit || 'cai');
+  const timeVal = pOpt.timeValue || 1;
+  const timeUnit = getTimeUnitFriendlyName(pOpt.timeUnit);
+  const timeDisplay = pOpt.timeUnit ? ` / ${timeVal} ${timeUnit}` : '';
+  return `${pOpt.price.toLocaleString("vi-VN")} đ / ${unit}${timeDisplay}`;
+};

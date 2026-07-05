@@ -28,7 +28,9 @@ export interface PropertyRule {
 
 export interface ServicePricing {
   price: number;
-  unit: string;
+  unit: 'cai' | 'chiec' | 'nguoi_lon' | 'tre_em' | 'khach' | string;
+  timeValue: number;
+  timeUnit: 'gio' | 'ngay' | 'dem' | 'luot' | string;
 }
 
 export interface Service {
@@ -36,6 +38,8 @@ export interface Service {
   name: string;
   description?: string;
   pricing: ServicePricing[];
+  isInventoryTracked?: boolean;
+  totalInventory?: number;
 }
 
 export interface ServicePackage {
@@ -462,13 +466,13 @@ export interface SiteSearchFilters {
   instantBook?: boolean;
   minRating?: number;
   sortBy?:
-    | 'newest'
-    | 'oldest'
-    | 'price-low'
-    | 'price-high'
-    | 'rating'
-    | 'name'
-    | 'capacity';
+  | 'newest'
+  | 'oldest'
+  | 'price-low'
+  | 'price-high'
+  | 'rating'
+  | 'name'
+  | 'capacity';
 }
 
 /**

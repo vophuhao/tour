@@ -140,7 +140,7 @@ export default function BookingsPage() {
     try {
       const { booking, reason } = cancelDialog;
       if (!booking) return;
-      const res: any = await API.post(`/bookings/${booking._id}/cancel`, {
+      const res: any = await API.post(`/bookings/${booking.id || booking._id}/cancel`, {
         cancellationReason: reason
       });
       if (res?.data?.success) {
@@ -158,21 +158,21 @@ export default function BookingsPage() {
       const { type, booking } = actionDialog;
       if (!type || !booking) return;
       if (type === 'attendance') {
-        const res: any = await API.post(`/bookings/host/${booking._id}/confirm-attendance`, { arrived: true });
+        const res: any = await API.post(`/bookings/host/${booking.id || booking._id}/confirm-attendance`, { arrived: true });
         if (res?.data?.success) {
           toast.success('Đã xác nhận khách đến!');
           setActionDialog({ open: false, type: null, booking: null });
           await fetchBookings();
         } else throw new Error(res?.data?.message || 'Có lỗi xảy ra');
       } else if (type === 'confirm') {
-        const res: any = await API.post(`/bookings/${booking._id}/confirm`);
+        const res: any = await API.post(`/bookings/${booking.id || booking._id}/confirm`);
         if (res?.data?.success) {
           toast.success('Đã xác nhận đặt phòng thành công!');
           setActionDialog({ open: false, type: null, booking: null });
           await fetchBookings();
         } else throw new Error(res?.data?.message || 'Có lỗi xảy ra');
       } else if (type === 'complete') {
-        const res: any = await API.post(`/bookings/${booking._id}/complete`);
+        const res: any = await API.post(`/bookings/${booking.id || booking._id}/complete`);
         if (res?.data?.success) {
           toast.success('Đã hoàn thành đặt phòng!');
           setActionDialog({ open: false, type: null, booking: null });
@@ -413,7 +413,7 @@ export default function BookingsPage() {
               </p>
               {filteredBookings.map(booking => (
                 <BookingCard
-                  key={booking._id}
+                  key={booking.id || booking._id}
                   booking={booking}
                   formatPrice={formatPrice}
                   formatDate={formatDate}
@@ -512,8 +512,8 @@ function BookingCard({ booking, formatPrice, formatDate, onAction, onDetail }: a
   const walletCredited = booking.walletCredited;
 
   const confirmUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/bookings/${booking._id}/confirmation`
-    : `/bookings/${booking._id}/confirmation`;
+    ? `${window.location.origin}/bookings/${booking.id || booking._id}/confirmation`
+    : `/bookings/${booking.id || booking._id}/confirmation`;
 
   async function generateQR() {
     if (!showQr) {

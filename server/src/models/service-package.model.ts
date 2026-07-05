@@ -3,6 +3,8 @@ import mongoose from "mongoose";
 export interface IServicePricing {
   price: number;
   unit: string;
+  timeValue?: number;
+  timeUnit?: string;
 }
 
 export interface IService {
@@ -21,7 +23,9 @@ export interface ServicePackageDocument extends mongoose.Document {
 
 const servicePricingSchema = new mongoose.Schema({
   price: { type: Number, required: true, min: 0 },
-  unit: { type: String, required: true, default: "lượt" },
+  unit: { type: String, required: true, default: "cai" },
+  timeValue: { type: Number, default: 1 },
+  timeUnit: { type: String, default: "luot" },
 });
 
 const serviceSchema = new mongoose.Schema({

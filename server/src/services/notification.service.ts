@@ -32,13 +32,26 @@ export default class NotificationService {
     userId: string,
     page: number = 1,
     limit: number = 20,
-    unreadOnly: boolean = false
+    unreadOnly: boolean = false,
+    role?: string
   ) {
     const skip = (page - 1) * limit;
     const query: any = { recipient: userId };
 
     if (unreadOnly) {
       query.isRead = false;
+    }
+
+    if (role) {
+      if (role === "admin") {
+        query.role = { $in: ["admin", "all"] };
+      } else if (role === "host") {
+        query.role = { $in: ["host", "all"] };
+      } else if (role === "guest") {
+        query.role = { $in: ["guest", "all"] };
+      } else {
+        query.role = role;
+      }
     }
 
     const [notifications, total, unreadCount] = await Promise.all([
@@ -54,7 +67,7 @@ export default class NotificationService {
         .limit(limit)
         .lean(),
       NotificationModel.countDocuments(query),
-      NotificationModel.countDocuments({ recipient: userId, isRead: false }),
+      NotificationModel.countDocuments({ recipient: userId, isRead: false, ...(role ? { role: query.role } : {}) }),
     ]);
 
     return {
@@ -119,11 +132,25 @@ export default class NotificationService {
   }
 
   // Lấy số lượng notifications chưa đọc
-  async getUnreadCount(userId: string) {
-    const count = await NotificationModel.countDocuments({
+  async getUnreadCount(userId: string, role?: string) {
+    const query: any = {
       recipient: userId,
       isRead: false,
-    });
+    };
+
+    if (role) {
+      if (role === "admin") {
+        query.role = { $in: ["admin", "all"] };
+      } else if (role === "host") {
+        query.role = { $in: ["host", "all"] };
+      } else if (role === "guest") {
+        query.role = { $in: ["guest", "all"] };
+      } else {
+        query.role = role;
+      }
+    }
+
+    const count = await NotificationModel.countDocuments(query);
 
     return { unreadCount: count };
   }
@@ -245,7 +272,7 @@ export default class NotificationService {
       message: `${guestName} đã đặt ${propertyName}`,
       booking: bookingId,
       property: propertyId,
-      link: `/host/bookings`,
+      link: `/host/bookings/detail/${bookingCode}`,
       actionType: "view_booking",
       priority: "high",
       role: "host",

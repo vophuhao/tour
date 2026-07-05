@@ -11,12 +11,14 @@ export default class NotificationController {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const unreadOnly = req.query.unreadOnly === "true";
+    const role = req.query.role as string | undefined;
 
     const result = await this.notificationService.getNotificationsByUser(
       userId,
       page,
       limit,
-      unreadOnly
+      unreadOnly,
+      role
     );
 
     return ResponseUtil.success(res, result, "Lấy danh sách thông báo thành công");
@@ -25,7 +27,8 @@ export default class NotificationController {
   // Lấy số lượng notifications chưa đọc
   getUnreadCount = catchErrors(async (req, res) => {
     const userId = req.userId.toString();
-    const result = await this.notificationService.getUnreadCount(userId);
+    const role = req.query.role as string | undefined;
+    const result = await this.notificationService.getUnreadCount(userId, role);
 
     return ResponseUtil.success(res, result, "Lấy số lượng thông báo chưa đọc thành công");
   });

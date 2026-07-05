@@ -123,8 +123,12 @@ export interface PropertyDocument extends mongoose.Document {
     description?: string;
     pricing: Array<{
       price: number;
-      unit: string;
+      unit: "cai" | "chiec" | "nguoi_lon" | "tre_em" | "khach" | string;
+      timeValue: number;
+      timeUnit: "gio" | "ngay" | "dem" | "luot" | string;
     }>;
+    isInventoryTracked?: boolean;
+    totalInventory?: number;
   }>;
 
   // Timestamps
@@ -298,9 +302,28 @@ const propertySchema = new mongoose.Schema<PropertyDocument>(
         pricing: [
           {
             price: { type: Number, required: true, min: 0 },
-            unit: { type: String, required: true, default: "lượt" },
+            unit: {
+              type: String,
+              required: true,
+              enum: ["cai", "chiec", "nguoi_lon", "tre_em", "khach"],
+              default: "cai"
+            },
+            timeValue: {
+              type: Number,
+              required: true,
+              min: 1,
+              default: 1
+            },
+            timeUnit: {
+              type: String,
+              required: true,
+              enum: ["gio", "ngay", "dem", "luot"],
+              default: "luot"
+            },
           },
         ],
+        isInventoryTracked: { type: Boolean, default: false },
+        totalInventory: { type: Number, default: 0, min: 0 },
       },
     ],
   },

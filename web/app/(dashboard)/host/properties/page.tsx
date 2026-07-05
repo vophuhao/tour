@@ -67,7 +67,7 @@ export default function PropertiesPage() {
   const [selectedProperties, setSelectedProperties] = useState<Set<string>>(new Set());
 
   const { data: properties = [], isLoading, refetch } = useQuery({
-    queryKey: ['my-properties'],
+    queryKey: ['my-properties-list'],
     queryFn: async () => {
       const response = await getMyProperties();
       if (response && Array.isArray(response.properties)) {
@@ -99,17 +99,19 @@ export default function PropertiesPage() {
     }
   };
 
-  const filteredProperties = properties?.filter((property: any) => {
+  const propertiesList = Array.isArray(properties) ? properties : [];
+
+  const filteredProperties = propertiesList.filter((property: any) => {
     const matchesSearch = property.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || property.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   const stats = {
-    total: properties?.length || 0,
-    active: properties?.filter((p: any) => p.status === 'active').length || 0,
-    totalSites: properties?.reduce((sum: number, p: any) => sum + (p.stats?.totalSites || 0), 0) || 0,
-    totalBookings: properties?.reduce((sum: number, p: any) => sum + (p.stats?.totalBookings || 0), 0) || 0,
+    total: propertiesList.length,
+    active: propertiesList.filter((p: any) => p.status === 'active').length,
+    totalSites: propertiesList.reduce((sum: number, p: any) => sum + (p.stats?.totalSites || 0), 0),
+    totalBookings: propertiesList.reduce((sum: number, p: any) => sum + (p.stats?.totalBookings || 0), 0),
   };
 
   const statusConfig: any = {

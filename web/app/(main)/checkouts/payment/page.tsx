@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { createBooking, getSiteById, getAvailableUnits } from '@/lib/client-actions';
+import { createBooking, getSiteById, getAvailableUnits, getPropertyServicesAvailability } from '@/lib/client-actions';
 import {
   Select,
   SelectContent,
@@ -121,6 +121,7 @@ export default function PaymentPage() {
   };
 
   const [bookingData, setBookingData] = useState(initialBookingData);
+  const nights = bookingData.nights;
 
   // Sync booking data with URL params when they change (e.g., user clicks back and selects different site)
   useEffect(() => {
@@ -184,6 +185,15 @@ export default function PaymentPage() {
 
   const availableUnitsList = availableUnitsData?.data?.availableUnits || [];
 
+  // Fetch property services availability (includes remaining inventory)
+  const { data: servicesAvailabilityData } = useQuery({
+    queryKey: ['property-services-availability', bookingData.propertyId, bookingData.checkIn, bookingData.checkOut],
+    queryFn: () => getPropertyServicesAvailability(bookingData.propertyId!, bookingData.checkIn, bookingData.checkOut),
+    enabled: !!bookingData.propertyId && !!bookingData.checkIn && !!bookingData.checkOut,
+  });
+
+  const servicesAvailability = servicesAvailabilityData?.data || [];
+
   const isPropertySiteBooking =
     !!bookingData.siteId && !!bookingData.propertyId;
   const displayName = isPropertySiteBooking
@@ -198,16 +208,16 @@ export default function PaymentPage() {
 
   // Selected services state
   const [selectedServices, setSelectedServices] = useState<
-    Array<{ name: string; price: number; unit: string; quantity: number }>
+    Array<{ name: string; price: number; unit: string; timeUnit: string; quantity: number }>
   >([]);
 
   const propertyServices = siteDetails?.data?.property?.services || [];
 
-  const handleServiceChange = (serviceName: string, checked: boolean, price: number, unit: string) => {
+  const handleServiceChange = (serviceName: string, checked: boolean, price: number, unit: string, timeUnit: string) => {
     setSelectedServices(prev => {
       if (checked) {
         if (prev.some(s => s.name === serviceName)) return prev;
-        return [...prev, { name: serviceName, price, unit, quantity: 1 }];
+        return [...prev, { name: serviceName, price, unit, timeUnit, quantity: 1 }];
       } else {
         return prev.filter(s => s.name !== serviceName);
       }
@@ -221,8 +231,18 @@ export default function PaymentPage() {
   };
 
   const servicesFee = useMemo(() => {
-    return selectedServices.reduce((sum, s) => sum + s.price * s.quantity, 0);
-  }, [selectedServices]);
+    return selectedServices.reduce((sum, s) => {
+      let multiplier = 1;
+      if (s.timeUnit === "1_dem" || s.timeUnit === "1_ngay" || s.timeUnit === "dem" || s.timeUnit === "ngay") {
+        multiplier = nights;
+      } else if (s.timeUnit === "2_ngay") {
+        multiplier = Math.ceil(nights / 2);
+      }
+
+      let itemFee = s.price * s.quantity * multiplier;
+      return sum + itemFee;
+    }, 0);
+  }, [selectedServices, nights]);
 
 
   const numberOfUnits = useMemo(() => {
@@ -246,7 +266,6 @@ export default function PaymentPage() {
   );
 
   // Calculate pricing with proper fees
-  const nights = bookingData.nights;
 
   // Calculate price breakdown day-by-day (seasonal pricing > weekend pricing > base pricing)
   const {
@@ -425,8 +444,39 @@ export default function PaymentPage() {
         phone,
         email,
         unitNumber: undefined,
-        numberOfUnits,
-        services: selectedServices,
+        services: selectedServices.map(svc => {
+          const getUnitFriendlyName = (u: string) => {
+            if (u === 'cai' || u === 'chiec') return 'cái';
+            if (u === 'nguoi_lon') return 'người lớn';
+            if (u === 'tre_em') return 'trẻ em';
+            if (u === 'khach') return 'khách';
+            return u;
+          };
+
+          const getTimeUnitFriendlyName = (t: string) => {
+            if (t === '1_luot' || t === 'luot') return 'lượt';
+            if (t === '2_luot') return '2 lượt';
+            if (t === '1_gio' || t === 'gio') return 'giờ';
+            if (t === '1_dem' || t === 'dem') return 'đêm';
+            if (t === '1_ngay' || t === 'ngay') return 'ngày';
+            if (t === '2_ngay') return '2 ngày';
+            return t;
+          };
+
+          const friendlyUnit = getUnitFriendlyName(svc.unit);
+          const friendlyTimeUnit = getTimeUnitFriendlyName(svc.timeUnit);
+          let displayUnit = friendlyUnit;
+          if (friendlyTimeUnit) {
+            displayUnit = `${friendlyUnit} / ${friendlyTimeUnit}`;
+          }
+
+          return {
+            name: svc.name,
+            price: svc.price,
+            unit: displayUnit,
+            quantity: svc.quantity,
+          };
+        }),
       });
     },
     onSuccess: data => {
@@ -581,7 +631,53 @@ export default function PaymentPage() {
                       const currentQty = currentService?.quantity || 1;
                       const priceOpt = srv.pricing?.[0];
                       const price = priceOpt?.price || 0;
-                      const unit = priceOpt?.unit || 'lượt';
+                      const unit = priceOpt?.unit || 'cai';
+                      const timeUnit = priceOpt?.timeUnit || '1_luot';
+                      const timeValue = priceOpt?.timeValue || 1;
+
+                      // Find availability config from API
+                      const availSrv = servicesAvailability.find((a: any) => a.name === srv.name);
+
+                      let maxQty = 999;
+                      if (
+                        unit === 'khach' || unit === 'khách' ||
+                        unit === 'nguoi_lon' || unit === 'người lớn' ||
+                        unit === 'tre_em' || unit === 'trẻ em'
+                      ) {
+                        maxQty = bookingData.guests;
+                      }
+
+                      if (availSrv && availSrv.isInventoryTracked) {
+                        maxQty = Math.min(maxQty, availSrv.availableCount);
+                      }
+
+                      const isSoldOut = availSrv?.isInventoryTracked && availSrv.availableCount <= 0;
+
+                      const getUnitFriendlyName = (u: string) => {
+                        if (u === 'cai') return 'cái';
+                        if (u === 'chiec') return 'chiếc';
+                        if (u === 'nguoi_lon') return 'người lớn';
+                        if (u === 'tre_em') return 'trẻ em';
+                        if (u === 'khach') return 'khách';
+                        return u;
+                      };
+
+                      const getTimeUnitFriendlyName = (t: string) => {
+                        if (t === '1_luot' || t === 'luot') return 'lượt';
+                        if (t === '2_luot') return '2 lượt';
+                        if (t === '1_gio' || t === 'gio') return 'giờ';
+                        if (t === '1_dem' || t === 'dem') return 'đêm';
+                        if (t === '1_ngay' || t === 'ngay') return 'ngày';
+                        if (t === '2_ngay') return '2 ngày';
+                        return t;
+                      };
+
+                      const friendlyUnit = getUnitFriendlyName(unit);
+                      const friendlyTimeUnit = getTimeUnitFriendlyName(timeUnit);
+                      let timeDisplay = friendlyTimeUnit;
+                      if (!timeUnit.includes('_') && timeUnit) {
+                        timeDisplay = `${timeValue} ${friendlyTimeUnit}`;
+                      }
 
                       return (
                         <div key={idx} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
@@ -589,24 +685,34 @@ export default function PaymentPage() {
                             <input
                               type="checkbox"
                               id={`srv-${idx}`}
-                              checked={isSelected}
-                              onChange={(e) => handleServiceChange(srv.name, e.target.checked, price, unit)}
-                              className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                              checked={isSelected && !isSoldOut}
+                              disabled={isSoldOut}
+                              onChange={(e) => {
+                                handleServiceChange(srv.name, e.target.checked, price, unit, timeUnit);
+                              }}
+                              className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 disabled:bg-gray-200 disabled:cursor-not-allowed"
                             />
-                            <label htmlFor={`srv-${idx}`} className="cursor-pointer select-none">
+                            <label htmlFor={isSoldOut ? undefined : `srv-${idx}`} className={`select-none ${isSoldOut ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
                               <p className="font-semibold text-sm text-slate-800 dark:text-slate-200">{srv.name}</p>
                               {srv.description && (
                                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
                                   {srv.description}
                                 </p>
                               )}
-                              <span className="inline-block text-xs font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400 px-2 py-0.5 rounded mt-1">
-                                {formatPrice(price)} / {unit}
-                              </span>
+                              <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                <span className="inline-block text-xs font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400 px-2 py-0.5 rounded">
+                                  {price.toLocaleString("vi-VN")} đ / {friendlyUnit} / {timeDisplay}
+                                </span>
+                                {isSoldOut && (
+                                  <span className="text-xs font-bold text-red-600 bg-red-50 dark:bg-red-950/30 px-2 py-0.5 rounded">
+                                    Hết
+                                  </span>
+                                )}
+                              </div>
                             </label>
                           </div>
 
-                          {isSelected && (
+                          {isSelected && !isSoldOut && (
                             <div className="flex items-center space-x-2 shrink-0">
                               <button
                                 type="button"
@@ -621,6 +727,7 @@ export default function PaymentPage() {
                                 type="button"
                                 onClick={() => handleServiceQuantityChange(srv.name, currentQty + 1)}
                                 className="h-7 w-7 flex items-center justify-center rounded-md border border-gray-300 dark:border-slate-800 hover:bg-gray-100 dark:hover:bg-slate-800 text-sm font-semibold"
+                                disabled={currentQty >= maxQty}
                               >
                                 +
                               </button>
@@ -664,11 +771,9 @@ export default function PaymentPage() {
                         <div className="flex-1 space-y-1">
                           <div className="flex items-center gap-2">
                             <CreditCard className="h-5 w-5 text-emerald-600" />
-                            <p className="font-semibold">Thanh toán đầy đủ</p>
+                            <p className="font-semibold">Thanh toán bằng mã QR</p>
                           </div>
-                          <p className="text-muted-foreground text-sm">
-                            Thanh toán toàn bộ {formatPrice(total)} ngay bây giờ
-                          </p>
+
                           <div className="mt-2 rounded-md bg-emerald-100 px-3 py-2">
                             <p className="text-sm font-medium text-emerald-800">
                               💳 Số tiền thanh toán: {formatPrice(total)}

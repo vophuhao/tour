@@ -47,6 +47,12 @@ import {
   Star,
   Users,
   XCircle,
+  Receipt,
+  Wallet,
+  Info,
+  Phone,
+  Mail,
+  User,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
@@ -56,6 +62,7 @@ import { toast } from 'sonner';
 // Backend Booking type matching the populated response
 interface BookingData {
   _id: string;
+  id?: string;
   code?: string;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'refunded' | 'refund_requested';
   checkIn: string;
@@ -63,6 +70,7 @@ interface BookingData {
   numberOfGuests: number;
   numberOfPets?: number;
   numberOfVehicles?: number;
+  numberOfUnits?: number;
   nights: number;
   paymentStatus?: 'pending' | 'paid' | 'refunded' | 'failed';
   paymentMethod?: 'full' | 'deposit';
@@ -70,6 +78,9 @@ interface BookingData {
   hostMessage?: string;
   payOSOrderCode?: string;
   payOSCheckoutUrl?: string;
+  fullnameGuest?: string;
+  phone?: string;
+  email?: string;
 
   // New Property-Site architecture
   property?: Partial<Property>;
@@ -108,6 +119,8 @@ interface BookingData {
     _id: string;
     username: string;
     email: string;
+    fullName?: string;
+    phone?: string;
     avatarUrl?: string;
   };
 
@@ -130,7 +143,15 @@ interface BookingData {
     total: number;
     depositAmount?: number;
     depositPercentage?: number;
+    servicesFee?: number;
   };
+
+  services?: Array<{
+    name: string;
+    price: number;
+    unit?: string;
+    quantity: number;
+  }>;
 
   reviewed?: boolean;
   review?: string;
@@ -147,6 +168,25 @@ interface BookingData {
   createdAt: string;
   updatedAt: string;
 }
+
+const formatServiceUnit = (unit?: string) => {
+  if (!unit) return 'lượt';
+  if (unit.includes('/')) return unit;
+
+  const mapping: Record<string, string> = {
+    cai: 'cái',
+    chiec: 'chiếc',
+    nguoi_lon: 'người lớn',
+    tre_em: 'trẻ em',
+    khach: 'khách',
+    luot: 'lượt',
+    gio: 'giờ',
+    dem: 'đêm',
+    ngay: 'ngày',
+  };
+
+  return mapping[unit.toLowerCase()] || unit;
+};
 
 export default function ConfirmationPage() {
   const router = useRouter();
@@ -420,6 +460,25 @@ export default function ConfirmationPage() {
     Math.round(totalAmount * (depositPercentage / 100));
   const remainingAmount = totalAmount - depositAmount;
 
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND',
+    }).format(price);
+  };
+
+  const getPaidAmount = () => {
+    if (booking.paymentStatus !== 'paid') return 0;
+    return booking.paymentMethod === 'deposit'
+      ? depositAmount
+      : totalAmount;
+  };
+
+  const getRemainingAmount = () => {
+    if (booking.paymentMethod !== 'deposit') return 0;
+    return remainingAmount;
+  };
+
   // Determine payment display text
   const getPaymentMethodText = () => {
     if (booking.paymentMethod === 'deposit') {
@@ -496,7 +555,7 @@ export default function ConfirmationPage() {
               {getStatusBadge(booking.status)}
               <span className="text-muted-foreground text-sm">
                 Mã xác nhận:{' '}
-                {booking.code || `#${booking._id.slice(-7).toUpperCase()}`}
+                {booking.code || `#${(booking.id || booking._id || '').slice(-7).toUpperCase()}`}
               </span>
             </div>
 
@@ -768,6 +827,21 @@ export default function ConfirmationPage() {
                 </div>
               </div>
 
+              {booking.numberOfUnits !== undefined && booking.numberOfUnits > 0 && (
+                <>
+                  <Separator />
+                  <div className="flex items-start gap-3">
+                    <Home className="text-muted-foreground mt-1 h-5 w-5" />
+                    <div>
+                      <p className="font-medium">Số vị trí đặt (bãi cắm)</p>
+                      <p className="text-muted-foreground">
+                        {booking.numberOfUnits} vị trí
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
+
               {/* Guest Message */}
               {booking.guestMessage && (
                 <>
@@ -780,12 +854,47 @@ export default function ConfirmationPage() {
                   </div>
                 </>
               )}
+
+              {/* Add selected services if any */}
+              {booking.services && booking.services.length > 0 && (
+                <>
+                  <Separator />
+                  <div>
+                    <p className="mb-3 font-semibold flex items-center gap-2">
+                      <Info className="h-4 w-4 text-emerald-600" />
+                      Dịch vụ bổ sung đã chọn
+                    </p>
+                    <Card>
+                      <CardContent className="p-4 divide-y divide-gray-100">
+                        {booking.services.map((svc, idx) => (
+                          <div key={idx} className="flex justify-between py-2.5 first:pt-0 last:pb-0">
+                            <div>
+                              <p className="font-medium text-sm text-gray-900">{svc.name}</p>
+                              <p className="text-xs text-gray-500">
+                                Đơn giá: {formatPrice(svc.price)} / {formatServiceUnit(svc.unit)}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-semibold text-gray-900">
+                                x{svc.quantity}
+                              </p>
+                              <p className="text-sm font-bold text-emerald-600">
+                                {formatPrice(svc.price * svc.quantity)}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
-          {/* Right Column - Who's Going */}
-          <div className="lg:col-span-1">
-            <Card className="sticky top-24">
+          {/* Right Column - Who's Going & Pricing Details */}
+          <div className="lg:col-span-1 lg:sticky lg:top-24 space-y-6">
+            <Card>
               <CardContent className="p-6">
                 <div className="mb-4 flex items-center justify-between">
                   <h3 className="text-lg font-semibold">Ai sẽ đi</h3>
@@ -814,11 +923,162 @@ export default function ConfirmationPage() {
 
                 <Button
                   variant="default"
-                  className="w-full bg-emerald-500 hover:bg-emerald-600"
+                  className="w-full bg-emerald-500 hover:bg-emerald-600 mb-4"
                   onClick={() => router.push(`/u/${user?.username}`)}
                 >
                   Xem hồ sơ
                 </Button>
+
+                <Separator className="my-4" />
+
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <User className="h-4 w-4 text-gray-400" />
+                    <div>
+                      <p className="text-xs text-gray-500">Tên khách hàng</p>
+                      <p className="text-sm font-medium">
+                        {booking.fullnameGuest || booking.guest?.fullName || user?.fullName || booking.guest?.username || user?.username || 'Chưa cung cấp'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Mail className="h-4 w-4 text-gray-400" />
+                    <div>
+                      <p className="text-xs text-gray-500">Email</p>
+                      <p className="text-sm font-medium">{booking.email || booking.guest?.email || user?.email}</p>
+                    </div>
+                  </div>
+
+                  {(booking.phone || booking.guest?.phone || user?.phone) && (
+                    <div className="flex items-center gap-3">
+                      <Phone className="h-4 w-4 text-gray-400" />
+                      <div>
+                        <p className="text-xs text-gray-500">Số điện thoại</p>
+                        <p className="text-sm font-medium">{booking.phone || booking.guest?.phone || user?.phone}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Pricing Details */}
+            <Card>
+              <CardContent className="p-6 space-y-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Receipt className="h-5 w-5" />
+                  Chi tiết thanh toán
+                </h3>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">
+                      {formatPrice(booking.pricing?.basePrice || 0)} × {booking.pricing?.totalNights || booking.nights} đêm
+                    </span>
+                    <span className="font-medium">
+                      {formatPrice(booking.pricing?.subtotal || 0)}
+                    </span>
+                  </div>
+
+                  {booking.pricing?.cleaningFee !== undefined && booking.pricing.cleaningFee > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Phí vệ sinh</span>
+                      <span className="font-medium">
+                        {formatPrice(booking.pricing.cleaningFee)}
+                      </span>
+                    </div>
+                  )}
+
+                  {booking.pricing?.petFee !== undefined && booking.pricing.petFee > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">
+                        Phí thú cưng ({booking.numberOfPets} con)
+                      </span>
+                      <span className="font-medium">
+                        {formatPrice(booking.pricing.petFee)}
+                      </span>
+                    </div>
+                  )}
+
+                  {booking.pricing?.extraGuestFee !== undefined && booking.pricing.extraGuestFee > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Phí khách thêm</span>
+                      <span className="font-medium">
+                        {formatPrice(booking.pricing.extraGuestFee)}
+                      </span>
+                    </div>
+                  )}
+
+                  {booking.pricing?.servicesFee !== undefined && booking.pricing.servicesFee > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Phí dịch vụ bổ sung</span>
+                      <span className="font-medium text-emerald-600">
+                        {formatPrice(booking.pricing.servicesFee)}
+                      </span>
+                    </div>
+                  )}
+
+                  {booking.pricing?.serviceFee !== undefined && booking.pricing.serviceFee > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Phí dịch vụ</span>
+                      <span className="font-medium">
+                        {formatPrice(booking.pricing.serviceFee)}
+                      </span>
+                    </div>
+                  )}
+
+                  {booking.pricing?.tax !== undefined && booking.pricing.tax > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Thuế VAT</span>
+                      <span className="font-medium">
+                        {formatPrice(booking.pricing.tax)}
+                      </span>
+                    </div>
+                  )}
+
+                  <Separator />
+
+                  <div className="flex justify-between text-lg font-bold">
+                    <span>Tổng cộng</span>
+                    <span className="text-emerald-600">
+                      {formatPrice(booking.pricing?.total || 0)}
+                    </span>
+                  </div>
+
+                  {/* Payment Details */}
+                  {booking.paymentStatus === 'paid' && (
+                    <>
+                      <Separator />
+                      <div className="space-y-2 rounded-lg bg-emerald-50 p-3">
+                        <div className="flex items-center gap-2">
+                          <Wallet className="h-4 w-4 text-emerald-600" />
+                          <span className="text-sm font-semibold text-emerald-900">
+                            Trạng thái thanh toán
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between text-sm">
+                          <span className="text-emerald-700">
+                            {booking.paymentMethod === 'deposit' ? 'Đã cọc:' : 'Đã thanh toán:'}
+                          </span>
+                          <span className="font-bold text-emerald-900">
+                            {formatPrice(getPaidAmount())}
+                          </span>
+                        </div>
+
+                        {booking.paymentMethod === 'deposit' && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-orange-700">Còn lại:</span>
+                            <span className="font-bold text-orange-900">
+                              {formatPrice(getRemainingAmount())}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -1118,7 +1378,7 @@ export default function ConfirmationPage() {
           <ReviewDialog
             open={isReviewDialogOpen}
             onOpenChange={setIsReviewDialogOpen}
-            bookingId={booking._id}
+            bookingId={booking.id || booking._id}
             propertyId={property._id}
             siteId={site._id}
             propertyName={propertyName}

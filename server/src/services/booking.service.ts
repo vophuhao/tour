@@ -6,6 +6,7 @@ import {
   BookingModel,
   PropertyModel,
   SiteModel,
+  ServiceBlockModel,
   type BookingDocument,
 } from "@/models";
 import appAssert from "../utils/app-assert";
@@ -111,6 +112,19 @@ export class BookingService {
     checkInDate.setHours(12, 0, 0, 0);
     checkOutDate.setHours(10, 0, 0, 0);
 
+    if (services && services.length > 0) {
+      const serviceCheck = await this.checkServiceInventory(
+        propertyId,
+        checkInDate,
+        checkOutDate,
+        services
+      );
+      appAssert(
+        serviceCheck.isAvailable,
+        ErrorFactory.conflict(serviceCheck.reason || "Dịch vụ đi kèm không đủ số lượng khả dụng")
+      );
+    }
+
     appAssert(
       nights >= site.bookingSettings.minimumNights,
       ErrorFactory.badRequest(`Tối thiểu ${site.bookingSettings.minimumNights} đêm`)
@@ -150,6 +164,7 @@ export class BookingService {
         description: `BOOKING ${code}`,
         returnUrl: `${CLIENT_URL}/bookings/${code}/confirmation`,
         cancelUrl: `${CLIENT_URL}/bookings/cancel`,
+        expiredAt: Math.floor(Date.now() / 1000) + 12 * 60 * 60,
       });
 
       payOSCheckoutUrl =
@@ -312,12 +327,29 @@ export class BookingService {
     userId: mongoose.Types.ObjectId,
     input: CancelBookingInput
   ): Promise<BookingDocument> {
-    const booking = await BookingModel.findOne({ code: bookingId });
+    const query = mongoose.Types.ObjectId.isValid(bookingId)
+      ? { $or: [{ _id: bookingId }, { code: bookingId }] }
+      : { code: bookingId };
+    const booking = await BookingModel.findOne(query);
     appAssert(booking, ErrorFactory.resourceNotFound("Booking"));
 
     const isGuest = booking.guest.toString() === userId.toString();
     const isHost = booking.host.toString() === userId.toString();
     appAssert(isGuest || isHost, ErrorFactory.forbidden("Bạn không có quyền hủy booking này"));
+
+    if (isHost) {
+      const isUnpaid = booking.paymentStatus !== "paid";
+      const createdTime = new Date(booking.createdAt).getTime();
+      const thirtyMinsAgo = Date.now() - 30 * 60 * 1000;
+      appAssert(
+        isUnpaid,
+        ErrorFactory.badRequest("Host chỉ được phép hủy booking chưa thanh toán")
+      );
+      appAssert(
+        createdTime <= thirtyMinsAgo,
+        ErrorFactory.badRequest("Host chỉ được phép hủy booking chưa thanh toán sau 30 phút tính từ lúc đặt")
+      );
+    }
 
     appAssert(
       booking.status === "pending" || booking.status === "confirmed",
@@ -1028,8 +1060,12 @@ export class BookingService {
   ): Promise<void> {
     const dates: Date[] = [];
     const currentDate = new Date(checkIn);
+    currentDate.setHours(0, 0, 0, 0);
 
-    while (currentDate <= checkOut) {
+    const targetCheckOut = new Date(checkOut);
+    targetCheckOut.setHours(0, 0, 0, 0);
+
+    while (currentDate < targetCheckOut) {
       dates.push(new Date(currentDate));
       currentDate.setDate(currentDate.getDate() + 1);
     }
@@ -1065,11 +1101,116 @@ export class BookingService {
     checkOut: Date,
     session: mongoose.ClientSession | null = null
   ): Promise<void> {
+    const start = new Date(checkIn);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(checkOut);
+    end.setHours(0, 0, 0, 0);
+
     const options = session ? { session } : {};
     await AvailabilityModel.deleteMany({
       site: siteId,
-      date: { $gte: checkIn, $lte: checkOut },
+      date: { $gte: start, $lt: end },
       blockType: "booked",
     }, options);
+  }
+
+  async checkServiceInventory(
+    propertyId: string,
+    checkIn: Date,
+    checkOut: Date,
+    servicesSelected: Array<{ name: string; quantity: number }>
+  ): Promise<{ isAvailable: boolean; reason?: string }> {
+    const property = await PropertyModel.findById(propertyId);
+    if (!property || !property.services || property.services.length === 0) {
+      return { isAvailable: true };
+    }
+
+    // Filter only services that are inventory-tracked
+    const trackedServices = property.services.filter(s => s.isInventoryTracked);
+    if (trackedServices.length === 0) {
+      return { isAvailable: true };
+    }
+
+    // Get selected services that are tracked
+    const selectedTracked = servicesSelected.filter(sel => {
+      const match = trackedServices.find(ts => ts.name === sel.name);
+      return !!match;
+    });
+
+    if (selectedTracked.length === 0) {
+      return { isAvailable: true };
+    }
+
+    // Fetch overlapping bookings
+    const overlappingBookings = await BookingModel.find({
+      property: propertyId,
+      status: { $in: ["pending", "confirmed", "completed", "refund_requested"] },
+      checkIn: { $lt: checkOut },
+      checkOut: { $gt: checkIn },
+      "services.name": { $in: selectedTracked.map(s => s.name) }
+    }).select("checkIn checkOut services");
+
+    // Fetch overlapping service blocks
+    const overlappingBlocks = await ServiceBlockModel.find({
+      property: propertyId,
+      checkIn: { $lt: checkOut },
+      checkOut: { $gt: checkIn },
+      serviceName: { $in: selectedTracked.map(s => s.name) }
+    });
+
+    // Loop through each night in the range and verify inventory
+    for (const sel of selectedTracked) {
+      const propService = trackedServices.find(ts => ts.name === sel.name)!;
+      const totalInventory = propService.totalInventory || 0;
+
+      const startDate = new Date(checkIn);
+      const endDate = new Date(checkOut);
+
+      while (startDate < endDate) {
+        const nightStart = new Date(startDate);
+        nightStart.setHours(12, 0, 0, 0);
+        const nightEnd = new Date(startDate);
+        nightEnd.setDate(nightEnd.getDate() + 1);
+        nightEnd.setHours(10, 0, 0, 0);
+
+        let bookedCountForNight = 0;
+
+        for (const booking of overlappingBookings) {
+          const bIn = new Date(booking.checkIn);
+          const bOut = new Date(booking.checkOut);
+
+          // If booking covers this night
+          if (bIn < nightEnd && bOut > nightStart) {
+            const bSrv = booking.services?.find(s => s.name === sel.name);
+            if (bSrv) {
+              bookedCountForNight += (bSrv.quantity || 1);
+            }
+          }
+        }
+
+        // If block covers this night
+        for (const block of overlappingBlocks) {
+          if (block.serviceName === sel.name) {
+            const blockIn = new Date(block.checkIn);
+            const blockOut = new Date(block.checkOut);
+            if (blockIn < nightEnd && blockOut > nightStart) {
+              bookedCountForNight += block.quantity;
+            }
+          }
+        }
+
+        if (bookedCountForNight + sel.quantity > totalInventory) {
+          const dateStr = nightStart.toLocaleDateString("vi-VN");
+          return {
+            isAvailable: false,
+            reason: `Dịch vụ "${sel.name}" chỉ còn lại ${totalInventory - bookedCountForNight} chiếc khả dụng vào ngày ${dateStr}. Bạn yêu cầu ${sel.quantity} chiếc.`
+          };
+        }
+
+        startDate.setDate(startDate.getDate() + 1);
+      }
+    }
+
+    return { isAvailable: true };
   }
 }

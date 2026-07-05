@@ -6,6 +6,7 @@ export function useNotifications(params?: {
   page?: number;
   limit?: number;
   unreadOnly?: boolean;
+  role?: string;
 }) {
   return useQuery({
     queryKey: ["notifications", params],
@@ -14,10 +15,10 @@ export function useNotifications(params?: {
 }
 
 // Hook to get unread count
-export function useUnreadCount() {
+export function useUnreadCount(params?: { role?: string }) {
   return useQuery({
-    queryKey: ["notifications", "unread-count"],
-    queryFn: () => notificationApi.getUnreadCount(),
+    queryKey: ["notifications", "unread-count", params],
+    queryFn: () => notificationApi.getUnreadCount(params),
     refetchInterval: 30000, // Refetch every 30 seconds
   });
 }

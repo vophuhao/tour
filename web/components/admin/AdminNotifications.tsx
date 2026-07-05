@@ -153,6 +153,7 @@ export function AdminNotifications() {
     page,
     limit: 20,
     unreadOnly: filter === "unread",
+    role: "admin",
   });
 
   const markAsReadMutation = useMarkAsRead();

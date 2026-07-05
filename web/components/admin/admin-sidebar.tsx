@@ -51,7 +51,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
   const { user } = useAuthStore();
   const [hovered, setHovered] = useState<string | null>(null);
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
-  const { data: unreadData } = useUnreadCount();
+  const { data: unreadData } = useUnreadCount({ role: 'admin' });
   const unreadCount = unreadData?.unreadCount || 0;
 
   const handleLogout = async () => {

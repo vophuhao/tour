@@ -275,33 +275,7 @@ export function BookingCalendar({
                   {day.date.getDate()}
                 </div>
 
-                {/* Slot availability badge */}
-                {day.isCurrentMonth && (() => {
-                  const dateStr = day.date.toISOString().split('T')[0];
-                  const bookedCount = day.bookings.reduce((sum, b) => sum + ((b as any).numberOfUnits || 1), 0);
-                  const manualBlocked = blockedSlotsByDate[dateStr] || 0;
-                  const free = Math.max(0, maxConcurrent - bookedCount - manualBlocked);
-                  const isFull = free === 0;
-                  const hasPartialBlock = manualBlocked > 0 && !isFull;
-                  return (
-                    <div className={cn(
-                      'mb-1 inline-flex items-center gap-0.5 rounded-md px-1 py-0.5 text-[9px] font-bold leading-none',
-                      isFull
-                        ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
-                        : hasPartialBlock
-                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
-                          : free <= Math.ceil(maxConcurrent / 2)
-                            ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
-                            : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
-                    )}>
-                      <span className={cn('h-1.5 w-1.5 rounded-full',
-                        isFull ? 'bg-rose-500' : hasPartialBlock ? 'bg-amber-500 animate-pulse' : free <= Math.ceil(maxConcurrent / 2) ? 'bg-amber-500' : 'bg-emerald-500'
-                      )} />
-                      {isFull ? 'Hết chỗ' : `${free}/${maxConcurrent}`}
-                      {hasPartialBlock && <span className="ml-0.5 opacity-70">&#128295;</span>}
-                    </div>
-                  );
-                })()}
+
 
                 {/* Bookings */}
                 <div className="space-y-0.5">

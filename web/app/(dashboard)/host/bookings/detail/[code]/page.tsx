@@ -59,7 +59,7 @@ import { toast } from 'sonner';
 
 // Backend Booking type
 interface BookingData {
-  _id: string;
+  id: string;
   code?: string;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'refunded';
   checkIn: string;
@@ -67,6 +67,7 @@ interface BookingData {
   numberOfGuests: number;
   numberOfPets?: number;
   numberOfVehicles?: number;
+  numberOfUnits?: number;
   nights: number;
   paymentStatus?: 'pending' | 'paid' | 'refunded' | 'failed';
   paymentMethod?: 'deposit' | 'full';
@@ -83,7 +84,7 @@ interface BookingData {
   unitNumber?: string;
 
   guest: {
-    _id: string;
+    id: string;
     username: string;
     email: string;
     avatarUrl?: string;
@@ -92,7 +93,7 @@ interface BookingData {
   };
 
   host: {
-    _id: string;
+    id: string;
     username: string;
     email: string;
     avatarUrl?: string;
@@ -108,6 +109,7 @@ interface BookingData {
     serviceFee: number;
     tax: number;
     total: number;
+    servicesFee?: number;
   };
 
   // Guest Info from Booking
@@ -133,7 +135,33 @@ interface BookingData {
 
   createdAt: string;
   updatedAt: string;
+
+  services?: Array<{
+    name: string;
+    price: number;
+    unit: string;
+    quantity: number;
+  }>;
 }
+
+const formatServiceUnit = (unit: string) => {
+  if (!unit) return 'lượt';
+  if (unit.includes('/')) return unit;
+
+  const mapping: Record<string, string> = {
+    cai: 'cái',
+    chiec: 'chiếc',
+    nguoi_lon: 'người lớn',
+    tre_em: 'trẻ em',
+    khach: 'khách',
+    luot: 'lượt',
+    gio: 'giờ',
+    dem: 'đêm',
+    ngay: 'ngày',
+  };
+
+  return mapping[unit.toLowerCase()] || unit;
+};
 
 export default function BookingDetailPage() {
   const params = useParams();
@@ -146,6 +174,23 @@ export default function BookingDetailPage() {
   const [cancelling, setCancelling] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+
+  useEffect(() => {
+    if (!booking) return;
+
+    const checkTime = () => {
+      const createdTime = new Date(booking.createdAt).getTime();
+      const thirtyMinsInMs = 30 * 60 * 1000;
+      const elapsed = Date.now() - createdTime;
+      const remaining = Math.max(0, thirtyMinsInMs - elapsed);
+      setTimeLeft(Math.ceil(remaining / 1000));
+    };
+
+    checkTime();
+    const interval = setInterval(checkTime, 1000);
+    return () => clearInterval(interval);
+  }, [booking]);
 
   useEffect(() => {
     fetchBooking();
@@ -168,7 +213,7 @@ export default function BookingDetailPage() {
 
   // Calculate refund amount based on cancellation policy
   const calculateRefundInfo = () => {
-    console.log("Calculating refund info...", booking?.property.cancellationPolicy);
+
     if (!booking || !booking.cancelledAt) {
       return {
         refundPercentage: 0,
@@ -236,7 +281,7 @@ export default function BookingDetailPage() {
       const data = {
         cancellationReason: cancelReason.trim(),
       }
-      const res = await cancelBooking(booking?._id || '', data);
+      const res = await cancelBooking(booking?.id || '', data);
 
       if (!res.success) throw new Error('Không thể hủy booking');
 
@@ -255,7 +300,7 @@ export default function BookingDetailPage() {
 
     try {
       setProcessing(true);
-      const res = await refundBooking(booking._id);
+      const res = await refundBooking(booking.id);
       if (res.success === false) {
         throw new Error(res.message || 'Không thể hoàn tiền');
       }
@@ -400,11 +445,26 @@ export default function BookingDetailPage() {
       if (booking.numberOfVehicles && booking.numberOfVehicles > 0) {
         bookingDetails.push(`Phương tiện: ${booking.numberOfVehicles} xe`);
       }
+      if (booking.numberOfUnits && booking.numberOfUnits > 0) {
+        bookingDetails.push(`Số lượng vị trí: ${booking.numberOfUnits} vị trí`);
+      }
 
       bookingDetails.forEach(detail => {
         doc.text(detail, 20, y);
         y += 6;
       });
+
+      // Services in PDF
+      if (booking.services && booking.services.length > 0) {
+        y += 4;
+        doc.text('DỊCH VỤ ĐÃ CHỌN:', 20, y);
+        y += 6;
+        booking.services.forEach(svc => {
+          doc.text(`- ${svc.name} (x${svc.quantity} ${formatServiceUnit(svc.unit)}):`, 25, y);
+          doc.text(formatPricePDF(svc.price * svc.quantity), 190, y, { align: 'right' });
+          y += 6;
+        });
+      }
 
       // Pricing
       y += 6;
@@ -419,6 +479,7 @@ export default function BookingDetailPage() {
         { label: 'Phí vệ sinh', value: booking.pricing.cleaningFee },
         { label: 'Phí thú cưng', value: booking.pricing.petFee },
         { label: 'Phí khách thêm', value: booking.pricing.extraGuestFee },
+        { label: 'Phí dịch vụ bổ sung', value: booking.pricing.servicesFee || 0 },
         { label: 'Phí dịch vụ', value: booking.pricing.serviceFee },
         { label: 'Thuế', value: booking.pricing.tax },
       ];
@@ -676,11 +737,11 @@ export default function BookingDetailPage() {
                 {paymentStatus.label}
               </div> */}
 
-              {booking.paymentMethod && (
+              {/* {booking.paymentMethod && (
                 <Badge variant="outline" className="text-sm">
                   {getPaymentMethodLabel(booking.paymentMethod)}
                 </Badge>
-              )}
+              )} */}
             </div>
           </div>
         </div>
@@ -804,204 +865,6 @@ export default function BookingDetailPage() {
               </Card>
             )}
 
-            {/* Cancellation & Refund Info */}
-            {(booking.status === 'cancelled' || booking.status === 'refunded') && booking.cancelledAt && (
-              <Card className="border-2 border-red-200 bg-red-50">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-red-900">
-                    <XCircle className="h-5 w-5" />
-                    Thông tin hủy booking & hoàn tiền
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Cancellation Info */}
-                  <div className="rounded-lg bg-white p-4">
-                    <h4 className="font-semibold text-red-900 mb-3">📋 Chi tiết hủy</h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-700">Thời gian hủy:</span>
-                        <span className="font-medium text-gray-900">
-                          {format(new Date(booking.cancelledAt), 'dd/MM/yyyy HH:mm', {
-                            locale: vi,
-                          })}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-700">Thời gian check-in:</span>
-                        <span className="font-medium text-gray-900">
-                          {format(new Date(booking.checkIn), 'dd/MM/yyyy HH:mm', {
-                            locale: vi,
-                          })}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-700">Hủy trước check-in:</span>
-                        <span className="font-bold text-blue-600">
-                          {refundInfo.daysBeforeCancellation} ngày
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="rounded-lg bg-white p-4">
-                    <h4 className="font-semibold text-red-900 mb-2">💬 Chính sách hủy:</h4>
-                    {booking.property.cancellationPolicy && (
-                      <div className="rounded-lg bg-white p-4">
-                        <p className="text-sm text-gray-700">{booking.cancellationReason}</p>{booking.property.cancellationPolicy.description && (
-                          <p className="mt-1 text-xs text-red-800">
-                            {booking.property.cancellationPolicy.description}
-                          </p>
-                        )}
-
-                        {booking.property.cancellationPolicy.refundRules &&
-                          booking.property.cancellationPolicy.refundRules.length > 0 && (
-                            <div className="mt-3 space-y-1 text-sm text-red-800">
-                              {booking.property.cancellationPolicy.refundRules
-                                .sort((a, b) => b.daysBeforeCheckIn - a.daysBeforeCheckIn)
-                                .map((rule, idx) => (
-                                  <div key={idx} className="flex justify-between">
-                                    <span>
-                                      {rule.daysBeforeCheckIn === 0
-                                        ? 'Trong ngày nhận phòng'
-                                        : rule.daysBeforeCheckIn === 1
-                                          ? 'Trước 1 ngày'
-                                          : `Trước ${rule.daysBeforeCheckIn} ngày`}
-                                    </span>
-                                    <span className="font-medium">Hoàn {rule.refundPercentage}%</span>
-                                  </div>
-                                ))}
-                            </div>
-                          )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Cancellation Reason */}
-                  {booking.cancellationReason && (
-                    <div className="rounded-lg bg-white p-4">
-                      <h4 className="font-semibold text-red-900 mb-2">💬 Lý do hủy:</h4>
-                      <p className="text-sm text-gray-700">{booking.cancellationReason}</p>
-                    </div>
-                  )}
-
-                  {/* Refund Policy Info */}
-                  {booking.property.cancellationPolicy && (
-                    <div className="rounded-lg bg-white p-4">
-                      <h4 className="font-semibold text-orange-900 mb-3">
-                        📜 Chính sách hoàn tiền ({getCancellationPolicyLabel(booking.property.cancellationPolicy.type)})
-                      </h4>
-
-                      {booking.property.cancellationPolicy.description && (
-                        <p className="text-sm text-gray-600 mb-3">
-                          {booking.property.cancellationPolicy.description}
-                        </p>
-                      )}
-
-                      <div className="space-y-2">
-                        {booking.property.cancellationPolicy.refundRules
-                          ?.sort((a, b) => b.daysBeforeCheckIn - a.daysBeforeCheckIn)
-                          .map((rule, idx) => {
-                            const isApplicable = refundInfo.applicableRule?.daysBeforeCheckIn === rule.daysBeforeCheckIn;
-                            return (
-                              <div
-                                key={idx}
-                                className={`flex justify-between items-center p-2 rounded ${isApplicable ? 'bg-blue-100 border-2 border-blue-400' : 'bg-gray-50'
-                                  }`}
-                              >
-                                <span className={`text-sm ${isApplicable ? 'font-bold text-blue-900' : 'text-gray-700'}`}>
-                                  {isApplicable && '✅ '}
-                                  {rule.daysBeforeCheckIn === 0
-                                    ? 'Trong ngày check-in'
-                                    : rule.daysBeforeCheckIn === 1
-                                      ? 'Trước 1 ngày'
-                                      : `Trước ${rule.daysBeforeCheckIn} ngày`}
-                                </span>
-                                <span className={`font-semibold ${isApplicable ? 'text-blue-900' : 'text-gray-900'}`}>
-                                  Hoàn {rule.refundPercentage}%
-                                </span>
-                              </div>
-                            );
-                          })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Refund Calculation */}
-                  <div className="rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 p-4">
-                    <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
-                      <BanknoteIcon className="h-5 w-5" />
-                      Tính toán hoàn tiền
-                    </h4>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-700">Số tiền đã thanh toán:</span>
-                        <span className="font-medium text-gray-900">
-                          {formatPrice(getPaidAmount())}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-700">Tỷ lệ hoàn tiền:</span>
-                        <span className="font-medium text-gray-900">
-                          {refundInfo.refundPercentage}%
-                        </span>
-                      </div>
-                      <Separator className="my-2" />
-                      <div className="flex justify-between items-center pt-2">
-                        <span className="text-lg font-semibold text-blue-900">
-                          Số tiền được hoàn:
-                        </span>
-                        <span className="text-2xl font-bold text-blue-600">
-                          {formatPrice(refundInfo.refundAmount)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {refundInfo.refundAmount === 0 && (
-                      <Alert className="mt-3 border-orange-300 bg-orange-50">
-                        <AlertCircle className="h-4 w-4 text-orange-600" />
-                        <AlertTitle className="text-orange-900">Không được hoàn tiền</AlertTitle>
-                        <AlertDescription className="text-orange-800 text-sm">
-                          Booking bị hủy quá gần thời gian check-in nên không đủ điều kiện hoàn tiền theo chính sách.
-                        </AlertDescription>
-                      </Alert>
-                    )}
-                  </div>
-
-                  {/* Refund Action Button */}
-                  {booking.status === 'cancelled' && refundInfo.refundAmount > 0 && (
-                    <Button
-                      className="w-full bg-blue-600 hover:bg-blue-700"
-                      size="lg"
-                      onClick={handleProcessRefund}
-                      disabled={processing}
-                    >
-                      {processing ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Đang xử lý...
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="mr-2 h-4 w-4" />
-
-                          Xác nhận đã hoàn tiền {formatPrice(refundInfo.refundAmount)}
-                        </>
-                      )}
-                    </Button>
-                  )}
-
-                  {booking.paymentStatus === 'refunded' && (
-                    <Alert className="border-green-300 bg-green-50">
-                      <CheckCircle2 className="h-4 w-4 text-green-600" />
-                      <AlertTitle className="text-green-900">Đã hoàn tiền thành công</AlertTitle>
-                      <AlertDescription className="text-green-800 text-sm">
-                        Số tiền {formatPrice(booking.refundAmount || refundInfo.refundAmount)} đã được hoàn lại cho khách hàng.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
             {/* Property & Site Info */}
             <Card>
               <CardHeader>
@@ -1058,14 +921,14 @@ export default function BookingDetailPage() {
                         SITE
                       </span>
                     </div>
-                    {/* <h3 className="mt-1 text-lg font-semibold flex items-center gap-2">
+                    <h3 className="mt-1 text-lg font-semibold flex items-center gap-2">
                       {booking.site.name}
-                      {booking.numberOfUnits > 1 && (
+                      {booking.numberOfUnits !== undefined && booking.numberOfUnits > 0 && (
                         <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                          {booking.numberOfUnits} chỗ
+                          {booking.numberOfUnits} vị trí
                         </span>
                       )}
-                    </h3> */}
+                    </h3>
                     <p className="mt-1 text-sm text-gray-600">
                       {booking.site.description}
                     </p>
@@ -1133,6 +996,20 @@ export default function BookingDetailPage() {
                     </div>
                   </div>
 
+                  {booking.numberOfUnits !== undefined && booking.numberOfUnits > 0 && (
+                    <div className="flex items-start gap-3">
+                      <Tent className="mt-0.5 h-5 w-5 text-gray-400" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          Số lượng vị trí (bãi cắm)
+                        </p>
+                        <p className="text-sm font-semibold text-emerald-700">
+                          {booking.numberOfUnits} vị trí
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {booking.numberOfPets !== undefined && booking.numberOfPets > 0 && (
                     <div className="flex items-start gap-3">
                       <PawPrint className="mt-0.5 h-5 w-5 text-gray-400" />
@@ -1192,7 +1069,49 @@ export default function BookingDetailPage() {
               </CardContent>
             </Card>
 
-
+            {booking.services && booking.services.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Info className="h-5 w-5 text-emerald-600" />
+                    Dịch vụ bổ sung đã chọn
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="divide-y divide-gray-100">
+                    {booking.services.map((svc, idx) => (
+                      <div key={idx} className="flex justify-between py-3 first:pt-0 last:pb-0">
+                        <div>
+                          <p className="font-medium text-gray-900">{svc.name}</p>
+                          <p className="text-xs text-gray-500">
+                            Đơn giá: {formatPrice(svc.price)} / {formatServiceUnit(svc.unit)}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold text-gray-900">
+                            x{svc.quantity}
+                          </p>
+                          <p className="text-sm font-bold text-emerald-600">
+                            {formatPrice(svc.price * svc.quantity)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {booking.pricing.servicesFee !== undefined && booking.pricing.servicesFee > 0 && (
+                    <>
+                      <Separator />
+                      <div className="flex justify-between items-center pt-2">
+                        <span className="text-sm font-semibold text-gray-900">Tổng chi phí dịch vụ:</span>
+                        <span className="text-base font-bold text-emerald-600">
+                          {formatPrice(booking.pricing.servicesFee)}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Sidebar */}
@@ -1296,6 +1215,15 @@ export default function BookingDetailPage() {
                   </div>
                 )}
 
+                {booking.pricing.servicesFee !== undefined && booking.pricing.servicesFee > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Phí dịch vụ bổ sung</span>
+                    <span className="font-medium text-emerald-600">
+                      {formatPrice(booking.pricing.servicesFee)}
+                    </span>
+                  </div>
+                )}
+
                 {booking.pricing.serviceFee > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Phí dịch vụ</span>
@@ -1372,60 +1300,6 @@ export default function BookingDetailPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Thông tin hoàn tiền</CardTitle>
-              </CardHeader>
-
-              <CardContent>
-                {booking.cancellInformation ? (
-                  <div className="space-y-4">
-                    {/* Fullname Guest */}
-                    <div className="flex gap-3">
-                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-100">
-                        <User className="h-4 w-4 text-blue-600" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">Tên chủ tài khoản</p>
-                        <p className="text-xs text-gray-600">
-                          {booking.cancellInformation.fullnameGuest || 'Không có dữ liệu'}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Bank Code */}
-                    <div className="flex gap-3">
-                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-green-100">
-                        <Building className="h-4 w-4 text-green-600" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">Mã ngân hàng</p>
-                        <p className="text-xs text-gray-600">
-                          {booking.cancellInformation.bankCode || 'Không có dữ liệu'}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Bank Type */}
-                    <div className="flex gap-3">
-                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100">
-                        <CreditCard className="h-4 w-4 text-indigo-600" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">Loại tài khoản</p>
-                        <p className="text-xs text-gray-600">
-                          {booking.cancellInformation.bankType || 'Không có dữ liệu'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-sm text-muted-foreground">
-                    Chưa có thông tin hoàn tiền
-                  </div>
-                )}
-              </CardContent>
-            </Card>
             {/* Timeline */}
             <Card>
               <CardHeader>
@@ -1532,16 +1406,31 @@ export default function BookingDetailPage() {
                   {exporting ? 'Đang xuất...' : 'Xuất hóa đơn PDF'}
                 </Button>
 
-                {(booking.status === 'pending' && booking.paymentStatus === 'pending') && (
-                  <Button
-                    variant="destructive"
-                    className="w-full"
-                    onClick={() => setCancelDialogOpen(true)}
-                  >
-                    <XCircle className="mr-2 h-4 w-4" />
-                    Hủy booking
-                  </Button>
-                )}
+                {booking.status !== 'cancelled' &&
+                  booking.status !== 'completed' &&
+                  booking.status !== 'refunded' &&
+                  booking.paymentStatus !== 'paid' && (
+                    <div className="space-y-2">
+                      {timeLeft > 0 && (
+                        <div className="text-xs text-amber-700 bg-amber-50 p-3 rounded-lg border border-amber-200 space-y-1">
+                          <p className="font-semibold">⚠️ Chờ thanh toán</p>
+                          <p>Bạn chỉ có thể hủy booking chưa thanh toán này sau 30 phút kể từ lúc đặt.</p>
+                          <p className="font-mono font-semibold">
+                            Có thể hủy sau: {Math.floor(timeLeft / 60)} phút {timeLeft % 60} giây
+                          </p>
+                        </div>
+                      )}
+                      <Button
+                        variant="destructive"
+                        className="w-full"
+                        onClick={() => setCancelDialogOpen(true)}
+                        disabled={timeLeft > 0}
+                      >
+                        <XCircle className="mr-2 h-4 w-4" />
+                        Hủy booking
+                      </Button>
+                    </div>
+                  )}
               </CardContent>
             </Card>
           </div>

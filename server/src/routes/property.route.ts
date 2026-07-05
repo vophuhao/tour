@@ -34,6 +34,11 @@ propertyRoutes.get("/recommendations/list", authenticate, propertyController.get
 // My properties (must be before /:idOrSlug to avoid matching "my" as ID)
 propertyRoutes.get("/my/list", authenticate, propertyController.getMyProperties);
 
+// Service blocks (must be before /:idOrSlug)
+propertyRoutes.post("/service-blocks", authenticate, propertyController.createServiceBlock);
+propertyRoutes.get("/service-blocks/my", authenticate, propertyController.getMyServiceBlocks);
+propertyRoutes.delete("/service-blocks/:blockId", authenticate, propertyController.deleteServiceBlock);
+
 // Admin: get host's properties with sites (must be before /:idOrSlug)
 propertyRoutes.get("/host/:hostId", authenticate, propertyController.getHostPropertiesWithSites);
 
@@ -43,6 +48,7 @@ propertyRoutes.get("/:propertyId/reviews/stats", reviewController.getPropertyRev
 
 // Property combos route (public)
 propertyRoutes.get("/:propertyId/combos", comboController.getPropertyCombos);
+propertyRoutes.get("/:id/services/availability", propertyController.getPropertyServicesAvailability);
 
 // Property stats (must be before /:idOrSlug)
 propertyRoutes.get("/:id/stats", authenticate, propertyController.getPropertyStats);

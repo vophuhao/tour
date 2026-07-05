@@ -169,9 +169,10 @@ export default function BookingsPage() {
     }, [bookings, activeTab]);
 
     async function handleConfirmArrival(booking: any) {
-        setConfirmingArrival(booking._id);
+        const bId = booking.id || booking._id;
+        setConfirmingArrival(bId);
         try {
-            const res = await guestConfirmArrival(booking._id);
+            const res = await guestConfirmArrival(bId);
             if (res.success) {
                 toast.success("✅ Xác nhận đã đến thành công! Host sẽ nhận được tiền vào ví.");
                 await fetchBookings();
@@ -277,10 +278,11 @@ export default function BookingsPage() {
                         {filteredBookings.map((booking) => {
                             const showConfirmArrival = canConfirmArrival(booking);
                             const showCannotAttend = canReportCannotAttend(booking);
-                            const isConfirming = confirmingArrival === booking._id;
+                            const bId = booking.id || booking._id;
+                            const isConfirming = confirmingArrival === bId;
 
                             return (
-                                <div key={booking._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+                                <div key={bId} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
                                     <div className="flex flex-col sm:flex-row">
                                         {/* Image */}
                                         <div className="relative h-48 sm:h-auto sm:w-52 flex-shrink-0">
@@ -386,7 +388,7 @@ export default function BookingsPage() {
                                             {/* Actions */}
                                             <div className="flex flex-wrap gap-2 pt-1">
                                                 <Button
-                                                    onClick={() => router.push(`/bookings/${booking._id}/confirmation`)}
+                                                    onClick={() => router.push(`/bookings/${booking.id || booking._id}/confirmation`)}
                                                     variant="outline"
                                                     size="sm"
                                                     className="flex items-center gap-1.5"
