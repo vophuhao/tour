@@ -39,7 +39,13 @@ const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
 // Dynamically load Map component to prevent SSR failures
 const RoadtripMap = dynamic(
-  () => import('./RoadtripMap').then(mod => mod.RoadtripMap),
+  () => {
+    console.log('RoadtripMap dynamic import started');
+    return import('./RoadtripMap').then(mod => {
+      console.log('RoadtripMap dynamic import completed, export exists:', !!mod.RoadtripMap);
+      return mod.RoadtripMap;
+    });
+  },
   {
     ssr: false,
     loading: () => (
@@ -72,7 +78,6 @@ export default function RoadtripPage() {
   // Route & Search state
   const [startQuery, setStartQuery] = useState('');
   const [startCoords, setStartCoords] = useState<Coordinates | null>(null);
-
   const [endQuery, setEndQuery] = useState('');
   const [endCoords, setEndCoords] = useState<Coordinates | null>(null);
   const [isSearchSheetOpen, setIsSearchSheetOpen] = useState(false);
@@ -96,6 +101,9 @@ export default function RoadtripPage() {
   // Card interaction state
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [hoveredProperty, setHoveredProperty] = useState<Property | null>(null);
+  const [showMobileMap, setShowMobileMap] = useState(false);
+
+  console.log('RoadtripPage rendering. startCoords:', startCoords, 'endCoords:', endCoords, 'showMobileMap:', showMobileMap);
 
   // Initialize query parameters if available
   useEffect(() => {
@@ -488,10 +496,14 @@ export default function RoadtripPage() {
       </Sheet>
 
       {/* Main Split View Container */}
-      <div className="flex-1 flex flex-col lg:flex-row h-[calc(100vh-145px)] overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row w-full items-stretch">
 
         {/* Left Side: Results Grid */}
-        <div className="flex-1 bg-white overflow-y-auto px-6 py-4 flex flex-col scrollbar-hide">
+        <div className={
+          showMobileMap
+            ? "hidden lg:flex lg:flex-1 bg-white px-6 py-4 flex-col"
+            : "flex-1 bg-white px-6 py-4 flex flex-col"
+        }>
           {/* Grid list of properties */}
           <div className="flex-1">
             {isSearchingProperties ? (
@@ -637,18 +649,56 @@ export default function RoadtripPage() {
         </div>
 
         {/* Right Side: Compact Map Sidebar */}
-        <div className="hidden lg:block lg:w-[400px] xl:w-[500px] shrink-0 border-l border-gray-200 bg-gray-100 h-full relative">
-          <RoadtripMap
-            properties={properties}
-            selectedProperty={selectedProperty}
-            hoveredProperty={hoveredProperty}
-            startCoords={startCoords}
-            endCoords={endCoords}
-            routeGeometry={routeGeometry}
-            onPropertySelect={setSelectedProperty}
-          />
+        <div className={
+          showMobileMap
+            ? "block w-full h-[calc(100vh-145px)] relative"
+            : "hidden lg:block lg:w-[400px] xl:w-[500px] shrink-0 border-l border-gray-200 bg-gray-100"
+        }>
+          {showMobileMap ? (
+            <RoadtripMap
+              properties={properties}
+              selectedProperty={selectedProperty}
+              hoveredProperty={hoveredProperty}
+              startCoords={startCoords}
+              endCoords={endCoords}
+              routeGeometry={routeGeometry}
+              onPropertySelect={setSelectedProperty}
+            />
+          ) : (
+            <div className="sticky top-[61px] h-[calc(100vh-61px)] overflow-hidden">
+              <RoadtripMap
+                properties={properties}
+                selectedProperty={selectedProperty}
+                hoveredProperty={hoveredProperty}
+                startCoords={startCoords}
+                endCoords={endCoords}
+                routeGeometry={routeGeometry}
+                onPropertySelect={setSelectedProperty}
+              />
+            </div>
+          )}
         </div>
 
+      </div>
+
+      {/* Floating Toggle Button for Mobile/Tablet */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 lg:hidden">
+        <Button
+          onClick={() => setShowMobileMap(!showMobileMap)}
+          className="rounded-full bg-gray-900 text-white hover:bg-gray-800 shadow-lg px-5 py-6 font-semibold flex items-center gap-2 border-none cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all"
+        >
+          {showMobileMap ? (
+            <>
+              <Eye className="h-4 w-4" />
+              <span>Xem danh sách</span>
+            </>
+          ) : (
+            <>
+              <MapPin className="h-4 w-4" />
+              <span>Xem bản đồ</span>
+            </>
+          )}
+        </Button>
       </div>
 
     </div>

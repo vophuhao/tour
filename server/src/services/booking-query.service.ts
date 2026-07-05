@@ -10,6 +10,7 @@ import appAssert from "../utils/app-assert";
 import { buildSafeSearchRegex } from "../utils/regex";
 import type { SearchBookingInput } from "@/validators/booking.validator";
 import mongoose from "mongoose";
+import { SettingService } from "./setting.service";
 
 export class BookingQueryService {
   /**
@@ -17,7 +18,7 @@ export class BookingQueryService {
    */
   async getBookingByCode(code: string): Promise<BookingDocument> {
     const booking = await BookingModel.findOne({ code })
-      .populate("site", "name accommodationType photos pricing location")
+      .populate("site", "name accommodationType photos pricing location unitNames")
       .populate("guest", "username email avatarUrl")
       .populate("property", "name location photos slug")
       .populate("host", "username email avatarUrl");
@@ -35,7 +36,7 @@ export class BookingQueryService {
       .populate("property", "name location photos cancellationPolicy slug")
       .populate({
         path: "site",
-        select: "name accommodationType photos pricing slug",
+        select: "name accommodationType photos pricing slug unitNames",
         populate: {
           path: "property",
           select: "name location photos slug host cancellationPolicy",
@@ -105,7 +106,7 @@ export class BookingQueryService {
       BookingModel.find(query)
         .populate({
           path: "site",
-          select: "name slug photos accommodationType pricing",
+          select: "name slug photos accommodationType pricing unitNames",
           populate: {
             path: "property",
             select: "name location photos slug host",
@@ -153,7 +154,7 @@ export class BookingQueryService {
     const [bookings, total] = await Promise.all([
       BookingModel.find(query)
         .populate("property", "name slug location photos")
-        .populate("site", "name slug accommodationType photos pricing location")
+        .populate("site", "name slug accommodationType photos pricing location unitNames")
         .populate("guest", "username email avatarUrl")
         .populate("host", "username email avatarUrl")
         .sort({ createdAt: -1 })
@@ -191,7 +192,7 @@ export class BookingQueryService {
     const [bookings, total] = await Promise.all([
       BookingModel.find(query)
         .populate("property", "name location photos slug")
-        .populate("site", "name accommodationType photos pricing")
+        .populate("site", "name accommodationType photos pricing unitNames")
         .populate("guest", "username email avatarUrl")
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -268,7 +269,7 @@ export class BookingQueryService {
     const [bookings, total] = await Promise.all([
       BookingModel.find(query)
         .populate("property", "name location photos slug")
-        .populate("site", "name accommodationType photos pricing")
+        .populate("site", "name accommodationType photos pricing unitNames")
         .populate("guest", "username email avatarUrl")
         .populate("host", "username email avatarUrl")
         .sort({ createdAt: -1 })
@@ -323,12 +324,14 @@ export class BookingQueryService {
       .filter((s: any) => ["confirmed", "completed"].includes(s._id))
       .reduce((sum: number, s: any) => sum + s.revenue, 0);
 
+    const settings = await SettingService.getSettings();
+    const platformFeeRate = settings.platformFeeRate;
     return {
       statusStats,
       paymentStats,
       monthlyStats: monthlyStats.reverse(),
       totalRevenue,
-      platformFee: Math.round(totalRevenue * 0.05),
+      platformFee: Math.round(totalRevenue * platformFeeRate),
       pendingRefunds: refundRequests,
       pendingCannotAttend: cannotAttendRequests,
     };
@@ -341,36 +344,45 @@ export class BookingQueryService {
     siteId: string,
     checkIn: string,
     checkOut: string,
-    session: mongoose.ClientSession | null
+    session: mongoose.ClientSession | null,
+    numberOfUnits: number = 1
   ): Promise<boolean> {
     const checkInDate = new Date(checkIn);
     const checkOutDate = new Date(checkOut);
 
-    const blockedDatesQuery = AvailabilityModel.countDocuments({
+    // Get all availability records in range (full blocks + partial blocks)
+    const availQuery = AvailabilityModel.find({
       site: siteId,
       date: { $gte: checkInDate, $lt: checkOutDate },
-      isAvailable: false,
-    });
-    if (session) blockedDatesQuery.session(session);
-    const blockedDates = await blockedDatesQuery;
+    }).select("isAvailable blockedSlots");
+    if (session) availQuery.session(session);
+    const availRecords = await availQuery;
 
-    if (blockedDates > 0) return false;
+    // Full block on any day → reject immediately
+    const hasFullBlock = availRecords.some((r) => r.isAvailable === false);
+    if (hasFullBlock) return false;
+
+    // Max blocked slots on any single day in the range (tightest constraint)
+    const maxBlockedSlots = availRecords.reduce(
+      (max, r) => Math.max(max, r.blockedSlots || 0),
+      0
+    );
 
     const siteQuery = SiteModel.findById(siteId).select("capacity");
     if (session) siteQuery.session(session);
     const site = await siteQuery;
     const maxConcurrent = (site && site.capacity && site.capacity.maxConcurrentBookings) || 1;
 
+    // Effective capacity = total - blocked
+    const effectiveCapacity = maxConcurrent - maxBlockedSlots;
+    if (effectiveCapacity <= 0) return false;
+
     if (maxConcurrent === 1) {
       const overlapQuery = BookingModel.findOne({
         site: siteId,
         status: { $in: ["pending", "confirmed"] },
-        $or: [
-          {
-            checkIn: { $lt: checkOutDate },
-            checkOut: { $gt: checkInDate },
-          },
-        ],
+        checkIn: { $lt: checkOutDate },
+        checkOut: { $gt: checkInDate },
       });
       if (session) overlapQuery.session(session);
       const overlappingBooking = await overlapQuery;
@@ -378,34 +390,38 @@ export class BookingQueryService {
       return !overlappingBooking;
     }
 
-    const countQuery = BookingModel.countDocuments({
+    const countQuery = BookingModel.find({
       site: siteId,
       status: { $in: ["pending", "confirmed"] },
-      $or: [
-        {
-          checkIn: { $lt: checkOutDate },
-          checkOut: { $gt: checkInDate },
-        },
-      ],
+      checkIn: { $lt: checkOutDate },
+      checkOut: { $gt: checkInDate },
     });
     if (session) countQuery.session(session);
-    const overlappingCount = await countQuery;
+    const overlappingBookings = await countQuery;
+    const overlappingCount = overlappingBookings.reduce(
+      (sum, b) => sum + (b.numberOfUnits || 1),
+      0
+    );
 
-    return overlappingCount < maxConcurrent;
+    return overlappingCount + numberOfUnits <= effectiveCapacity;
   }
 
   /**
    * Calculate pricing breakdown
    */
-  calculatePricing(
+  async calculatePricing(
     site: any,
     nights: number,
     numberOfGuests: number,
     numberOfPets: number,
     numberOfVehicles: number,
     checkIn: Date,
-    checkOut: Date
-  ): any {
+    checkOut: Date,
+    promoCodeId?: string,
+    comboId?: string,
+    numberOfUnits: number = 1,
+    services?: Array<{ name: string; price: number; unit: string; quantity: number }>
+  ): Promise<any> {
     const {
       basePrice,
       weekendPrice = null,
@@ -462,6 +478,8 @@ export class BookingQueryService {
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
+    subtotal = subtotal * numberOfUnits;
+
     // Apply long-stay discount on subtotal
     let discountPercent = 0;
     if (nights >= 28 && site.pricing.monthlyDiscount) {
@@ -473,16 +491,63 @@ export class BookingQueryService {
       subtotal = Math.round(subtotal * (1 - discountPercent / 100));
     }
 
-    const cleaning = cleaningFee;
+    // Apply Combo Discount
+    let comboDiscount = 0;
+    if (comboId) {
+      const { ComboModel } = await import("@/models/combo.model");
+      const combo = await ComboModel.findOne({ _id: comboId, isActive: true });
+      if (combo) {
+        if (combo.discountType === "percentage") {
+          comboDiscount = Math.round((subtotal * combo.discountValue) / 100);
+        } else if (combo.discountType === "fixed_price") {
+          comboDiscount = Math.max(0, subtotal - combo.discountValue);
+        } else {
+          comboDiscount = combo.discountValue;
+        }
+      }
+    }
+
+    // Apply Promo Code Discount
+    let promoDiscount = 0;
+    let promoCodeStr = "";
+    if (promoCodeId) {
+      const { PromoCodeModel } = await import("@/models/promo-code.model");
+      const promo = await PromoCodeModel.findOne({ _id: promoCodeId, isActive: true });
+      if (promo) {
+        promoCodeStr = promo.code;
+        const netSubtotal = Math.max(0, subtotal - comboDiscount);
+        if (promo.discountType === "percentage") {
+          promoDiscount = Math.round((netSubtotal * promo.discountValue) / 100);
+          if (promo.maxDiscountAmount && promoDiscount > promo.maxDiscountAmount) {
+            promoDiscount = promo.maxDiscountAmount;
+          }
+        } else {
+          promoDiscount = promo.discountValue;
+        }
+        promoDiscount = Math.min(promoDiscount, netSubtotal);
+      }
+    }
+
+    const cleaning = cleaningFee * numberOfUnits;
     const pet = numberOfPets > 0 ? petFee * numberOfPets : 0;
+    const combinedCapacity = site.capacity.maxGuests * numberOfUnits;
     const extraGuest =
-      numberOfGuests > site.capacity.maxGuests
-        ? additionalGuestFee * (numberOfGuests - site.capacity.maxGuests) * nights
+      numberOfGuests > combinedCapacity
+        ? additionalGuestFee * (numberOfGuests - combinedCapacity) * nights
         : 0;
     const vehicle = numberOfVehicles > 0 ? vehicleFee * numberOfVehicles * nights : 0;
 
-    // Platform service fee for camper is 5%
-    const serviceFee = Math.round((subtotal + cleaning + pet + extraGuest + vehicle) * 0.05);
+    let servicesFee = 0;
+    if (services && services.length > 0) {
+      servicesFee = services.reduce((sum, srv) => sum + (srv.price * srv.quantity), 0);
+    }
+
+    const netSubtotal = Math.max(0, subtotal - comboDiscount - promoDiscount);
+
+    // Platform service fee for camper is dynamic
+    const settings = await SettingService.getSettings();
+    const platformFeeRate = settings.platformFeeRate;
+    const serviceFee = Math.round((netSubtotal + cleaning + pet + extraGuest + vehicle) * platformFeeRate);
 
     return {
       basePrice,
@@ -496,8 +561,13 @@ export class BookingQueryService {
       extraGuestFee: extraGuest,
       vehicleFee: vehicle,
       serviceFee,
+      servicesFee,
       tax: 0,
-      total: subtotal + cleaning + pet + extraGuest + vehicle + serviceFee,
+      promoCode: promoCodeStr || undefined,
+      promoDiscount,
+      comboId: comboId || undefined,
+      comboDiscount,
+      total: netSubtotal + cleaning + pet + extraGuest + vehicle + serviceFee + servicesFee,
     };
   }
 }

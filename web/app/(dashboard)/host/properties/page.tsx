@@ -49,6 +49,7 @@ import {
   X,
   MoreHorizontal,
   Copy,
+  Heading5,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -65,11 +66,23 @@ export default function PropertiesPage() {
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
   const [selectedProperties, setSelectedProperties] = useState<Set<string>>(new Set());
 
-  const { data: properties, isLoading, refetch } = useQuery({
+  const { data: properties = [], isLoading, refetch } = useQuery({
     queryKey: ['my-properties'],
     queryFn: async () => {
       const response = await getMyProperties();
-      return response.data.properties;
+      if (response && Array.isArray(response.properties)) {
+        return response.properties;
+      }
+      if (response && response.data && Array.isArray(response.data.properties)) {
+        return response.data.properties;
+      }
+      if (response && Array.isArray(response.data)) {
+        return response.data;
+      }
+      if (Array.isArray(response)) {
+        return response;
+      }
+      return [];
     },
   });
 
@@ -343,9 +356,9 @@ function PropertyGridCard({ property, statusConfig, onEdit, onViewSites, onAddSi
       {/* Middle side: Main content details */}
       <div className="flex-1 p-6 flex flex-col justify-between">
         <div>
-          <h3 className=" text-xl md:text-2xl text-stone-900 group-hover:text-emerald-800 transition-colors font-semibold leading-snug line-clamp-2 mb-2">
+          <p className=" text-xl md:text-1xl text-stone-900 group-hover:text-emerald-800 transition-colors font-semibold leading-snug line-clamp-2 mb-2">
             {property.name}
-          </h3>
+          </p>
           <div className="flex items-center gap-1.5 text-stone-500 mb-4">
             <MapPin className="h-4 w-4 text-emerald-750 flex-shrink-0" />
             <span className="text-sm font-medium">{property.location?.city || 'N/A'}, {property.location?.state || 'N/A'}</span>

@@ -362,7 +362,7 @@ function PropertyCard({
       </Link>
 
       <CardContent className="space-y-2 p-4">
-        {favorite.property?.stats?.averageRating && (
+        {!!favorite.property?.stats?.averageRating && (
           <div className="flex items-center gap-1">
             <span className="text-base">👍</span>
             <span className="text-sm font-semibold">

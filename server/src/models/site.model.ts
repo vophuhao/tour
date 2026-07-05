@@ -140,6 +140,18 @@ export interface SiteDocument extends mongoose.Document {
   isAvailableForBooking: boolean;
   unavailableReason?: string;
 
+  // Extra Services
+  services?: Array<{
+    name: string;
+    description?: string;
+    pricing: Array<{
+      price: number;
+      unit: string;
+    }>;
+  }>;
+
+  unitNames?: string[];
+
   // Timestamps
   createdAt: Date;
   updatedAt: Date;
@@ -288,6 +300,7 @@ const siteSchema = new mongoose.Schema<SiteDocument>(
 
     // What to bring
     guestsShouldBring: [{ type: String }],
+    unitNames: { type: [String], default: [] },
 
     // Site-specific Rules
     siteSpecificRules: [{ type: String, maxlength: 500 }],
@@ -329,6 +342,20 @@ const siteSchema = new mongoose.Schema<SiteDocument>(
 
     // Timestamps
     lastBookedAt: { type: Date },
+
+    // Extra Services
+    services: [
+      {
+        name: { type: String, required: true, trim: true },
+        description: { type: String, trim: true, default: "" },
+        pricing: [
+          {
+            price: { type: Number, required: true, min: 0 },
+            unit: { type: String, required: true, default: "lượt" },
+          },
+        ],
+      },
+    ],
   },
   {
     timestamps: true,

@@ -18,6 +18,7 @@ export interface BookingDocument extends mongoose.Document {
   numberOfGuests: number;
   numberOfPets?: number;
   numberOfVehicles?: number;
+  numberOfUnits: number;
 
   // Pricing Breakdown
   pricing: {
@@ -34,7 +35,19 @@ export interface BookingDocument extends mongoose.Document {
     serviceFee: number; // phí dịch vụ platform
     tax: number; // thuế
     total: number; // tổng cuối
+    promoCode?: string;
+    promoDiscount?: number;
+    comboId?: mongoose.Types.ObjectId;
+    comboDiscount?: number;
+    servicesFee?: number;
   };
+
+  services?: Array<{
+    name: string;
+    price: number;
+    unit: string;
+    quantity: number;
+  }>;
 
   // Status
   status: "pending" | "confirmed" | "cancelled" | "completed" | "refunded" | "refund_requested";
@@ -169,6 +182,7 @@ const bookingSchema = new mongoose.Schema<BookingDocument>(
     numberOfGuests: { type: Number, required: true, min: 1 },
     numberOfPets: { type: Number, min: 0, default: 0 },
     numberOfVehicles: { type: Number, min: 0, default: 0 },
+    numberOfUnits: { type: Number, required: true, default: 1, min: 1 },
     isSentMail: { type: Boolean, default: false },
     reminderSent: { type: Boolean, default: false },
     pricing: {
@@ -185,7 +199,21 @@ const bookingSchema = new mongoose.Schema<BookingDocument>(
       serviceFee: { type: Number, default: 0, min: 0 },
       tax: { type: Number, default: 0, min: 0 },
       total: { type: Number, required: true, min: 0 },
+      promoCode: { type: String, trim: true },
+      promoDiscount: { type: Number, default: 0, min: 0 },
+      comboId: { type: mongoose.Schema.Types.ObjectId, ref: "Combo" },
+      comboDiscount: { type: Number, default: 0, min: 0 },
+      servicesFee: { type: Number, default: 0, min: 0 },
     },
+
+    services: [
+      {
+        name: { type: String, required: true, trim: true },
+        price: { type: Number, required: true, min: 0 },
+        unit: { type: String, required: true, default: "lượt" },
+        quantity: { type: Number, required: true, min: 1, default: 1 },
+      }
+    ],
 
     status: {
       type: String,
@@ -356,8 +384,22 @@ bookingSchema.methods.calculateTotal = async function (
   this: BookingDocument,
   session?: mongoose.ClientSession
 ): Promise<BookingDocument> {
-  const { subtotal, cleaningFee, petFee, extraGuestFee, serviceFee, tax, vehicleFee = 0 } = this.pricing;
-  this.pricing.total = subtotal + cleaningFee + petFee + extraGuestFee + serviceFee + tax + vehicleFee;
+  const {
+    subtotal,
+    cleaningFee,
+    petFee,
+    extraGuestFee,
+    serviceFee,
+    tax,
+    vehicleFee = 0,
+    servicesFee = 0,
+    promoDiscount = 0,
+    comboDiscount = 0,
+  } = this.pricing;
+  this.pricing.total = Math.max(
+    0,
+    subtotal - promoDiscount - comboDiscount + cleaningFee + petFee + extraGuestFee + serviceFee + tax + vehicleFee + servicesFee
+  );
   return this.save(session ? { session } : undefined);
 };
 

@@ -7,6 +7,7 @@ import {
   hostResponseSchema,
   reviewStatusSchema,
   searchReviewSchema,
+  updateReviewSchema,
   voteReviewSchema,
 } from "@/validators/review.validator";
 
@@ -179,6 +180,20 @@ export default class ReviewController {
       review,
       isFeatured ? "Feature review thành công" : "Unfeature review thành công"
     );
+  });
+
+  /**
+   * Update review (guest only, max 1 edit)
+   * @route PATCH /api/reviews/:id
+   */
+  updateReview = catchErrors(async (req, res) => {
+    const { id } = req.params;
+    const input = updateReviewSchema.parse(req.body);
+    const guestId = mongoIdSchema.parse(req.userId!);
+
+    const review = await this.reviewService.updateReview(id || "", guestId, input);
+
+    return ResponseUtil.success(res, review, "Cập nhật review thành công");
   });
 
   getMyPropertiesReviews = catchErrors(async (req, res) => {

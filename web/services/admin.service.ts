@@ -123,3 +123,13 @@ export async function adminLockSite(id: string, reason: string, propertyName?: s
 export async function adminUnlockSite(id: string, propertyName?: string): Promise<ApiResponse> {
   return apiClient.post(`/sites/${id}/admin-unlock`, { propertyName });
 }
+
+// ================== SYSTEM SETTINGS ==================
+export async function getSystemSettings(): Promise<ApiResponse<SystemSetting>> {
+  return apiClient.get('/admin/settings');
+}
+
+export async function updateSystemSettings(data: any): Promise<ApiResponse<SystemSetting>> {
+  return apiClient.put('/admin/settings', data);
+}
+

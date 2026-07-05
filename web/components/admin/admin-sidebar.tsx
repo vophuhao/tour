@@ -91,8 +91,8 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
     { name: 'Booking', href: '/admin/bookings', icon: CalendarCheck },
     { name: 'Doanh thu', href: '/admin/revenue', icon: BarChart3 },
     { name: 'Thanh toán', href: '/admin/payouts', icon: DollarSign },
-    // { name: 'Địa điểm', href: '/admin/locations', icon: MapPin },
     { name: 'Thông báo', href: '/admin/notifications', icon: Bell },
+    { name: 'Cài đặt', href: '/admin/settings', icon: Settings },
   ];
 
   return (

@@ -15,6 +15,7 @@ import type { BookingNotificationService } from "./booking-notification.service"
 import type { CancelBookingInput, CreateBookingInput, RequestDissatisfactionInput, ProcessDissatisfactionInput } from "@/validators/booking.validator";
 import { sendMail } from "../utils/send-mail";
 import WalletService from "./wallet.service";
+import { SettingService } from "./setting.service";
 import { notifyPropertyChange } from "../socket";
 
 const { PayOS } = require("@payos/node");
@@ -52,6 +53,7 @@ export class BookingService {
       phone,
       email,
       paymentMethod,
+      services,
     } = input;
 
     appAssert(
@@ -74,20 +76,29 @@ export class BookingService {
       ErrorFactory.badRequest("Site không thuộc property này")
     );
 
+    const numberOfUnits = input.numberOfUnits && input.numberOfUnits > 0
+      ? input.numberOfUnits
+      : Math.ceil(numberOfGuests / site.capacity.maxGuests) || 1;
+
     appAssert(
-      numberOfGuests <= site.capacity.maxGuests,
-      ErrorFactory.badRequest(`Số khách tối đa: ${site.capacity.maxGuests}`)
+      numberOfUnits <= site.capacity.maxConcurrentBookings,
+      ErrorFactory.badRequest(`Vị trí này chỉ có tối đa ${site.capacity.maxConcurrentBookings} chỗ trống đồng thời.`)
+    );
+
+    appAssert(
+      numberOfGuests <= site.capacity.maxGuests * numberOfUnits,
+      ErrorFactory.badRequest(`Số khách tối đa cho ${numberOfUnits} vị trí là: ${site.capacity.maxGuests * numberOfUnits}`)
     );
     if (site.capacity.maxPets !== undefined) {
       appAssert(
-        numberOfPets <= site.capacity.maxPets,
-        ErrorFactory.badRequest(`Số thú cưng tối đa: ${site.capacity.maxPets}`)
+        numberOfPets <= site.capacity.maxPets * numberOfUnits,
+        ErrorFactory.badRequest(`Số thú cưng tối đa cho ${numberOfUnits} vị trí là: ${site.capacity.maxPets * numberOfUnits}`)
       );
     }
     if (site.capacity.maxVehicles !== undefined) {
       appAssert(
-        numberOfVehicles <= site.capacity.maxVehicles,
-        ErrorFactory.badRequest(`Số xe tối đa: ${site.capacity.maxVehicles}`)
+        numberOfVehicles <= site.capacity.maxVehicles * numberOfUnits,
+        ErrorFactory.badRequest(`Số xe tối đa cho ${numberOfUnits} vị trí là: ${site.capacity.maxVehicles * numberOfUnits}`)
       );
     }
 
@@ -112,14 +123,18 @@ export class BookingService {
       );
     }
 
-    const pricing = this.bookingQueryService.calculatePricing(
+    const pricing = await this.bookingQueryService.calculatePricing(
       site,
       nights,
       numberOfGuests,
       numberOfPets,
       numberOfVehicles || 0,
       checkInDate,
-      checkOutDate
+      checkOutDate,
+      input.promoCodeId,
+      input.comboId,
+      numberOfUnits,
+      services
     );
 
     let payOSOrderCode: number | null = null;
@@ -156,9 +171,10 @@ export class BookingService {
           siteId,
           checkIn,
           checkOut,
-          session
+          session,
+          numberOfUnits
         );
-        appAssert(isAvailable, ErrorFactory.conflict("Site không có sẵn trong thời gian này (đã được đặt trước)"));
+        appAssert(isAvailable, ErrorFactory.conflict("Vị trí này không còn đủ chỗ trống trong thời gian bạn chọn"));
 
         const [newBooking] = await BookingModel.create(
           [
@@ -176,7 +192,9 @@ export class BookingService {
               numberOfGuests,
               numberOfPets,
               numberOfVehicles,
+              numberOfUnits,
               pricing,
+              services,
               guestMessage,
               fullnameGuest,
               phone,
@@ -191,6 +209,15 @@ export class BookingService {
         appAssert(newBooking, ErrorFactory.internalError("Không thể tạo booking"));
         booking = newBooking;
         await booking.calculateTotal(session);
+
+        if (pricing.promoCode) {
+          const { PromoCodeModel } = await import("@/models/promo-code.model");
+          await PromoCodeModel.updateOne(
+            { code: pricing.promoCode },
+            { $inc: { usageCount: 1 } },
+            { session }
+          );
+        }
 
         if (siteId) {
           const maxConcurrent = site!.capacity.maxConcurrentBookings || 1;
@@ -307,11 +334,13 @@ export class BookingService {
       const diffMs = checkIn.getTime() - now.getTime();
       const diffDays = diffMs / (1000 * 60 * 60 * 24);
 
-      let refundRate = 0.5;
-      let hostRate = 0.3;
-      if (diffDays >= 2) {
-        refundRate = 0.7;
-        hostRate = 0.2;
+      const settings = await SettingService.getSettings();
+      const policy = settings.cancellationPolicy;
+      let refundRate = policy.refundRateBelowThreshold;
+      let hostRate = policy.hostRateBelowThreshold;
+      if (diffDays >= policy.diffDaysThreshold) {
+        refundRate = policy.refundRateAboveThreshold;
+        hostRate = policy.hostRateAboveThreshold;
       }
       const refundAmount = Math.round(booking.pricing.total * refundRate);
       const hostAmount = Math.round(booking.pricing.total * hostRate);
@@ -584,11 +613,13 @@ export class BookingService {
     const diffMs = checkIn.getTime() - now.getTime();
     const diffDays = diffMs / (1000 * 60 * 60 * 24);
 
-    let refundRate = 0.5;
-    let hostRate = 0.3;
-    if (diffDays >= 2) {
-      refundRate = 0.7;
-      hostRate = 0.2;
+    const settings = await SettingService.getSettings();
+    const policy = settings.cancellationPolicy;
+    let refundRate = policy.refundRateBelowThreshold;
+    let hostRate = policy.hostRateBelowThreshold;
+    if (diffDays >= policy.diffDaysThreshold) {
+      refundRate = policy.refundRateAboveThreshold;
+      hostRate = policy.hostRateAboveThreshold;
     }
     const refundAmount = Math.round(booking.pricing.total * refundRate);
     const hostAmount = Math.round(booking.pricing.total * hostRate);
@@ -658,6 +689,7 @@ export class BookingService {
     );
 
     const now = new Date();
+    const settings = await SettingService.getSettings();
 
     if (approved) {
       const requestedAt = new Date(booking.cannotAttendRequest!.requestedAt);
@@ -665,11 +697,12 @@ export class BookingService {
       const diffMs = checkIn.getTime() - requestedAt.getTime();
       const diffDays = diffMs / (1000 * 60 * 60 * 24);
 
-      let refundRate = 0.5;
-      let hostRate = 0.3;
-      if (diffDays >= 2) {
-        refundRate = 0.7;
-        hostRate = 0.2;
+      const policy = settings.cancellationPolicy;
+      let refundRate = policy.refundRateBelowThreshold;
+      let hostRate = policy.hostRateBelowThreshold;
+      if (diffDays >= policy.diffDaysThreshold) {
+        refundRate = policy.refundRateAboveThreshold;
+        hostRate = policy.hostRateAboveThreshold;
       }
       const refundAmount = Math.round(booking.pricing.total * refundRate);
       const hostAmount = Math.round(booking.pricing.total * hostRate);
@@ -711,7 +744,7 @@ export class BookingService {
         booking.host.toString(),
         booking._id.toString(),
         booking.pricing.total,
-        0.8 // Host receives 80%, platform retains 20% as per user request
+        settings.cancellationPolicy.rejectedRequestHostRate
       );
 
       booking.cannotAttendRequest!.status = "rejected";

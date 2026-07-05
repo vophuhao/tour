@@ -573,7 +573,14 @@ function BookingCard({ booking, formatPrice, formatDate, onAction, onDetail }: a
                 <h3 className="font-semibold text-foreground">{booking.guest?.name || booking.fullnameGuest || '—'}</h3>
                 <span className="text-xs text-muted-foreground">• {booking.guest?.email || booking.email || ''}</span>
               </div>
-              <p className="text-sm text-muted-foreground">{booking.site?.name}</p>
+              <p className="text-sm text-muted-foreground">
+                {booking.site?.name}
+                {booking.numberOfUnits > 1 && (
+                  <span className="ml-2 inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                    {booking.numberOfUnits} chỗ
+                  </span>
+                )}
+              </p>
             </div>
             <div className="text-right flex-shrink-0">
               <p className="text-xs text-muted-foreground">Tổng tiền</p>

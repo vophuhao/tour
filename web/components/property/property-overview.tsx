@@ -161,7 +161,7 @@ export function PropertyOverview({ property }: PropertyOverviewProps) {
         <TabsContent value="policies" className="mt-4 space-y-4">
           <div className="space-y-4">
             {/* Cancellation Policy */}
-            <div className="rounded-lg border p-4">
+            {/* <div className="rounded-lg border p-4">
               <p className="mb-2 font-medium">Chính sách hủy:</p>
               <p className="text-muted-foreground text-sm">
                 {property.cancellationPolicy?.type === 'flexible' &&
@@ -172,7 +172,7 @@ export function PropertyOverview({ property }: PropertyOverviewProps) {
                   'Nghiêm ngặt - Không hoàn tiền sau khi đặt'}
                 {!property.cancellationPolicy && 'Chưa có chính sách hủy'}
               </p>
-            </div>
+            </div> */}
 
             {/* Pet & Children Policy */}
             <div className="grid gap-4 md:grid-cols-2">
@@ -219,13 +219,51 @@ export function PropertyOverview({ property }: PropertyOverviewProps) {
               </div>
             )}
 
-            <p className="text-muted-foreground text-xs">
-              * Giờ nhận phòng và trả phòng được quy định riêng cho từng vị trí
+            <h2 className="text-muted-foreground text-1xl">
+              Giờ nhận phòng và trả phòng được quy định riêng cho từng vị trí
               cắm trại
-            </p>
+            </h2>
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Services Section */}
+      {property.services && property.services.length > 0 && (
+        <div className="pt-6 border-t">
+          <h4 className="text-xl font-bold text-slate-800 dark:text-slate-200 mb-4">
+            Dịch vụ đi kèm tại khu cắm trại
+          </h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {property.services.map((srv: any, idx: number) => (
+              <div
+                key={idx}
+                className="flex items-start justify-between gap-4 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/50"
+              >
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm text-slate-800 dark:text-slate-200">{srv.name}</p>
+                  {srv.description && (
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
+                      {srv.description}
+                    </p>
+                  )}
+                </div>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  {srv.pricing && srv.pricing.map((pOpt: any, pIdx: number) => (
+                    <Badge key={pIdx} variant="outline" className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-350 font-semibold border-0 text-[10px] sm:text-xs py-0.5 px-2 rounded-lg shrink-0 whitespace-nowrap">
+                      {pOpt.price.toLocaleString("vi-VN")} đ / {pOpt.unit}
+                    </Badge>
+                  ))}
+                  {!srv.pricing && typeof srv.price === "number" && (
+                    <Badge variant="outline" className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-350 font-semibold border-0 text-[10px] sm:text-xs py-0.5 px-2 rounded-lg shrink-0 whitespace-nowrap">
+                      {srv.price.toLocaleString("vi-VN")} đ / {srv.unit || "lượt"}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

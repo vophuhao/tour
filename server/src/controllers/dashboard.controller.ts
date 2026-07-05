@@ -6,6 +6,7 @@ import { ReviewModel } from "@/models/review.model";
 import UserModel from "@/models/user.model";
 import { ResponseUtil } from "../utils";
 import mongoose from "mongoose";
+import { SettingService } from "@/services/setting.service";
 
 export default class DashboardController {
   // Thống kê tổng quan
@@ -486,7 +487,8 @@ export default class DashboardController {
 
     const summ = summary[0] || {};
     const totalRevenue = summ.totalRevenue || 0;
-    const platformFee = Math.round(totalRevenue * 0.05);
+    const settings = await SettingService.getSettings();
+    const platformFee = Math.round(totalRevenue * settings.platformFeeRate);
 
     return ResponseUtil.success(
       res,

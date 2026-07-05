@@ -9,8 +9,8 @@ import appAssert from "../utils/app-assert";
 import { buildSafeSearchRegex } from "../utils/regex";
 import { logger } from "../utils";
 import mongoose from "mongoose";
+import { SettingService } from "./setting.service";
 
-const PLATFORM_FEE_RATE = 0.05; // 5%
 
 export default class WalletService {
   /**
@@ -22,7 +22,9 @@ export default class WalletService {
     bookingId: string,
     grossAmount: number
   ) {
-    const platformFee = Math.round(grossAmount * PLATFORM_FEE_RATE);
+    const settings = await SettingService.getSettings();
+    const platformFeeRate = settings.platformFeeRate;
+    const platformFee = Math.round(grossAmount * platformFeeRate);
     const netAmount = grossAmount - platformFee;
 
     // Tìm host record theo user id (booking.host = User._id)
@@ -85,8 +87,10 @@ export default class WalletService {
     grossAmount: number,
     hostRate: number = 0.2
   ) {
+    const settings = await SettingService.getSettings();
+    const platformFeeRate = settings.platformFeeRate;
     const hostAmount = Math.round(grossAmount * hostRate);
-    const platformFee = Math.round(grossAmount * PLATFORM_FEE_RATE);
+    const platformFee = Math.round(grossAmount * platformFeeRate);
 
     let hostRecord = await HostModel.findOne({ user: hostUserId });
     if (!hostRecord && mongoose.Types.ObjectId.isValid(hostUserId)) {

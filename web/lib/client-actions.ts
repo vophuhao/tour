@@ -35,6 +35,7 @@ export {
   getSiteReviews,
   addHostResponse,
   getMyCampsitesReview,
+  updateReview,
 } from '@/services/review.service';
 
 // Property/Site API functions (also available from '@/lib/property-site-api')

@@ -55,10 +55,13 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import { Switch } from '@/components/ui/switch';
 import {
   getPropertyById,
   deleteSite,
   getSitesByProperty,
+  activateSite,
+  deactivateSite,
 } from '@/lib/client-actions';
 import dynamic from 'next/dynamic';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -264,13 +267,27 @@ export default function PropertySitesPage() {
 
           {/* Badges on Image */}
           <div className="absolute left-2.5 top-2.5 flex flex-col gap-1.5">
-            {isVip ? (
+            {/* {isVip ? (
               <Badge className="bg-amber-50 border border-amber-300 text-amber-900 font-bold px-2 py-0.5 text-[10px] rounded-full shadow-sm">
                 VIP
               </Badge>
             ) : (
               <Badge className="bg-stone-100/90 border border-stone-200/50 text-stone-850 font-semibold px-2 py-0.5 text-[10px] rounded-full shadow-sm backdrop-blur-sm">
                 Thường
+              </Badge>
+            )} */}
+
+            {site.status === 'active' ? (
+              <Badge className="bg-emerald-50 border border-emerald-300 text-emerald-950 font-bold px-2 py-0.5 text-[10px] rounded-full shadow-sm backdrop-blur-sm">
+                Hoạt động
+              </Badge>
+            ) : site.status === 'blocked' ? (
+              <Badge className="bg-red-50 border border-red-300 text-red-950 font-bold px-2 py-0.5 text-[10px] rounded-full shadow-sm backdrop-blur-sm">
+                Bị khóa
+              </Badge>
+            ) : (
+              <Badge className="bg-stone-100 border border-stone-300 text-stone-600 font-bold px-2 py-0.5 text-[10px] rounded-full shadow-sm backdrop-blur-sm">
+                Tạm ẩn
               </Badge>
             )}
           </div>
@@ -287,7 +304,7 @@ export default function PropertySitesPage() {
           <div>
             {/* Title Row */}
             <div className="mb-2">
-              <h3 className="text-lg font-bold text-stone-900 leading-snug group-hover:text-emerald-850 transition-colors line-clamp-1">
+              <h3 className="text-lg font-bold text-stone-900 leading-snug group-hover:text-emerald-850 transition-colors">
                 {site.name}
               </h3>
             </div>
@@ -343,8 +360,35 @@ export default function PropertySitesPage() {
 
           <Separator className="my-2 bg-stone-100" />
 
-          {/* Footer with Price and Exposed Buttons */}
+          {/* Footer with Price, Switch status and Exposed Buttons */}
           <div className="pt-2 flex flex-col gap-3">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-2">
+              <span className="text-xs font-semibold text-stone-600 dark:text-stone-400">Trạng thái hoạt động</span>
+              <div className="flex items-center gap-2">
+                <span className={`text-[10px] font-bold ${site.status === 'active' ? 'text-emerald-700' : 'text-stone-400'}`}>
+                  {site.status === 'active' ? 'Sẵn sàng' : site.status === 'blocked' ? 'Bị khóa' : 'Tạm ẩn'}
+                </span>
+                <Switch
+                  checked={site.status === 'active'}
+                  onCheckedChange={async (checked) => {
+                    try {
+                      if (checked) {
+                        await activateSite(site._id);
+                        toast.success(`Đã kích hoạt site "${site.name}"`);
+                      } else {
+                        await deactivateSite(site._id);
+                        toast.success(`Đã tạm ẩn site "${site.name}"`);
+                      }
+                      fetchSites();
+                    } catch (error: any) {
+                      toast.error(error?.message || 'Không thể thay đổi trạng thái');
+                    }
+                  }}
+                  disabled={site.status === 'blocked'}
+                />
+              </div>
+            </div>
+
             <div className="flex items-baseline justify-between">
               <span className="text-[10px] text-stone-400 uppercase tracking-wider font-semibold">Giá mỗi đêm</span>
               <p className="text-lg font-bold text-emerald-850">
@@ -371,7 +415,7 @@ export default function PropertySitesPage() {
                 Chi tiết
               </Button>
 
-              <Button
+              {/* <Button
                 variant="outline"
                 size="sm"
                 className="border-stone-200 text-stone-700 hover:bg-stone-50 rounded-xl px-2 h-9 gap-1 text-[11px] font-medium bg-stone-50/30 w-full"
@@ -382,7 +426,7 @@ export default function PropertySitesPage() {
               >
                 <Settings className="h-3.5 w-3.5 text-stone-500 flex-shrink-0" />
                 Sửa
-              </Button>
+              </Button> */}
 
               <Button
                 variant="ghost"
@@ -513,7 +557,7 @@ export default function PropertySitesPage() {
                   {site.capacity?.maxVehicles || 0}
                 </span>
               </div>
-              <div className="font-serif font-bold text-emerald-800 text-sm">
+              <div className="font-bold text-emerald-800 text-sm">
                 {new Intl.NumberFormat('vi-VN', {
                   style: 'currency',
                   currency: 'VND',

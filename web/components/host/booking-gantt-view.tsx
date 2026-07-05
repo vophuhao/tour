@@ -19,6 +19,8 @@ import {
   blockPropertyDates,
   getPropertyBlockedDates,
   unblockPropertyDates,
+  getSitesByProperty,
+  blockSiteDates,
 } from '@/lib/property-site-api';
 import { cn } from '@/lib/utils';
 import type { Booking, PropertyBlockedDates } from '@/types/property-site';
@@ -75,11 +77,34 @@ export function BookingGanttView({
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRangeType>();
   const [blockReason, setBlockReason] = useState('');
-  const [blockScope, setBlockScope] = useState<'all' | 'specific'>('all');
+  const [blockScope, setBlockScope] = useState<'all' | 'specific' | 'site'>('all');
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>(
     properties[0]?._id || '',
   );
+  const [selectedSiteId, setSelectedSiteId] = useState<string>('');
+  const [sites, setSites] = useState<any[]>([]);
+  const [slotsToBlock, setSlotsToBlock] = useState<number>(0);
   const queryClient = useQueryClient();
+
+  // Load sites when property changes
+  useMemo(() => {
+    async function loadSites() {
+      if (!selectedPropertyId) return;
+      try {
+        const res = await getSitesByProperty(selectedPropertyId);
+        const sitesList = res?.data?.sites || res?.sites || [];
+        setSites(sitesList);
+        if (sitesList.length > 0) {
+          setSelectedSiteId(sitesList[0]._id);
+        } else {
+          setSelectedSiteId('');
+        }
+      } catch (err) {
+        console.error('Lỗi khi tải site:', err);
+      }
+    }
+    loadSites();
+  }, [selectedPropertyId]);
 
   // Fetch blocked dates for all properties
   const { data: allBlockedDates = [] } = useQuery({
@@ -115,7 +140,7 @@ export function BookingGanttView({
             blockPropertyDates(p._id, startDate, endDate, reason),
           ),
         );
-      } else {
+      } else if (blockScope === 'specific') {
         // Block specific property
         await blockPropertyDates(
           selectedPropertyId,
@@ -123,24 +148,41 @@ export function BookingGanttView({
           endDate,
           reason,
         );
+      } else if (blockScope === 'site') {
+        // Block specific site (must construct list of dates between start and end)
+        const dates: string[] = [];
+        let curr = new Date(startDate);
+        const end = new Date(endDate);
+        while (curr <= end) {
+          dates.push(curr.toISOString().split('T')[0]);
+          curr.setDate(curr.getDate() + 1);
+        }
+        await blockSiteDates(selectedSiteId, dates, reason, slotsToBlock > 0 ? slotsToBlock : undefined);
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ['all-properties-blocked-dates'],
       });
+      // Invalidate calendar if exists
+      queryClient.invalidateQueries({
+        queryKey: ['site-availability-calendar'],
+      });
       toast.success(
         blockScope === 'all'
           ? 'Đã khóa ngày cho tất cả property'
-          : 'Đã khóa ngày cho property đã chọn',
+          : blockScope === 'specific'
+            ? 'Đã khóa ngày cho property đã chọn'
+            : 'Đã khóa ngày cho site đã chọn',
       );
       setBlockDialogOpen(false);
       setDateRange(undefined);
       setBlockReason('');
       setBlockScope('all');
+      setSlotsToBlock(0);
     },
-    onError: () => {
-      toast.error('Không thể khóa ngày');
+    onError: (err: any) => {
+      toast.error(err?.message || 'Không thể khóa ngày');
     },
   });
 
@@ -744,10 +786,10 @@ export function BookingGanttView({
               <Label className="text-sm font-medium">Phạm vi khóa</Label>
               <RadioGroup
                 value={blockScope}
-                onValueChange={(value: 'all' | 'specific') => {
+                onValueChange={(value: 'all' | 'specific' | 'site') => {
                   setBlockScope(value);
                   if (
-                    value === 'specific' &&
+                    (value === 'specific' || value === 'site') &&
                     !selectedPropertyId &&
                     properties.length > 0
                   ) {
@@ -774,11 +816,20 @@ export function BookingGanttView({
                     Property cụ thể
                   </Label>
                 </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="site" id="block-site" />
+                  <Label
+                    htmlFor="block-site"
+                    className="cursor-pointer font-normal"
+                  >
+                    Vị trí cắm trại cụ thể (Site)
+                  </Label>
+                </div>
               </RadioGroup>
             </div>
 
-            {/* Property Selection (only when specific is selected) */}
-            {blockScope === 'specific' && (
+            {/* Property Selection (only when specific or site is selected) */}
+            {(blockScope === 'specific' || blockScope === 'site') && (
               <div className="space-y-2">
                 <Label
                   htmlFor="property-select"
@@ -800,6 +851,72 @@ export function BookingGanttView({
                 </select>
               </div>
             )}
+
+            {/* Site Selection (only when site is selected) */}
+            {blockScope === 'site' && (
+              <div className="space-y-2">
+                <Label
+                  htmlFor="site-select"
+                  className="text-sm font-medium"
+                >
+                  Chọn vị trí cắm trại (Site)
+                </Label>
+                <select
+                  id="site-select"
+                  value={selectedSiteId}
+                  onChange={e => setSelectedSiteId(e.target.value)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                  disabled={sites.length === 0}
+                >
+                  {sites.length === 0 ? (
+                    <option value="">Khu đất chưa có site nào</option>
+                  ) : (
+                    sites.map(site => (
+                      <option key={site._id} value={site._id}>
+                        {site.name}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+            )}
+
+            {/* Slots to block (only when site is selected and maxConcurrent > 1) */}
+            {blockScope === 'site' && selectedSiteId && (() => {
+              const selectedSite = sites.find(s => s._id === selectedSiteId);
+              const maxConcurrent = selectedSite?.capacity?.maxConcurrentBookings || 1;
+              if (maxConcurrent <= 1) return null;
+              return (
+                <div className="space-y-2">
+                  <Label htmlFor="slots-to-block" className="text-sm font-medium">
+                    Số chỗ muốn khóa <span className="text-xs text-gray-400 font-normal">(0 = khóa toàn bộ {maxConcurrent} chỗ)</span>
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="slots-to-block"
+                      type="number"
+                      min={0}
+                      max={maxConcurrent}
+                      placeholder={`Ví dụ: 3`}
+                      value={slotsToBlock || ''}
+                      onChange={e => setSlotsToBlock(Number(e.target.value) || 0)}
+                      className="w-24"
+                    />
+                    <span className="text-xs text-gray-500">/ {maxConcurrent} chỗ</span>
+                  </div>
+                  {slotsToBlock > 0 && slotsToBlock < maxConcurrent && (
+                    <p className="text-[11px] text-amber-600 font-medium">
+                      ⚠️ Khóa {slotsToBlock}/{maxConcurrent} chỗ — site vẫn nhận đặt {maxConcurrent - slotsToBlock} chỗ còn lại
+                    </p>
+                  )}
+                  {slotsToBlock === 0 && (
+                    <p className="text-[11px] text-red-650 font-medium">
+                      🔒 Khóa toàn bộ {maxConcurrent} chỗ — không ai đặt được
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Date Range Selection */}
             <div className="space-y-2">
@@ -833,7 +950,10 @@ export function BookingGanttView({
             <Button
               onClick={handleBlockDates}
               disabled={
-                !dateRange?.from || !dateRange?.to || blockMutation.isPending
+                !dateRange?.from ||
+                !dateRange?.to ||
+                blockMutation.isPending ||
+                (blockScope === 'site' && !selectedSiteId)
               }
             >
               {blockMutation.isPending ? 'Đang xử lý...' : 'Khóa ngày'}

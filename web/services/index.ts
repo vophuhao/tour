@@ -22,6 +22,7 @@ export * from './admin.service';
 export * from './campsite.service';
 export * from './product.service';
 export * from './tour.service';
+export * from './service-package.service';
 
 // Property/site - exported separately to avoid conflicts with review.service
 export {

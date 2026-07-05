@@ -20,6 +20,7 @@ import {
   User,
   DollarSign,
   Wallet,
+  Package,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -75,6 +76,7 @@ export default function HostSidebar({ collapsed, setCollapsed }: SidebarProps) {
     { name: 'Booking & Lịch', href: '/host/bookings', icon: Calendar, group: 'main' },
     // { name: 'Lịch & Giá mùa', href: '/host/calendar', icon: Calendar, group: 'main' },
     { name: 'Khu đất', href: '/host/properties', icon: Tent, group: 'main' },
+    { name: 'Gói dịch vụ', href: '/host/services', icon: Package, group: 'main' },
     { name: 'Thông báo', href: '/host/notifications', icon: Bell, group: 'main' },
     { name: 'Đánh giá', href: '/host/reviews', icon: Star, group: 'main' },
     { name: 'Doanh thu', href: '/host/revenue', icon: DollarSign, group: 'main' },

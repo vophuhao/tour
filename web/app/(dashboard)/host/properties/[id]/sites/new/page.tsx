@@ -48,6 +48,7 @@ export default function NewSitePage() {
         amenities: [] as any[],
         rules: { guestsShouldBring: [] as string[], siteSpecificRules: [] as string[] },
         photos: [] as any[],
+        unitNames: [] as string[],
         bookingSettings: {
             minimumNights: 1,
             maximumNights: undefined,
@@ -175,6 +176,7 @@ export default function NewSitePage() {
                     rvMaxLength: form.capacity?.rvMaxLength ? Number(form.capacity.rvMaxLength) : undefined,
                     maxConcurrentBookings: form.capacity?.maxConcurrentBookings ? Number(form.capacity.maxConcurrentBookings) : 1,
                 },
+                unitNames: form.unitNames || [],
                 pricing: {
                     basePrice: Number(pricingForServer.basePrice ?? 0),
                     weekendPrice: pricingForServer.weekendPrice !== undefined ? Number(pricingForServer.weekendPrice) : undefined,
@@ -250,6 +252,7 @@ export default function NewSitePage() {
                                 terrain: form.terrain,
                                 capacity: form.capacity,
                                 pricing: form.pricing,
+                                unitNames: form.unitNames,
                             }}
                             onChange={(patch) => update(patch)}
                         />

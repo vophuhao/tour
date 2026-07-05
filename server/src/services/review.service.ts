@@ -6,6 +6,7 @@ import type {
   CreateReviewInput,
   HostResponseInput,
   SearchReviewInput,
+  UpdateReviewInput,
 } from "@/validators/review.validator";
 import NotificationService from "./notification.service";
 
@@ -126,7 +127,6 @@ export class ReviewService {
       review!.host.toString() === hostId,
       ErrorFactory.forbidden("Bạn không phải host của review này")
     );
-    appAssert(!review!.hostResponse, ErrorFactory.conflict("Review này đã có response"));
 
     await review!.addHostResponse(input.comment);
 
@@ -508,6 +508,64 @@ export class ReviewService {
         5: distribution[4],
       },
     };
+  }
+
+  async updateReview(
+    reviewId: string,
+    guestId: string,
+    input: UpdateReviewInput
+  ): Promise<ReviewDocument> {
+    const review = await ReviewModel.findById(reviewId);
+    appAssert(review, ErrorFactory.resourceNotFound("Review"));
+    appAssert(
+      review!.guest.toString() === guestId,
+      ErrorFactory.forbidden("Bạn không phải tác giả của review này")
+    );
+    appAssert(
+      !review!.isEdited,
+      ErrorFactory.conflict("Đánh giá này đã được chỉnh sửa trước đó. Bạn chỉ có thể sửa đổi đánh giá 1 lần duy nhất.")
+    );
+
+    if (input.propertyRatings) {
+      review!.propertyRatings = {
+        ...review!.propertyRatings,
+        ...input.propertyRatings,
+      };
+    }
+
+    if (input.siteRatings) {
+      review!.siteRatings = {
+        ...review!.siteRatings,
+        ...input.siteRatings,
+      };
+    }
+
+    if (input.title !== undefined) review!.title = input.title;
+    if (input.comment !== undefined) review!.comment = input.comment;
+    if (input.pros !== undefined) review!.pros = input.pros;
+    if (input.cons !== undefined) review!.cons = input.cons;
+    if (input.images !== undefined) review!.images = input.images;
+
+    review!.isEdited = true;
+
+    await review!.save();
+
+    // Trigger update of property and site stats
+    try {
+      const { PropertyModel, SiteModel } = await import("@/models");
+      const property = await PropertyModel.findById(review!.property);
+      if (property && typeof (property as any).updateStats === "function") {
+        await (property as any).updateStats();
+      }
+      const site = await SiteModel.findById(review!.site);
+      if (site && typeof (site as any).updateStats === "function") {
+        await (site as any).updateStats();
+      }
+    } catch (e) {
+      console.error("Failed to update stats after review edit:", e);
+    }
+
+    return review!;
   }
 
   async getMyPropertiesReviews(hostId: string, page: number = 1, limit: number = 20) {

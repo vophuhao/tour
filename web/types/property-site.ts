@@ -26,6 +26,27 @@ export interface PropertyRule {
   order?: number;
 }
 
+export interface ServicePricing {
+  price: number;
+  unit: string;
+}
+
+export interface Service {
+  _id?: string;
+  name: string;
+  description?: string;
+  pricing: ServicePricing[];
+}
+
+export interface ServicePackage {
+  _id: string;
+  name: string;
+  host: string;
+  services: Service[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PropertyStats {
   totalSites: number;
   activeSites: number;
@@ -138,6 +159,7 @@ export interface Property {
   stats: PropertyStats;
   rating?: PropertyRating;
 
+  services?: Service[];
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -220,6 +242,7 @@ export interface Site {
   name: string;
   slug: string;
   description?: string;
+  services?: Service[];
 
   accommodationType: AccommodationType;
   siteClass?: 'basic' | 'vip';
@@ -289,6 +312,7 @@ export interface Booking {
   numberOfGuests: number;
   numberOfPets?: number;
   numberOfVehicles?: number;
+  unitNumber?: string;
 
   // Pricing Breakdown (matches backend exactly)
   pricing: {

@@ -45,6 +45,7 @@ export interface ReviewDocument extends mongoose.Document {
   isPublished: boolean;
   isFeatured: boolean; // review nổi bật
   isVerified: boolean; // đã xác minh đặt chỗ
+  isEdited: boolean; // đã được sửa đổi
 
   // Helpful votes
   helpfulCount: number;
@@ -109,6 +110,7 @@ const reviewSchema = new mongoose.Schema<ReviewDocument>(
     isPublished: { type: Boolean, default: true, index: true },
     isFeatured: { type: Boolean, default: false, index: true },
     isVerified: { type: Boolean, default: true }, // auto true nếu có booking
+    isEdited: { type: Boolean, default: false },
 
     helpfulCount: { type: Number, default: 0, min: 0 },
     notHelpfulCount: { type: Number, default: 0, min: 0 },

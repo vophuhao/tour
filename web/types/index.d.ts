@@ -394,3 +394,18 @@ declare interface Tour {
   }>;
   [key: string]: any;
 }
+
+declare interface SystemSetting {
+  platformFeeRate: number;
+  cancellationPolicy: {
+    diffDaysThreshold: number;
+    refundRateAboveThreshold: number;
+    hostRateAboveThreshold: number;
+    refundRateBelowThreshold: number;
+    hostRateBelowThreshold: number;
+    rejectedRequestHostRate: number;
+  };
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+}
+

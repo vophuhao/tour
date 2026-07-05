@@ -8,15 +8,7 @@ export function StepIndicator({ currentStep, steps, onStepClick }: StepIndicator
   return (
     <div className="w-full max-w-4xl mx-auto py-4">
       {/* Steps */}
-      <div className="flex items-center justify-between relative px-2">
-        {/* Progress line */}
-        <div className="absolute top-5 left-0 right-0 h-[3px] bg-slate-100 dark:bg-slate-800 -z-10 rounded-full">
-          <div
-            className="h-full bg-gradient-to-r from-primary to-primary/80 transition-all duration-500 ease-out shadow-sm rounded-full"
-            style={{ width: `${(currentStep / (steps.length - 1)) * 100}%` }}
-          />
-        </div>
-
+      <div className="flex items-start justify-between relative">
         {steps.map((step, index) => {
           const isCompleted = index < currentStep;
           const isCurrent = index === currentStep;
@@ -27,9 +19,20 @@ export function StepIndicator({ currentStep, steps, onStepClick }: StepIndicator
               key={step.label}
               type="button"
               onClick={() => onStepClick?.(index)}
-              className="flex flex-col items-center group cursor-pointer relative focus:outline-none"
+              className="flex-1 flex flex-col items-center group cursor-pointer relative focus:outline-none"
               disabled={!onStepClick}
             >
+              {/* Line to next step */}
+              {index < steps.length - 1 && (
+                <div
+                  className={`
+                    absolute top-[18px] left-[calc(50%+20px)] right-[calc(-50%+20px)] h-[3px] -z-10 rounded-full
+                    ${index < currentStep ? "bg-gradient-to-r from-primary to-primary/80" : "bg-slate-100 dark:bg-slate-800"}
+                    transition-all duration-300
+                  `}
+                />
+              )}
+
               {/* Circle */}
               <div
                 className={`
@@ -51,18 +54,18 @@ export function StepIndicator({ currentStep, steps, onStepClick }: StepIndicator
               </div>
 
               {/* Label */}
-              <div className="text-center mt-1">
+              <div className="text-center mt-1 w-full px-1">
                 <p
                   className={`
-                    text-xs sm:text-sm font-semibold tracking-wide transition-colors duration-300
-                    ${isCurrent ? "text-primary" : ""}
+                    text-[10px] sm:text-xs font-semibold tracking-wide transition-colors duration-300 break-words leading-tight
+                    ${isCurrent ? "text-primary font-bold" : ""}
                     ${isCompleted ? "text-slate-700 dark:text-slate-300" : ""}
                     ${isPending ? "text-slate-400 dark:text-slate-600" : ""}
                   `}
                 >
                   {step.label}
                 </p>
-                <p className="hidden md:block text-[10px] text-slate-400 dark:text-slate-500 font-normal mt-0.5 max-w-[120px]">
+                <p className="hidden md:block text-[9px] text-slate-400 dark:text-slate-500 font-normal mt-0.5 max-w-[120px] mx-auto break-words">
                   {step.description}
                 </p>
               </div>

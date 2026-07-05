@@ -16,6 +16,12 @@ import {
 interface BookingCalendarProps {
   bookings: Booking[];
   onBookingClick: (booking: Booking) => void;
+  currentDate?: Date;
+  onMonthChange?: (date: Date) => void;
+  maxConcurrent?: number;
+  blockedSlotsByDate?: Record<string, number>;
+  onBlockDate?: (date: Date, slotsToBlock: number, reason?: string) => Promise<void>;
+  onUnblockDate?: (date: Date) => Promise<void>;
 }
 
 interface CalendarDay {
@@ -52,10 +58,31 @@ const getBookingConnectionClass = (booking: any, currentDate: Date) => {
   return 'rounded-none';
 };
 
-export function BookingCalendar({ bookings, onBookingClick }: BookingCalendarProps) {
-  const [currentDate, setCurrentDate] = useState(new Date());
+export function BookingCalendar({ 
+  bookings, 
+  onBookingClick,
+  currentDate: propCurrentDate,
+  onMonthChange,
+  maxConcurrent = 1,
+  blockedSlotsByDate = {},
+  onBlockDate,
+  onUnblockDate,
+}: BookingCalendarProps) {
+  const [internalCurrentDate, setInternalCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null);
   const [hoveredBookingId, setHoveredBookingId] = useState<string | null>(null);
+  const [blockSlotsInput, setBlockSlotsInput] = useState<number>(0);
+  const [blockReason, setBlockReason] = useState('');
+  const [blockLoading, setBlockLoading] = useState(false);
+
+  const currentDate = propCurrentDate || internalCurrentDate;
+  const setCurrentDate = (date: Date) => {
+    if (onMonthChange) {
+      onMonthChange(date);
+    } else {
+      setInternalCurrentDate(date);
+    }
+  };
 
   const calendarDays = useMemo(() => {
     const year = currentDate.getFullYear();
@@ -248,6 +275,34 @@ export function BookingCalendar({ bookings, onBookingClick }: BookingCalendarPro
                   {day.date.getDate()}
                 </div>
 
+                {/* Slot availability badge */}
+                {day.isCurrentMonth && (() => {
+                  const dateStr = day.date.toISOString().split('T')[0];
+                  const bookedCount = day.bookings.reduce((sum, b) => sum + ((b as any).numberOfUnits || 1), 0);
+                  const manualBlocked = blockedSlotsByDate[dateStr] || 0;
+                  const free = Math.max(0, maxConcurrent - bookedCount - manualBlocked);
+                  const isFull = free === 0;
+                  const hasPartialBlock = manualBlocked > 0 && !isFull;
+                  return (
+                    <div className={cn(
+                      'mb-1 inline-flex items-center gap-0.5 rounded-md px-1 py-0.5 text-[9px] font-bold leading-none',
+                      isFull
+                        ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
+                        : hasPartialBlock
+                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
+                          : free <= Math.ceil(maxConcurrent / 2)
+                            ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
+                            : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+                    )}>
+                      <span className={cn('h-1.5 w-1.5 rounded-full',
+                        isFull ? 'bg-rose-500' : hasPartialBlock ? 'bg-amber-500 animate-pulse' : free <= Math.ceil(maxConcurrent / 2) ? 'bg-amber-500' : 'bg-emerald-500'
+                      )} />
+                      {isFull ? 'Hết chỗ' : `${free}/${maxConcurrent}`}
+                      {hasPartialBlock && <span className="ml-0.5 opacity-70">&#128295;</span>}
+                    </div>
+                  );
+                })()}
+
                 {/* Bookings */}
                 <div className="space-y-0.5">
                   {(() => {
@@ -361,58 +416,161 @@ export function BookingCalendar({ bookings, onBookingClick }: BookingCalendarPro
       </div>
 
       {/* Daily bookings popup dialog */}
-      <Dialog open={!!selectedDay} onOpenChange={(open) => !open && setSelectedDay(null)}>
+      <Dialog open={!!selectedDay} onOpenChange={(open) => { if (!open) { setSelectedDay(null); setBlockSlotsInput(0); setBlockReason(''); } }}>
         <DialogContent className="sm:max-w-md rounded-2xl border-stone-200">
           <DialogHeader>
-            <DialogTitle className="font-serif text-lg font-bold text-stone-900">
-              Đặt chỗ ngày {selectedDay?.date.toLocaleDateString('vi-VN')}
+            <DialogTitle className="text-lg font-bold text-stone-900">
+              {selectedDay?.date.toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
             </DialogTitle>
             <DialogDescription className="text-stone-500 text-xs">
-              Có {selectedDay?.bookings.length} lượt đặt chỗ trong ngày này
+              {selectedDay?.bookings.length
+                ? `${selectedDay.bookings.length} lượt đặt chỗ trong ngày này`
+                : 'Chưa có booking nào trong ngày này'}
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-[350px] overflow-y-auto space-y-3 pr-1">
-            {selectedDay?.bookings.map((booking) => {
-              const getBookingDisplayStatus = (b: any) => {
-                if (b.paymentStatus === 'pending') return 'unpaid';
-                return b.status;
-              };
-              const displayStatus = getBookingDisplayStatus(booking);
-              const colors = STATUS_COLORS[displayStatus] || STATUS_COLORS.unpaid;
-              const label = STATUS_LABELS[displayStatus] || 'Chưa thanh toán';
-              const guest = typeof booking.guest === 'object' ? booking.guest : null;
-              const site = typeof booking.site === 'object' ? booking.site : null;
 
-              return (
-                <div
-                  key={booking._id}
-                  onClick={() => {
-                    onBookingClick(booking);
-                    setSelectedDay(null);
-                  }}
-                  className="flex items-center justify-between p-3.5 rounded-xl border border-stone-200 hover:border-stone-300 bg-stone-50/50 hover:bg-stone-50 cursor-pointer transition-all duration-200 group"
-                >
-                  <div className="min-w-0 flex-1 pr-3">
-                    <p className="font-semibold text-sm text-stone-950 truncate group-hover:text-emerald-800 transition-colors">
-                      {(guest as any)?.name || (booking as any).fullnameGuest || '—'}
-                    </p>
-                    <p className="text-xs text-stone-500 truncate mt-0.5">
-                      {site?.name || 'Vị trí cắm trại'}
-                    </p>
+          {/* Booking list */}
+          {selectedDay?.bookings && selectedDay.bookings.length > 0 && (
+            <div className="max-h-[200px] overflow-y-auto space-y-2 pr-1">
+              {selectedDay.bookings.map((booking) => {
+                const getBookingDisplayStatus = (b: any) => {
+                  if (b.paymentStatus === 'pending') return 'unpaid';
+                  return b.status;
+                };
+                const displayStatus = getBookingDisplayStatus(booking);
+                const colors = STATUS_COLORS[displayStatus] || STATUS_COLORS.unpaid;
+                const label = STATUS_LABELS[displayStatus] || 'Chưa thanh toán';
+                const guest = typeof booking.guest === 'object' ? booking.guest : null;
+                const site = typeof booking.site === 'object' ? booking.site : null;
+                return (
+                  <div
+                    key={booking._id}
+                    onClick={() => { onBookingClick(booking); setSelectedDay(null); }}
+                    className="flex items-center justify-between p-3 rounded-xl border border-stone-200 hover:border-stone-300 bg-stone-50/50 hover:bg-stone-50 cursor-pointer transition-all duration-150 group"
+                  >
+                    <div className="min-w-0 flex-1 pr-3">
+                      <p className="font-semibold text-sm text-stone-950 truncate group-hover:text-emerald-800 transition-colors">
+                        {(guest as any)?.name || (booking as any).fullnameGuest || '—'}
+                      </p>
+                      <p className="text-xs text-stone-500 truncate mt-0.5">
+                        {site?.name || 'Vị trí cắm trại'}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                      <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold text-white', colors.bg)}>
+                        <span className={cn('h-1.5 w-1.5 rounded-full', colors.dot)} />
+                        {label}
+                      </span>
+                      <span className="text-[10px] text-stone-400">
+                        {new Date(booking.checkIn).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })} -{' '}
+                        {new Date(booking.checkOut).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                    <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold text-white', colors.bg)}>
-                      <span className={cn('h-1.5 w-1.5 rounded-full', colors.dot)} />
-                      {label}
+                );
+              })}
+            </div>
+          )}
+
+          {/* Block / Unblock section */}
+          {(onBlockDate || onUnblockDate) && (
+            <div className="border-t border-stone-100 pt-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-extrabold uppercase tracking-wider text-stone-400">Khóa ngày này</p>
+                {selectedDay && (() => {
+                  const dateStr = selectedDay.date.toISOString().split('T')[0];
+                  const currentBlocked = blockedSlotsByDate[dateStr] || 0;
+                  return currentBlocked > 0 ? (
+                    <span className="text-[10px] bg-amber-100 text-amber-700 font-semibold rounded-full px-2 py-0.5">
+                      Đang khóa {currentBlocked}/{maxConcurrent} chỗ
                     </span>
-                    <span className="text-[10px] text-stone-400">
-                      {new Date(booking.checkIn).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })} - {new Date(booking.checkOut).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
-                    </span>
+                  ) : null;
+                })()}
+              </div>
+
+              {maxConcurrent > 1 && (
+                <div className="space-y-1">
+                  <label className="text-xs text-stone-500 font-medium">
+                    Số chỗ muốn khóa <span className="text-stone-400">(0 = khóa hết {maxConcurrent} chỗ)</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      max={maxConcurrent}
+                      value={blockSlotsInput || ''}
+                      onChange={(e) => setBlockSlotsInput(Number(e.target.value) || 0)}
+                      placeholder={`1 – ${maxConcurrent}`}
+                      className="w-24 h-9 rounded-lg border border-stone-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
+                    />
+                    <span className="text-xs text-stone-400">/ {maxConcurrent} chỗ</span>
+                    {blockSlotsInput > 0 && blockSlotsInput < maxConcurrent && (
+                      <span className="text-[10px] text-amber-600 font-semibold">
+                        Còn {maxConcurrent - blockSlotsInput} chỗ cho khách đặt
+                      </span>
+                    )}
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="text-xs text-stone-500 font-medium">Lý do (không bắt buộc)</label>
+                <input
+                  type="text"
+                  value={blockReason}
+                  onChange={(e) => setBlockReason(e.target.value)}
+                  placeholder="VD: Bảo trì, sự kiện riêng..."
+                  className="w-full h-9 rounded-lg border border-stone-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  disabled={blockLoading || !onBlockDate}
+                  onClick={async () => {
+                    if (!selectedDay || !onBlockDate) return;
+                    setBlockLoading(true);
+                    try {
+                      await onBlockDate(selectedDay.date, blockSlotsInput, blockReason || undefined);
+                      setSelectedDay(null);
+                      setBlockSlotsInput(0);
+                      setBlockReason('');
+                    } finally { setBlockLoading(false); }
+                  }}
+                  className="flex-1 h-9 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+                >
+                  {blockLoading ? (
+                    <svg className="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                  ) : (
+                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  )}
+                  Khóa ngày
+                </button>
+                <button
+                  disabled={blockLoading || !onUnblockDate}
+                  onClick={async () => {
+                    if (!selectedDay || !onUnblockDate) return;
+                    setBlockLoading(true);
+                    try {
+                      await onUnblockDate(selectedDay.date);
+                      setSelectedDay(null);
+                    } finally { setBlockLoading(false); }
+                  }}
+                  className="flex-1 h-9 rounded-xl border border-stone-300 hover:bg-stone-50 disabled:opacity-50 text-stone-700 text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                  </svg>
+                  Mở lịch
+                </button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

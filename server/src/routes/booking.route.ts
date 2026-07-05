@@ -1,4 +1,5 @@
 import BookingController from "@/controllers/booking.controller";
+import PromoCodeController from "@/controllers/promo-code.controller";
 import { container, TOKENS } from "@/di";
 import { authenticate, requireAdmin } from "@/middleware";
 import type { BookingService } from "@/services/booking.service";
@@ -8,9 +9,13 @@ const bookingRoutes = Router();
 
 const bookingService = container.resolve<BookingService>(TOKENS.BookingService);
 const bookingController = new BookingController(bookingService);
+const promoController = new PromoCodeController();
 
 // Webhook (MUST be first - no auth)
 bookingRoutes.post("/payos/webhook", bookingController.handlePayOSWebhook);
+
+// Validate Promo Code
+bookingRoutes.post("/validate-promo", authenticate, promoController.validatePromoCode);
 
 // Admin routes (must be before :id params)
 bookingRoutes.get("/admin/all", requireAdmin, bookingController.getAdminBookings);

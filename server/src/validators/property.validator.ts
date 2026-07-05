@@ -101,6 +101,22 @@ export const createPropertySchema = z.object({
       allowWholePropertyBooking: z.boolean().default(false),
     })
     .optional(),
+  services: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(200),
+        description: z.string().max(1000).optional(),
+        pricing: z
+          .array(
+            z.object({
+              price: z.number().min(0),
+              unit: z.string().max(100).default("lượt"),
+            })
+          )
+          .min(1),
+      })
+    )
+    .optional(),
   status: z.enum(["active", "inactive", "blocked"]).default("active"),
 
   // Status

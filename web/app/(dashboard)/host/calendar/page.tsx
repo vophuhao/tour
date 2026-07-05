@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useAuthStore } from '@/store/auth.store';
+import { useEffect, useState, useMemo, ReactNode } from 'react';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -11,26 +11,25 @@ import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trophy, Calendar as CalendarIcon, Info, ShieldAlert, Loader2, DollarSign, CalendarCheck } from 'lucide-react';
+import { Calendar as CalendarIcon, Loader2, DollarSign, CalendarCheck, Users, Tent, ArrowRight, CheckCircle2, Clock3 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getMyProperties, getSitesByProperty } from '@/lib/property-site-api';
+import { useRouter } from 'next/navigation';
+import { BookingCalendar } from '@/components/host/booking-calendar';
 
 const API = process.env.NEXT_PUBLIC_API_URL;
 
 export default function HostCalendarPage() {
-  const { user } = useAuthStore();
   const [mounted, setMounted] = useState(false);
   const [properties, setProperties] = useState<any[]>([]);
   const [sites, setSites] = useState<any[]>([]);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
   const [selectedSiteId, setSelectedSiteId] = useState<string>('');
+  const [selectedSiteDetail, setSelectedSiteDetail] = useState<any>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  // Date selection
-  const [selectedDays, setSelectedDays] = useState<Date[]>([]);
 
   // Availability calendar details
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
@@ -46,6 +45,44 @@ export default function HostCalendarPage() {
     endDate: '',
     price: '',
   });
+
+  const router = useRouter();
+
+  const transformedBookings = useMemo(() => {
+    if (!availabilityData.bookings) return [];
+    return availabilityData.bookings.map((b: any) => ({
+      ...b,
+      _id: b.id || b._id,
+      guest: { name: b.guestName || 'Khách' },
+      pricing: { total: b.totalPrice || 0 },
+      site: { name: b.unitName || 'Đã đặt' },
+      status: b.status || 'confirmed',
+      paymentStatus: b.paymentStatus || (b.status === 'confirmed' ? 'paid' : 'pending'),
+    }));
+  }, [availabilityData.bookings]);
+
+  const maxConcurrent = selectedSiteDetail?.capacity?.maxConcurrentBookings || 1;
+
+  // map: date string -> số chỗ bị partial block
+  const blockedSlotsByDate = useMemo(() => {
+    const map: Record<string, number> = {};
+    if (availabilityData.blocks) {
+      (availabilityData.blocks as any[]).forEach((b) => {
+        if (b.blockedSlots && b.blockedSlots > 0) {
+          const dateStr = new Date(b.date).toISOString().split('T')[0];
+          map[dateStr] = b.blockedSlots;
+        }
+      });
+    }
+    return map;
+  }, [availabilityData.blocks]);
+  const handleBookingClick = (booking: any) => {
+    if (booking.code) {
+      router.push(`/host/bookings/detail/${booking.code}`);
+    } else {
+      toast.error("Không tìm thấy mã đặt chỗ");
+    }
+  };
 
   // Load properties on mount
   useEffect(() => {
@@ -119,7 +156,7 @@ export default function HostCalendarPage() {
       }
     }
 
-    // Load site details for seasonal pricing
+    // Load site details for seasonal pricing & metadata
     async function loadSiteDetails() {
       if (!selectedSiteId) return;
       try {
@@ -129,6 +166,7 @@ export default function HostCalendarPage() {
         });
         if (res.ok) {
           const data = await res.json();
+          setSelectedSiteDetail(data.data || null);
           setSeasonalPricing(data.data?.pricing?.seasonalPricing || []);
         }
       } catch (err) {
@@ -138,91 +176,7 @@ export default function HostCalendarPage() {
 
     fetchCalendar();
     loadSiteDetails();
-    setSelectedDays([]); // Reset selection when site changes
   }, [selectedSiteId, calendarMonth]);
-
-  // Action: Block Selected Days
-  const handleBlockDates = async () => {
-    if (selectedDays.length === 0 || !selectedSiteId) return;
-    setActionLoading(true);
-    try {
-      const token = localStorage.getItem('accessToken');
-      const formattedDates = selectedDays.map(d => d.toISOString().split('T')[0]);
-      const res = await fetch(`${API}/sites/${selectedSiteId}/block-dates`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          dates: formattedDates,
-          reason: 'Bảo trì định kỳ / Chủ nhà đóng',
-        }),
-      });
-
-      if (res.ok) {
-        toast.success(`Đã chặn thành công ${selectedDays.length} ngày`);
-        setSelectedDays([]);
-        // Refresh calendar
-        const monthStr = `${calendarMonth.getFullYear()}-${String(calendarMonth.getMonth() + 1).padStart(2, '0')}`;
-        const calRes = await fetch(`${API}/sites/${selectedSiteId}/availability-calendar?month=${monthStr}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (calRes.ok) {
-          const calData = await calRes.json();
-          setAvailabilityData(calData.data);
-        }
-      } else {
-        const errData = await res.json();
-        toast.error(errData.message || 'Lỗi khi đóng lịch');
-      }
-    } catch (err) {
-      toast.error('Có lỗi xảy ra');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // Action: Unblock Selected Days
-  const handleUnblockDates = async () => {
-    if (selectedDays.length === 0 || !selectedSiteId) return;
-    setActionLoading(true);
-    try {
-      const token = localStorage.getItem('accessToken');
-      const formattedDates = selectedDays.map(d => d.toISOString().split('T')[0]);
-      const res = await fetch(`${API}/sites/${selectedSiteId}/block-dates`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          dates: formattedDates,
-        }),
-      });
-
-      if (res.ok) {
-        toast.success(`Đã mở chặn thành công ${selectedDays.length} ngày`);
-        setSelectedDays([]);
-        // Refresh calendar
-        const monthStr = `${calendarMonth.getFullYear()}-${String(calendarMonth.getMonth() + 1).padStart(2, '0')}`;
-        const calRes = await fetch(`${API}/sites/${selectedSiteId}/availability-calendar?month=${monthStr}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (calRes.ok) {
-          const calData = await calRes.json();
-          setAvailabilityData(calData.data);
-        }
-      } else {
-        const errData = await res.json();
-        toast.error(errData.message || 'Lỗi khi mở lịch');
-      }
-    } catch (err) {
-      toast.error('Có lỗi xảy ra');
-    } finally {
-      setActionLoading(false);
-    }
-  };
 
   // Action: Add Seasonal Pricing Rule
   const handleAddSeasonalRule = async (e: React.FormEvent) => {
@@ -336,6 +290,17 @@ export default function HostCalendarPage() {
     return 'hover:bg-indigo-50 hover:text-indigo-900';
   };
 
+  // Find bookings overlapping a specific date
+  const getBookingsForDate = (date: Date) => {
+    if (!availabilityData.bookings) return [];
+    const dateStr = date.toISOString().split('T')[0];
+    return availabilityData.bookings.filter((b: any) => {
+      const checkInStr = new Date(b.checkIn).toISOString().split('T')[0];
+      const checkOutStr = new Date(b.checkOut).toISOString().split('T')[0];
+      return dateStr >= checkInStr && dateStr < checkOutStr;
+    });
+  };
+
   if (!mounted) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -388,239 +353,304 @@ export default function HostCalendarPage() {
       </div>
 
       {selectedSiteId ? (
-        <div className="grid gap-8 lg:grid-cols-3">
-          {/* Calendar Grid */}
-          <div className="lg:col-span-2 space-y-6">
-            <Card className="border border-slate-200/80 dark:border-slate-850">
-              <CardHeader className="pb-3 flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="text-md font-extrabold text-slate-800 dark:text-white">Lịch hoạt động</CardTitle>
-                  <CardDescription className="text-xs">Chọn các ngày trên lịch để đóng bãi hoặc mở lại.</CardDescription>
-                </div>
-                {loadingCalendar && <Loader2 className="h-4 w-4 animate-spin text-indigo-650" />}
-              </CardHeader>
-              <CardContent className="flex flex-col sm:flex-row gap-6 justify-center items-center">
-                <Calendar
-                  mode="multiple"
-                  selected={selectedDays}
-                  onSelect={(days) => setSelectedDays(days || [])}
-                  month={calendarMonth}
-                  onMonthChange={setCalendarMonth}
-                  className="rounded-xl border border-slate-200 bg-white dark:bg-slate-900/40 p-4"
-                  modifiers={{
-                    blocked: (date) => {
-                      const dateStr = date.toISOString().split('T')[0];
-                      return !!availabilityData.blocks?.some(
-                        (b: any) => b.date?.split('T')[0] === dateStr && !b.isAvailable
-                      );
-                    },
-                    booked: (date) => {
-                      const dateStr = date.toISOString().split('T')[0];
-                      return !!availabilityData.bookings?.some((b: any) => {
-                        const checkIn = new Date(b.checkIn);
-                        const checkOut = new Date(b.checkOut);
-                        const checkInStr = checkIn.toISOString().split('T')[0];
-                        const checkOutStr = checkOut.toISOString().split('T')[0];
-                        return dateStr >= checkInStr && dateStr <= checkOutStr;
-                      });
-                    }
-                  }}
-                  modifiersClassNames={{
-                    selected: 'bg-indigo-600 text-white font-extrabold rounded-lg',
-                    blocked: 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-400 font-bold border border-red-300',
-                    booked: 'bg-slate-200 text-slate-800 dark:bg-slate-800/80 dark:text-slate-400 line-through'
-                  }}
-                />
+        <Tabs defaultValue="bookings" className="space-y-6">
+          <div className="flex items-center justify-between">
+            <TabsList className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+              <TabsTrigger value="bookings" className="rounded-lg px-4 py-2 text-xs font-bold data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm">
+                Sơ đồ đặt chỗ
+              </TabsTrigger>
+              <TabsTrigger value="block-dates" className="rounded-lg px-4 py-2 text-xs font-bold data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm">
+                Đóng / Mở lịch & Giá mùa vụ
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-                {/* Control Panel */}
-                <div className="flex-1 w-full space-y-4">
-                  <div className="rounded-xl bg-slate-50 dark:bg-slate-900/50 p-4 space-y-3 border border-slate-100 dark:border-slate-850">
-                    <h4 className="text-xs font-extrabold uppercase text-slate-400 tracking-wider">Thông tin lựa chọn</h4>
-                    <p className="text-sm font-semibold">
-                      Đang chọn: <span className="text-indigo-600 font-extrabold">{selectedDays.length} ngày</span>
-                    </p>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                        disabled={selectedDays.length === 0 || actionLoading}
-                        onClick={handleBlockDates}
-                      >
-                        {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Chặn lịch'}
+          <TabsContent value="bookings" className="space-y-6 mt-0">
+            <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-slate-850 p-6">
+              <BookingCalendar 
+                bookings={transformedBookings} 
+                onBookingClick={handleBookingClick} 
+                currentDate={calendarMonth}
+                onMonthChange={setCalendarMonth}
+                maxConcurrent={maxConcurrent}
+                blockedSlotsByDate={blockedSlotsByDate}
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="block-dates" className="mt-0 space-y-6">
+            <div className="grid gap-8 lg:grid-cols-3">
+              {/* Pricing Panel */}
+              <div className="lg:col-span-1 space-y-6">
+                <Card className="border border-slate-200/80 dark:border-slate-850">
+                  <CardHeader>
+                    <CardTitle className="text-md font-extrabold text-slate-800 dark:text-white">Thiết lập giá mùa vụ</CardTitle>
+                    <CardDescription className="text-xs">Cấu hình mức giá đặc biệt cho mùa cao điểm hoặc dịp lễ.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <form onSubmit={handleAddSeasonalRule} className="space-y-3.5">
+                      <div className="space-y-1">
+                        <Label htmlFor="rule-name" className="text-xs font-semibold text-slate-500">Tên mùa vụ / Dịp lễ</Label>
+                        <Input
+                          id="rule-name"
+                          placeholder="Ví dụ: Lễ Tết, Mùa Hè 2026"
+                          value={newRule.name}
+                          onChange={(e) => setNewRule({ ...newRule, name: e.target.value })}
+                          className="rounded-xl h-10 text-xs"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label htmlFor="start" className="text-xs font-semibold text-slate-500">Bắt đầu</Label>
+                          <Input
+                            id="start"
+                            type="date"
+                            value={newRule.startDate}
+                            onChange={(e) => setNewRule({ ...newRule, startDate: e.target.value })}
+                            className="rounded-xl h-10 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="end" className="text-xs font-semibold text-slate-500">Kết thúc</Label>
+                          <Input
+                            id="end"
+                            type="date"
+                            value={newRule.endDate}
+                            onChange={(e) => setNewRule({ ...newRule, endDate: e.target.value })}
+                            className="rounded-xl h-10 text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label htmlFor="price" className="text-xs font-semibold text-slate-500">Giá mới mỗi đêm (₫)</Label>
+                        <div className="relative">
+                          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <Input
+                            id="price"
+                            type="number"
+                            placeholder="Giá/đêm"
+                            value={newRule.price}
+                            onChange={(e) => setNewRule({ ...newRule, price: e.target.value })}
+                            className="rounded-xl h-10 pl-9 text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      <Button type="submit" className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-xl h-10 text-xs font-bold" disabled={actionLoading}>
+                        {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Thêm cấu hình giá'}
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 border-slate-200"
-                        disabled={selectedDays.length === 0 || actionLoading}
-                        onClick={handleUnblockDates}
-                      >
-                        {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Mở lịch'}
-                      </Button>
-                    </div>
-                  </div>
+                    </form>
 
-                  {/* Legend */}
-                  <div className="text-xs space-y-2 border-t border-slate-100 dark:border-slate-800 pt-3">
-                    <h4 className="font-extrabold uppercase text-slate-400 tracking-wider text-[10px]">Chú thích lịch</h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-3.5 h-3.5 rounded bg-white border border-slate-200 inline-block" />
-                        <span className="text-slate-500 font-medium">Hoạt động bình thường</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-3.5 h-3.5 rounded bg-red-100 border border-red-300 inline-block" />
-                        <span className="text-slate-500 font-medium">Chủ nhà chặn đóng</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-3.5 h-3.5 rounded bg-slate-200 inline-block line-through" />
-                        <span className="text-slate-500 font-medium">Đã được khách đặt</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-3.5 h-3.5 rounded bg-indigo-600 inline-block" />
-                        <span className="text-slate-500 font-medium">Các ngày đang chọn</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                    <Separator />
 
-            {/* List of bookings in month */}
-            <Card className="border border-slate-200/80 dark:border-slate-850">
+                    {/* List of rules */}
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Các mùa đã cấu hình</h4>
+                      {seasonalPricing.length === 0 ? (
+                        <p className="text-xs text-slate-400 text-center py-4">Chưa có mức giá mùa vụ nào</p>
+                      ) : (
+                        <div className="space-y-3.5">
+                          {seasonalPricing.map((rule, idx) => (
+                            <div key={idx} className="p-3.5 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-100 dark:border-slate-850 flex items-start justify-between">
+                              <div className="space-y-1">
+                                <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200">{rule.name}</p>
+                                <p className="text-[10px] text-slate-400 font-medium">
+                                  {new Date(rule.startDate).toLocaleDateString('vi-VN')} - {new Date(rule.endDate).toLocaleDateString('vi-VN')}
+                                </p>
+                                <p className="text-xs font-black text-indigo-650 dark:text-indigo-400 mt-1.5">
+                                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(rule.price)} / đêm
+                                </p>
+                              </div>
+                              <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500 hover:bg-rose-50 rounded-lg" onClick={() => handleDeleteSeasonalRule(idx)}>
+                                ✕
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Right Column: Month Bookings list */}
+              <div className="lg:col-span-2 space-y-6">
+                <Card className="border border-slate-200/80 dark:border-slate-850">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-md font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
+                      <CalendarCheck className="h-5 w-5 text-indigo-500" />
+                      Danh sách đặt phòng trong tháng
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Danh sách các booking của site này trong tháng {calendarMonth.getMonth() + 1}/{calendarMonth.getFullYear()}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {!availabilityData.bookings || availabilityData.bookings.length === 0 ? (
+                      <p className="text-xs text-slate-400 text-center py-6">Chưa có khách cắm trại trong tháng này</p>
+                    ) : (
+                      <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {availabilityData.bookings.map((b: any) => {
+                          const statusConfig: Record<string, { label: string; color: string; icon: ReactNode }> = {
+                            confirmed: { label: 'Đã xác nhận', color: 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/30', icon: <CheckCircle2 className="h-3 w-3" /> },
+                            pending:   { label: 'Chờ xác nhận', color: 'text-amber-700 bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/30', icon: <Clock3 className="h-3 w-3" /> },
+                            completed: { label: 'Hoàn thành', color: 'text-blue-700 bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/30', icon: <CheckCircle2 className="h-3 w-3" /> },
+                            cancelled: { label: 'Đã hủy', color: 'text-red-700 bg-red-50 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/30', icon: null },
+                          };
+                          const sc = statusConfig[b.status] || statusConfig.pending;
+                          return (
+                            <div
+                              key={b.id}
+                              className="py-3 flex items-start justify-between gap-3 text-xs cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900/40 -mx-2 px-2 rounded-lg transition-colors group"
+                              onClick={() => b.code && router.push(`/host/bookings/detail/${b.code}`)}
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap mb-1">
+                                  <p className="font-extrabold text-slate-900 dark:text-slate-200 truncate">
+                                    {b.guestName}
+                                  </p>
+                                  {b.numberOfUnits > 1 && (
+                                    <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-1.5 py-0.5 text-[10px] font-semibold shrink-0">
+                                      {b.numberOfUnits} {selectedSiteDetail?.accommodationType === 'tent' ? 'lều' : 'đơn vị'}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-3 text-[10px] text-slate-400 flex-wrap">
+                                  <span>
+                                    {new Date(b.checkIn).toLocaleDateString('vi-VN')} → {new Date(b.checkOut).toLocaleDateString('vi-VN')}
+                                  </span>
+                                  {b.numberOfGuests && (
+                                    <span className="flex items-center gap-1">
+                                      <Users className="h-2.5 w-2.5" />
+                                      {b.numberOfGuests} người
+                                    </span>
+                                  )}
+                                  {b.code && (
+                                    <span className="font-mono text-[9px] text-slate-300 dark:text-slate-600">#{b.code}</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0 flex flex-col items-end gap-1">
+                                <p className="font-bold text-indigo-600 dark:text-indigo-400">
+                                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(b.totalPrice)}
+                                </p>
+                                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-semibold border ${sc.color}`}>
+                                  {sc.icon}{sc.label}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            {/* Detailed Monthly Tent/Slot Grid */}
+            <Card className="border border-slate-205 dark:border-slate-850 mt-8">
               <CardHeader className="pb-3">
-                <CardTitle className="text-md font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
-                  <CalendarCheck className="h-5 w-5 text-indigo-500" />
-                  Danh sách đặt phòng trong tháng
+                <CardTitle className="text-md font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                  <CalendarCheck className="h-5 w-5 text-indigo-600" />
+                  Sơ đồ chi tiết & Trạng thái bãi trống trong tháng {calendarMonth.getMonth() + 1}/{calendarMonth.getFullYear()}
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Danh sách các booking của site này trong tháng {calendarMonth.getMonth() + 1}/{calendarMonth.getFullYear()}
+                  Theo dõi tình hình hoạt động, hiển thị chi tiết tên lều/vị trí cụ thể đang có khách ở hay đang trống.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {availabilityData.bookings?.length === 0 ? (
-                  <p className="text-xs text-slate-400 text-center py-6">Chưa có khách cắm trại trong tháng này</p>
-                ) : (
-                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {availabilityData.bookings?.map((b: any) => (
-                      <div key={b.id} className="py-3 flex items-center justify-between text-xs">
-                        <div>
-                          <p className="font-extrabold text-slate-900 dark:text-slate-200">{b.guestName}</p>
-                          <p className="text-[10px] text-slate-400">
-                            {new Date(b.checkIn).toLocaleDateString('vi-VN')} - {new Date(b.checkOut).toLocaleDateString('vi-VN')}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-indigo-600 dark:text-indigo-400">
-                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(b.totalPrice)}
-                          </p>
-                          <Badge variant="secondary" className="text-[9px] px-1.5 py-0.5 mt-0.5 capitalize">
-                            {b.status}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
+                {/* Status Legend */}
+                <div className="flex gap-5 mb-5 text-xs font-semibold">
+                  <div className="flex items-center gap-2">
+                    <span className="h-3 w-3 rounded-full bg-emerald-500 inline-block"></span>
+                    <span>Còn trống</span>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Pricing Panel */}
-          <div className="space-y-6">
-            <Card className="border border-slate-200/80 dark:border-slate-850">
-              <CardHeader>
-                <CardTitle className="text-md font-extrabold text-slate-800 dark:text-white">Thiết lập giá mùa vụ</CardTitle>
-                <CardDescription className="text-xs">Cấu hình mức giá đặc biệt cho mùa cao điểm hoặc dịp lễ.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <form onSubmit={handleAddSeasonalRule} className="space-y-3.5">
-                  <div className="space-y-1">
-                    <Label htmlFor="rule-name" className="text-xs font-semibold text-slate-500">Tên mùa vụ / Dịp lễ</Label>
-                    <Input
-                      id="rule-name"
-                      placeholder="Ví dụ: Lễ Tết, Mùa Hè 2026"
-                      value={newRule.name}
-                      onChange={(e) => setNewRule({ ...newRule, name: e.target.value })}
-                      className="rounded-xl h-10 text-xs"
-                    />
+                  <div className="flex items-center gap-2">
+                    <span className="h-3 w-3 rounded-full bg-rose-500 inline-block"></span>
+                    <span>Đã bận / Có khách</span>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <Label htmlFor="start" className="text-xs font-semibold text-slate-500">Bắt đầu</Label>
-                      <Input
-                        id="start"
-                        type="date"
-                        value={newRule.startDate}
-                        onChange={(e) => setNewRule({ ...newRule, startDate: e.target.value })}
-                        className="rounded-xl h-10 text-xs"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="end" className="text-xs font-semibold text-slate-500">Kết thúc</Label>
-                      <Input
-                        id="end"
-                        type="date"
-                        value={newRule.endDate}
-                        onChange={(e) => setNewRule({ ...newRule, endDate: e.target.value })}
-                        className="rounded-xl h-10 text-xs"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="price" className="text-xs font-semibold text-slate-500">Giá mới mỗi đêm (₫)</Label>
-                    <div className="relative">
-                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                      <Input
-                        id="price"
-                        type="number"
-                        placeholder="Giá/đêm"
-                        value={newRule.price}
-                        onChange={(e) => setNewRule({ ...newRule, price: e.target.value })}
-                        className="rounded-xl h-10 pl-9 text-xs"
-                      />
-                    </div>
-                  </div>
-
-                  <Button type="submit" className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-xl h-10 text-xs font-bold" disabled={actionLoading}>
-                    {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Thêm cấu hình giá'}
-                  </Button>
-                </form>
-
-                <Separator />
-
-                {/* List of rules */}
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Các mùa đã cấu hình</h4>
-                  {seasonalPricing.length === 0 ? (
-                    <p className="text-xs text-slate-400 text-center py-4">Chưa có mức giá mùa vụ nào</p>
-                  ) : (
-                    <div className="space-y-3.5">
-                      {seasonalPricing.map((rule, idx) => (
-                        <div key={idx} className="p-3.5 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-100 dark:border-slate-850 flex items-start justify-between">
-                          <div className="space-y-1">
-                            <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200">{rule.name}</p>
-                            <p className="text-[10px] text-slate-400 font-medium">
-                              {new Date(rule.startDate).toLocaleDateString('vi-VN')} - {new Date(rule.endDate).toLocaleDateString('vi-VN')}
-                            </p>
-                            <p className="text-xs font-black text-indigo-650 dark:text-indigo-400 mt-1.5">
-                              {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(rule.price)} / đêm
-                            </p>
-                          </div>
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500 hover:bg-rose-50 rounded-lg" onClick={() => handleDeleteSeasonalRule(idx)}>
-                            ✕
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+
+            {/* List of Days */}
+            <div className="space-y-3.5 max-h-[500px] overflow-y-auto pr-1">
+              {(() => {
+                const year = calendarMonth.getFullYear();
+                const month = calendarMonth.getMonth();
+                const daysCount = new Date(year, month + 1, 0).getDate();
+                const daysList = Array.from({ length: daysCount }, (_, i) => new Date(year, month, i + 1));
+                
+                const maxConcurrent = selectedSiteDetail?.capacity?.maxConcurrentBookings || 1;
+                const lodgingProvided = selectedSiteDetail?.lodgingProvided;
+                const isBYO = lodgingProvided === "bring_your_own";
+                const unitNames = selectedSiteDetail?.unitNames || [];
+
+                return daysList.map((dayDate) => {
+                  const dateStr = dayDate.toISOString().split('T')[0];
+                  const dayBookings = getBookingsForDate(dayDate);
+                  
+                  const formattedDay = dayDate.toLocaleDateString('vi-VN', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    weekday: 'short'
+                  });
+
+                  return (
+                    <div key={dateStr} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+                      {/* Date label */}
+                      <div className="sm:w-36 shrink-0">
+                        <span className="font-bold text-xs sm:text-sm text-slate-700 dark:text-slate-300">{formattedDay}</span>
+                      </div>
+
+                      {/* Capacity display — count-based only */}
+                      <div className="flex-1 flex flex-wrap gap-2 justify-start items-center">
+                        {maxConcurrent > 1 ? (() => {
+                          const bookedCount = dayBookings.reduce((sum: number, b: any) => sum + (b.numberOfUnits || 1), 0);
+                          const freeCount = Math.max(0, maxConcurrent - bookedCount);
+                          return (
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge className={`border-0 rounded-lg px-2.5 py-1 text-xs font-bold ${
+                                freeCount > 0
+                                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400"
+                                  : "bg-rose-100 text-rose-800 dark:bg-rose-950/30 dark:text-rose-400"
+                              }`}>
+                                <span className={`h-1.5 w-1.5 rounded-full mr-1.5 inline-block ${freeCount > 0 ? 'bg-emerald-500' : 'bg-rose-500 animate-pulse'}`} />
+                                {freeCount > 0 ? `Còn trống ${freeCount}/${maxConcurrent} chỗ` : `Đã đầy (${maxConcurrent}/${maxConcurrent})`}
+                              </Badge>
+                              {dayBookings.length > 0 && (
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                  ({dayBookings.map((b: any) => `${b.guestName}${b.numberOfUnits > 1 ? ` ×${b.numberOfUnits}` : ''}`).join(', ')})
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })() : (
+                          <div>
+                            {dayBookings.length > 0 ? (
+                              <Badge className="bg-rose-50 text-rose-700 dark:bg-rose-950/20 dark:text-rose-450 border border-rose-100 dark:border-rose-900/20 rounded-md px-2 py-0.5 text-xs font-semibold">
+                                <span className="h-1.5 w-1.5 rounded-full bg-rose-500 mr-1.5 inline-block" />
+                                Đã bận: {dayBookings[0].guestName} ({dayBookings[0].totalPrice?.toLocaleString("vi-VN")} đ)
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-450 border border-emerald-100 dark:border-emerald-900/20 rounded-md px-2 py-0.5 text-xs font-semibold">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-1.5 inline-block" />
+                                Sẵn sàng / Trống
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </CardContent>
+        </Card>
+          </TabsContent>
+        </Tabs>
       ) : (
         <div className="flex flex-col items-center justify-center p-12 text-center bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-850 rounded-2xl">
           <CalendarIcon className="h-12 w-12 text-slate-300 animate-pulse" />

@@ -11,6 +11,7 @@ import { SiteAmenitiesRules } from "@/components/host/site/site-amenities-rules"
 import { SiteLocation } from "@/components/host/site/site-location";
 import { SitePhotos } from "@/components/host/site/site-photos";
 import { SiteBookingSettings } from "@/components/host/site/site-booking-settings";
+import { SiteServicesStep } from "@/components/host/site/site-services-step";
 import { getPropertyById, getSiteById, getSitesByProperty, updateSite, uploadMedia } from "@/lib/client-actions";
 import { useQuery } from "@tanstack/react-query";
 import { StepIndicator } from "@/components/host/property/step-indicator";
@@ -18,6 +19,7 @@ import { StepIndicator } from "@/components/host/property/step-indicator";
 const STEPS = [
     { id: "details", title: "Thông tin & Giá" },
     { id: "amenities", title: "Tiện nghi & Quy định" },
+    { id: "services", title: "Dịch vụ đi kèm" },
     { id: "location", title: "Vị trí" },
     { id: "photos", title: "Hình ảnh" },
     { id: "settings", title: "Cài đặt & Đăng" },
@@ -40,7 +42,9 @@ export default function EditSitePage() {
     amenities: [] as any[],
     rules: { guestsShouldBring: [] as string[], siteSpecificRules: [] as string[] },
     photos: [] as any[],
+    unitNames: [] as string[],
     bookingSettings: { minimumNights: 1, checkInTime: "14:00", checkOutTime: "11:00", instantBook: false, advanceNotice: 24, allowSameDayBooking: false },
+    services: [] as any[],
   };
 
   const [loading, setLoading] = useState(true);
@@ -125,6 +129,8 @@ export default function EditSitePage() {
             },
             photos,
             bookingSettings: { ...(defaultForm.bookingSettings as any), ...(found.bookingSettings ?? {}) },
+            unitNames: found.unitNames ?? [],
+            services: found.services ?? [],
           });
         } else {
           toast.error("Không tìm thấy site để chỉnh sửa.");
@@ -144,7 +150,7 @@ export default function EditSitePage() {
 
   const canNext = useMemo(() => {
     if (step === 0) return !!form.basic?.name;
-    if (step === 2) return !!(form.siteLocation?.coordinates ?? form.siteLocation?.lat);
+    if (step === 3) return !!(form.siteLocation?.coordinates ?? form.siteLocation?.lat);
     return true;
   }, [step, form]);
 
@@ -219,6 +225,7 @@ export default function EditSitePage() {
             }
             : undefined,
         capacity: form.capacity,
+        unitNames: form.unitNames || [],
         pricing: pricingForServer,
         bookingSettings: form.bookingSettings,
         photos: uploadedPhotos.length > 0 ? uploadedPhotos : form.photos?.filter((p: any) => p?.url) ?? undefined,
@@ -229,6 +236,7 @@ export default function EditSitePage() {
         isActive: publish,
         isAvailableForBooking: publish,
         publish,
+        services: form.services ?? [],
       };
       const res = await updateSite(siteId, payload);
       if (!res?.success) throw new Error(res?.message || "Cập nhật thất bại");
@@ -282,6 +290,7 @@ export default function EditSitePage() {
                 terrain: form.terrain,
                 capacity: form.capacity,
                 pricing: form.pricing,
+                unitNames: form.unitNames,
               }}
               onChange={(patch) => update(patch)}
             />
@@ -295,6 +304,13 @@ export default function EditSitePage() {
           )}
 
           {step === 2 && (
+            <SiteServicesStep
+              data={form.services ?? []}
+              onChange={(services) => update({ services })}
+            />
+          )}
+
+          {step === 3 && (
             <SiteLocation
               data={form.siteLocation}
               propertyLocation={propertyLocation}
@@ -306,11 +322,11 @@ export default function EditSitePage() {
             />
           )}
 
-          {step === 3 && (
+          {step === 4 && (
             <SitePhotos data={form.photos ?? []} onChange={(p: any[]) => update({ photos: p })} />
           )}
 
-          {step === 4 && (
+          {step === 5 && (
             <SiteBookingSettings
               data={form.bookingSettings ?? defaultForm.bookingSettings}
               onChange={(newSettings: any) => update({ bookingSettings: newSettings })}
@@ -342,10 +358,10 @@ export default function EditSitePage() {
               Lưu nháp
             </Button>
 
-            {step < 4 ? (
+            {step < 5 ? (
               <Button
                 disabled={!canNext || saving}
-                onClick={() => setStep((s) => Math.min(4, s + 1))}
+                onClick={() => setStep((s) => Math.min(5, s + 1))}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl px-6 gap-2 transition-all shadow-md shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0"
               >
                 Tiếp theo

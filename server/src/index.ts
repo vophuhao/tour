@@ -22,6 +22,10 @@ import {
   userRoutes,
   payoutRoutes,
   aiRoutes,
+  settingRoutes,
+  servicePackageRoutes,
+  promoCodeRoutes,
+  comboRoutes,
 } from "./routes";
 
 import dashboardHRoutes from "./routes/dashbardH.route";
@@ -131,7 +135,7 @@ cron.schedule("0 */6 * * *", async () => {
 });
 
 // Cron: Tự động hủy/xóa các booking chưa thanh toán quá hạn 12 tiếng và giải phóng ngày (mỗi 15 phút)
-cron.schedule("*/15 * * * *", async () => {
+cron.schedule("*/1 * * * *", async () => {
   console.log("🔄 Running cancel expired pending bookings job (12h timeout)...");
   try {
     const result = await bookingLifecycleService.cancelExpiredPendingBookings();
@@ -146,17 +150,17 @@ cron.schedule("*/15 * * * *", async () => {
 });
 
 // Cron: Tự động xóa các booking chưa thanh toán có check-in bằng ngày hiện tại (mỗi ngày lúc 1:00 AM)
-cron.schedule("0 1 * * *", async () => {
-  console.log("🔄 Running cleanup unpaid bookings job...");
-  try {
-    const result = await bookingLifecycleService.cancelUnpaidBookingsOnCheckinDay();
-    console.log(
-      `✅ Cleanup completed: cancelled ${result.cancelled}/${result.total} unpaid bookings`
-    );
-  } catch (err) {
-    console.error("❌ Cleanup unpaid bookings job failed:", err);
-  }
-});
+// cron.schedule("0 1 * * *", async () => {
+//   console.log("🔄 Running cleanup unpaid bookings job...");
+//   try {
+//     const result = await bookingLifecycleService.cancelUnpaidBookingsOnCheckinDay();
+//     console.log(
+//       `✅ Cleanup completed: cancelled ${result.cancelled}/${result.total} unpaid bookings`
+//     );
+//   } catch (err) {
+//     console.error("❌ Cleanup unpaid bookings job failed:", err);
+//   }
+// });
 
 // Cron: Đồng bộ lượt xem từ Redis sang MongoDB (mỗi 5 phút)
 cron.schedule("*/5 * * * *", async () => {
@@ -244,6 +248,10 @@ app.use("/payouts", payoutRoutes);
 app.use("/wallet", walletRoutes);
 app.use("/mobile-selfie", mobileSelfieRoutes);
 app.use("/ai", aiRoutes);
+app.use("/admin/settings", authenticate, settingRoutes);
+app.use("/host/service-packages", authenticate, servicePackageRoutes);
+app.use("/host/promotions", authenticate, promoCodeRoutes);
+app.use("/host/combos", authenticate, comboRoutes);
 
 // ============================================================
 // Global Error Handler
@@ -260,4 +268,34 @@ server.listen(PORT, async () => {
   console.log(`🚀 Server listening on port ${PORT} in ${NODE_ENV} environment`);
   await connectToDatabase();
   await connectRedis();
+
+  // Run startup booking cleanup jobs immediately on application launch (useful for development catch-up)
+  // (async () => {
+  //   console.log("🔄 Running startup booking cleanup jobs...");
+  //   try {
+  //     const expiredResult = await bookingLifecycleService.cancelExpiredPendingBookings();
+  //     if (expiredResult.remindersSent > 0 || expiredResult.bookingsCancelled > 0) {
+  //       console.log(
+  //         `✅ Startup Expired bookings job: sent ${expiredResult.remindersSent} reminders, cancelled ${expiredResult.bookingsCancelled} bookings`
+  //       );
+  //     } else {
+  //       console.log("✅ Startup Expired bookings job completed (no action needed)");
+  //     }
+  //   } catch (err) {
+  //     console.error("❌ Startup Expired bookings job failed:", err);
+  //   }
+
+  //   try {
+  //     const checkinResult = await bookingLifecycleService.cancelUnpaidBookingsOnCheckinDay();
+  //     if (checkinResult.cancelled > 0) {
+  //       console.log(
+  //         `✅ Startup Cleanup completed: cancelled ${checkinResult.cancelled}/${checkinResult.total} unpaid bookings`
+  //       );
+  //     } else {
+  //       console.log("✅ Startup Cleanup completed (no action needed)");
+  //     }
+  //   } catch (err) {
+  //     console.error("❌ Startup Cleanup unpaid bookings job failed:", err);
+  //   }
+  // })();
 });

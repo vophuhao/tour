@@ -37,6 +37,7 @@ export function RoadtripMap({
   routeGeometry,
   onPropertySelect,
 }: RoadtripMapProps) {
+  console.log('RoadtripMap rendering, token:', MAPBOX_TOKEN ? 'Present' : 'Empty', 'properties:', properties.length);
   const mapRef = useRef<MapRef>(null);
   const [viewState, setViewState] = useState({
     longitude: 108.2022, // Center of Vietnam

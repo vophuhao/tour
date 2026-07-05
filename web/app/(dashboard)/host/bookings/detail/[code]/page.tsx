@@ -80,6 +80,7 @@ interface BookingData {
   // Property-Site architecture
   property: Partial<Property>;
   site: Partial<Site>;
+  unitNumber?: string;
 
   guest: {
     _id: string;
@@ -688,7 +689,7 @@ export default function BookingDetailPage() {
           {/* Main Content */}
           <div className="space-y-6 lg:col-span-2">
             {/* Payment Status Alert */}
-            {booking.paymentStatus === 'pending' && booking.payOSCheckoutUrl && (
+            {booking.paymentStatus === 'pending' && booking.status !== 'cancelled' && booking.payOSCheckoutUrl && (
               <Card className="border-2 border-yellow-300 bg-gradient-to-r from-yellow-50 to-orange-50">
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-4">
@@ -1057,9 +1058,14 @@ export default function BookingDetailPage() {
                         SITE
                       </span>
                     </div>
-                    <h3 className="mt-1 text-lg font-semibold">
+                    {/* <h3 className="mt-1 text-lg font-semibold flex items-center gap-2">
                       {booking.site.name}
-                    </h3>
+                      {booking.numberOfUnits > 1 && (
+                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                          {booking.numberOfUnits} chỗ
+                        </span>
+                      )}
+                    </h3> */}
                     <p className="mt-1 text-sm text-gray-600">
                       {booking.site.description}
                     </p>

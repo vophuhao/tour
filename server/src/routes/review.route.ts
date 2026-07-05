@@ -18,6 +18,7 @@ reviewRoutes.get("/:id", reviewController.getReview);
 
 // Protected routes
 reviewRoutes.post("/", authenticate, reviewController.createReview);
+reviewRoutes.patch("/:id", authenticate, reviewController.updateReview);
 reviewRoutes.post("/:id/response", authenticate, reviewController.addHostResponse);
 reviewRoutes.post("/:id/vote", reviewController.voteReview); // public or authenticated
 

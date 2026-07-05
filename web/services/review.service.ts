@@ -52,3 +52,26 @@ export async function addHostResponse(
 export async function getMyCampsitesReview(): Promise<ApiResponse<Reviews[]>> {
   return apiClient.get('/reviews/my');
 }
+
+export async function updateReview(
+  reviewId: string,
+  data: {
+    propertyRatings?: {
+      location?: number;
+      communication?: number;
+      value?: number;
+    };
+    siteRatings?: {
+      cleanliness?: number;
+      accuracy?: number;
+      amenities?: number;
+    };
+    title?: string;
+    comment?: string;
+    pros?: string[];
+    cons?: string[];
+    images?: string[];
+  },
+): Promise<ApiResponse> {
+  return apiClient.patch(`/reviews/${reviewId}`, data);
+}

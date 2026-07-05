@@ -184,6 +184,23 @@ export const createSiteSchema = z.object({
   isAvailableForBooking: z.boolean().default(true),
   unavailableReason: z.string().max(500).optional(),
   siteClass: z.enum(["basic", "vip"]).default("basic").optional(),
+  services: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(200),
+        description: z.string().max(1000).optional(),
+        pricing: z
+          .array(
+            z.object({
+              price: z.number().min(0),
+              unit: z.string().max(100).default("lượt"),
+            })
+          )
+          .min(1),
+      })
+    )
+    .optional(),
+  unitNames: z.array(z.string()).optional(),
 });
 
 

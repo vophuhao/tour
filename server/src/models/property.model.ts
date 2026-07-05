@@ -117,6 +117,16 @@ export interface PropertyDocument extends mongoose.Document {
     allowWholePropertyBooking: boolean;
   };
 
+  // Extra Services
+  services?: Array<{
+    name: string;
+    description?: string;
+    pricing: Array<{
+      price: number;
+      unit: string;
+    }>;
+  }>;
+
   // Timestamps
   createdAt: Date;
   updatedAt: Date;
@@ -279,6 +289,20 @@ const propertySchema = new mongoose.Schema<PropertyDocument>(
     // Timestamps
     publishedAt: { type: Date },
     lastBookedAt: { type: Date },
+
+    // Extra Services
+    services: [
+      {
+        name: { type: String, required: true, trim: true },
+        description: { type: String, trim: true, default: "" },
+        pricing: [
+          {
+            price: { type: Number, required: true, min: 0 },
+            unit: { type: String, required: true, default: "lượt" },
+          },
+        ],
+      },
+    ],
   },
   {
     timestamps: true,

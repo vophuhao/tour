@@ -41,13 +41,16 @@ export function PropertyBookingCard({
   // Dynamic fetch of property and sites to allow background refresh when host updates them
   const { data: propertyWithSitesData } = useQuery<{ property: Property; sites: Site[]; siteCount: number }>({
     queryKey: ['property-with-sites', initialProperty._id],
-    queryFn: () => getPropertyWithSites(initialProperty._id) as any,
+    queryFn: async () => {
+      const res = await getPropertyWithSites(initialProperty._id);
+      return res.data as any;
+    },
     initialData: { property: initialProperty, sites: initialSites, siteCount: initialSites.length },
     staleTime: 5 * 60 * 1000,
   });
 
-  const property = propertyWithSitesData.property;
-  const sites = propertyWithSitesData.sites;
+  const property = propertyWithSitesData?.property;
+  const sites = propertyWithSitesData?.sites || [];
 
   // Use shared booking state synced with URL
   const booking = usePropertyBookingState({
@@ -381,11 +384,15 @@ export function PropertyBookingCard({
     }).format(price);
   };
 
-  // Get max capacity from sites
+  // Get max capacity from sites (largest combined capacity of any single site)
   const maxCapacity = useMemo(() => {
-    if (sites.length === 0) return { maxGuests: 20, maxPets: 5 };
-    const maxGuests = Math.max(...sites.map(s => s.capacity.maxGuests || 20));
-    const maxPets = Math.max(...sites.map(s => s.capacity.maxPets || 5));
+    if (sites.length === 0) return { maxGuests: 50, maxPets: 10 };
+    const maxGuests = Math.max(
+      ...sites.map(s => (s.capacity.maxGuests || 0) * (s.capacity.maxConcurrentBookings || 1))
+    ) || 50;
+    const maxPets = Math.max(
+      ...sites.map(s => (s.capacity.maxPets || 0) * (s.capacity.maxConcurrentBookings || 1))
+    ) || 10;
     return { maxGuests, maxPets };
   }, [sites]);
 
@@ -440,9 +447,9 @@ export function PropertyBookingCard({
         additionalGuestFee:
           booking.guests > site.capacity.maxGuests
             ? (
-                (site.pricing.additionalGuestFee || 0) *
-                (booking.guests - site.capacity.maxGuests)
-              ).toString()
+              (site.pricing.additionalGuestFee || 0) *
+              (booking.guests - site.capacity.maxGuests)
+            ).toString()
             : '0',
         total: totalPrice.toString(),
         currency: site.pricing.currency || 'VND',

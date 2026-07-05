@@ -162,6 +162,15 @@ export default class SiteController {
     return ResponseUtil.success(res, { isAvailable }, "Kiểm tra lịch trống thành công");
   });
 
+  getAvailableUnits = catchErrors(async (req, res) => {
+    const { id } = req.params;
+    const { checkIn, checkOut } = req.query as { checkIn: string; checkOut: string };
+
+    const result = await this.siteService.getAvailableUnits(id || "", checkIn, checkOut);
+
+    return ResponseUtil.success(res, result, "Lấy danh sách lều/vị trí trống thành công");
+  });
+
   /**
    * Calculate pricing for site in date range
    * @route GET /api/sites/:id/calculate-pricing
@@ -190,10 +199,14 @@ export default class SiteController {
    */
   blockSiteDates = catchErrors(async (req, res) => {
     const { id } = req.params;
-    const { dates, reason } = req.body as { dates: string[]; reason?: string };
+    const { dates, reason, slotsToBlock } = req.body as {
+      dates: string[];
+      reason?: string;
+      slotsToBlock?: number;
+    };
     const hostId = mongoIdSchema.parse(req.userId);
 
-    await this.siteService.blockSiteDates(id || "", hostId, dates, reason);
+    await this.siteService.blockSiteDates(id || "", hostId, dates, reason, slotsToBlock);
 
     return ResponseUtil.success(res, null, "Chặn các ngày thành công");
   });

@@ -66,7 +66,7 @@ export class SiteService {
       query = { slug: idOrSlug, property: propertyId };
     }
 
-    const site = await SiteModel.findOne(query).populate("property", "name host location");
+    const site = await SiteModel.findOne(query).populate("property", "name host location services");
 
     appAssert(site, ErrorFactory.resourceNotFound("Site"));
 
@@ -554,6 +554,50 @@ export class SiteService {
   }
 
   /**
+   * Get available slot count for a site in a date range
+   */
+  async getAvailableUnits(
+    siteId: string,
+    checkIn: string,
+    checkOut: string
+  ): Promise<{
+    availableUnits: Array<{ id: string; name: string }>;
+    availableCount: number;
+    maxConcurrent: number;
+  }> {
+    const checkInDate = new Date(checkIn);
+    const checkOutDate = new Date(checkOut);
+
+    const site = await SiteModel.findById(siteId);
+    appAssert(site, ErrorFactory.resourceNotFound("Site"));
+
+    const maxConcurrent = site.capacity.maxConcurrentBookings || 1;
+
+    // Count overlapping booked units
+    const bookings = await BookingModel.find({
+      site: siteId,
+      status: { $in: ["pending", "confirmed"] },
+      checkIn: { $lt: checkOutDate },
+      checkOut: { $gt: checkInDate },
+    }).select("numberOfUnits");
+
+    const bookedCount = bookings.reduce((sum, b) => sum + (b.numberOfUnits || 1), 0);
+    const availableCount = Math.max(0, maxConcurrent - bookedCount);
+
+    // Return dummy list for backward compat with frontend (just count items)
+    const availableUnits = Array.from({ length: availableCount }, (_, i) => ({
+      id: (i + 1).toString(),
+      name: site.unitNames?.[i] || (i + 1 < 10 ? `0${i + 1}` : `${i + 1}`),
+    }));
+
+    return {
+      availableUnits,
+      availableCount,
+      maxConcurrent,
+    };
+  }
+
+  /**
    * Get unavailable site IDs for date range
    */
   private async getUnavailableSites(checkIn: string, checkOut: string): Promise<string[]> {
@@ -776,7 +820,13 @@ export class SiteService {
   /**
    * Block multiple dates for a site
    */
-  async blockSiteDates(siteId: string, hostId: string, dates: string[], reason?: string): Promise<void> {
+  async blockSiteDates(
+    siteId: string,
+    hostId: string,
+    dates: string[],
+    reason?: string,
+    slotsToBlock?: number
+  ): Promise<void> {
     const site = await SiteModel.findById(siteId).populate("property");
     appAssert(site, ErrorFactory.resourceNotFound("Site"));
     const property = site.property as any;
@@ -785,10 +835,16 @@ export class SiteService {
       ErrorFactory.forbidden("Bạn không có quyền chỉnh sửa site này")
     );
 
+    const maxConcurrent = site.capacity.maxConcurrentBookings || 1;
+    // Số chỗ cần khóa (mặc định khóa hết toàn bộ)
+    const actualSlotsToBlock = slotsToBlock && slotsToBlock > 0
+      ? Math.min(slotsToBlock, maxConcurrent)
+      : maxConcurrent;
+    const isFullBlock = actualSlotsToBlock >= maxConcurrent;
+
     // Create bulk operations to write to AvailabilityModel
     const ops = dates.map((dateStr) => {
       const date = new Date(dateStr);
-      // set to midnight UTC for clean matching
       date.setUTCHours(0, 0, 0, 0);
 
       return {
@@ -796,9 +852,10 @@ export class SiteService {
           filter: { site: siteId, date },
           update: {
             $set: {
-              isAvailable: false,
-              blockType: "blocked" as const,
-              reason: reason || "Manual block",
+              isAvailable: isFullBlock ? false : true, // partial block vẫn isAvailable=true
+              blockType: "maintenance" as const,
+              reason: reason || (isFullBlock ? "Chủ nhà khóa toàn bộ" : `Bảo trì ${actualSlotsToBlock} chỗ`),
+              blockedSlots: isFullBlock ? 0 : actualSlotsToBlock,
             },
           },
           upsert: true,
@@ -912,10 +969,15 @@ export class SiteService {
       endDate,
       bookings: bookings.map((b) => ({
         id: b._id,
+        code: b.code,
         checkIn: b.checkIn,
         checkOut: b.checkOut,
         status: b.status,
-        guestName: (b.guest as any)?.username || "Guest",
+        paymentStatus: b.paymentStatus,
+        guestName: (b.guest as any)?.username || b.fullnameGuest || "Guest",
+        guestEmail: (b.guest as any)?.email || b.email || "",
+        numberOfGuests: b.numberOfGuests,
+        numberOfUnits: b.numberOfUnits,
         totalPrice: b.pricing.total,
       })),
       blocks: blocks.map((bl) => ({
@@ -924,6 +986,7 @@ export class SiteService {
         blockType: bl.blockType,
         reason: bl.reason,
         price: bl.price,
+        blockedSlots: bl.blockedSlots || 0,
       })),
     };
   }

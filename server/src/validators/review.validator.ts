@@ -78,8 +78,30 @@ export const reviewStatusSchema = z.object({
   isPublished: z.boolean(),
 });
 
+// Validator cho update review
+export const updateReviewSchema = z.object({
+  propertyRatings: z.object({
+    location: z.number().int().min(1).max(5),
+    communication: z.number().int().min(1).max(5),
+    value: z.number().int().min(1).max(5),
+  }).optional(),
+
+  siteRatings: z.object({
+    cleanliness: z.number().int().min(1).max(5),
+    accuracy: z.number().int().min(1).max(5),
+    amenities: z.number().int().min(1).max(5),
+  }).optional(),
+
+  title: z.string().min(5).max(100).optional(),
+  comment: z.string().min(10).max(2000).optional(),
+  pros: z.array(z.string().max(200)).max(10).optional(),
+  cons: z.array(z.string().max(200)).max(10).optional(),
+  images: z.array(z.string()).max(10).optional(),
+});
+
 export type CreateReviewInput = z.infer<typeof createReviewSchema>;
 export type HostResponseInput = z.infer<typeof hostResponseSchema>;
 export type SearchReviewInput = z.infer<typeof searchReviewSchema>;
 export type VoteReviewInput = z.infer<typeof voteReviewSchema>;
 export type ReviewStatusInput = z.infer<typeof reviewStatusSchema>;
+export type UpdateReviewInput = z.infer<typeof updateReviewSchema>;

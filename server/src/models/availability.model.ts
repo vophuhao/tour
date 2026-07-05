@@ -15,6 +15,7 @@ export interface AvailabilityDocument extends mongoose.Document {
   // Block types
   blockType?: "booked" | "blocked" | "maintenance" | "seasonal"; // loại block
   reason?: string; // lý do block
+  blockedSlots?: number; // số chỗ bị khóa thủ công (partial block, 0 = không khóa)
 
   // Timestamps
   createdAt: Date;
@@ -51,6 +52,7 @@ const availabilitySchema = new mongoose.Schema<AvailabilityDocument>(
       enum: ["booked", "blocked", "maintenance", "seasonal"],
     },
     reason: { type: String, trim: true, maxlength: 500 },
+    blockedSlots: { type: Number, min: 0, default: 0 }, // số chỗ partial block
   },
   {
     timestamps: true,

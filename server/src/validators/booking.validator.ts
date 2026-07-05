@@ -26,6 +26,7 @@ export const createBookingSchema = z
     numberOfGuests: z.number().int().min(1).max(50),
     numberOfPets: z.number().int().min(0).max(10).default(0),
     numberOfVehicles: z.number().int().min(0).max(20).default(1),
+    numberOfUnits: z.number().int().min(1).optional(),
 
     // Optional message to host
     guestMessage: z.string().max(1000).optional(),
@@ -35,6 +36,18 @@ export const createBookingSchema = z
     fullnameGuest: z.string().max(200),
     phone: z.string().max(20).optional(),
     email: z.string().max(100).optional(),
+    promoCodeId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid promoCodeId").optional(),
+    comboId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid comboId").optional(),
+    services: z
+      .array(
+        z.object({
+          name: z.string(),
+          price: z.number().min(0),
+          unit: z.string(),
+          quantity: z.number().int().min(1),
+        })
+      )
+      .optional(),
   })
   .refine(
     (data) => {

@@ -501,7 +501,7 @@ export default function ConfirmationPage() {
             </div>
 
             {/* Payment Status Alert - Pending */}
-            {booking.paymentStatus === 'pending' && (
+            {booking.paymentStatus === 'pending' && booking.status !== 'cancelled' && (
               <Card className="mb-6 border-2 border-orange-300 bg-gradient-to-r from-orange-50 to-yellow-50">
                 <CardContent className="pt-6">
                   <div className="flex flex-col gap-4 md:flex-row md:items-center">
@@ -758,12 +758,12 @@ export default function ConfirmationPage() {
                   <p className="font-medium">Khách</p>
                   <p className="text-muted-foreground">
                     {booking.numberOfGuests} người lớn
-                    {booking.numberOfPets &&
-                      booking.numberOfPets > 0 &&
-                      `, ${booking.numberOfPets} thú cưng`}
-                    {booking.numberOfVehicles &&
-                      booking.numberOfVehicles > 0 &&
-                      `, ${booking.numberOfVehicles} xe`}
+                    {booking.numberOfPets !== undefined && booking.numberOfPets > 0
+                      ? `, ${booking.numberOfPets} thú cưng`
+                      : null}
+                    {booking.numberOfVehicles !== undefined && booking.numberOfVehicles > 0
+                      ? `, ${booking.numberOfVehicles} xe`
+                      : null}
                   </p>
                 </div>
               </div>

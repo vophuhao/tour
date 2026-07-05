@@ -2,6 +2,7 @@
 
 import LoginPromptDialog from '@/components/auth/login-prompt-dialog';
 import { useAuthStore } from '@/store/auth.store';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
 import { DateRangePopover } from '@/components/search/date-range-popover';
 import { GuestPopover } from '@/components/search/guest-popover';
@@ -10,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePropertyBookingState } from '@/hooks/usePropertyBookingState';
-import { getBlockedDates } from '@/lib/client-actions';
+import { getBlockedDates, getAvailableUnits } from '@/lib/client-actions';
 import { getPropertyBlockedDates, getPropertyWithSites } from '@/lib/property-site-api';
 import type { Property, Site } from '@/types/property-site';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -33,6 +34,9 @@ import {
   Droplets,
   ShowerHead,
   Toilet,
+  Tent,
+  Check,
+  Sparkles,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -226,13 +230,16 @@ export function SitesListSection({
   // Dynamic fetch of property and sites to allow background refresh when host updates them
   const { data: propertyWithSitesData } = useQuery<{ property: Property; sites: Site[]; siteCount: number }>({
     queryKey: ['property-with-sites', initialProperty._id],
-    queryFn: () => getPropertyWithSites(initialProperty._id) as any,
+    queryFn: async () => {
+      const res = await getPropertyWithSites(initialProperty._id);
+      return res.data as any;
+    },
     initialData: { property: initialProperty, sites: initialSites, siteCount: initialSites.length },
     staleTime: 5 * 60 * 1000,
   });
 
-  const property = propertyWithSitesData.property;
-  const sites = propertyWithSitesData.sites;
+  const property = propertyWithSitesData?.property;
+  const sites = propertyWithSitesData?.sites || [];
 
   // Use shared booking state from URL
   const booking = usePropertyBookingState({
@@ -285,6 +292,62 @@ export function SitesListSection({
       return 'căn';
     }
     return 'lều';
+  };
+
+  // Helper to render lodging provided badge or note
+  const renderLodgingBadge = (
+    lodgingProvided?: 'bring_your_own' | 'structure_provided' | 'vehicle_provided',
+    isNoteStyle = false
+  ) => {
+    if (!lodgingProvided) return null;
+
+    if (isNoteStyle) {
+      switch (lodgingProvided) {
+        case 'bring_your_own':
+          return (
+            <p className="text-1xl text-amber-600 dark:text-amber-400 italic">
+              * Khách tự mang theo lều/dụng cụ cắm trại
+            </p>
+          );
+        case 'structure_provided':
+          return (
+            <p className="text-1xl text-primary italic">
+              * Đã trang bị sẵn lều/chỗ ở
+            </p>
+          );
+        case 'vehicle_provided':
+          return (
+            <p className="text-1xl text-blue-600 dark:text-blue-400 italic">
+              * Đã trang bị sẵn xe cắm trại
+            </p>
+          );
+        default:
+          return null;
+      }
+    }
+
+    switch (lodgingProvided) {
+      case 'bring_your_own':
+        return (
+          <Badge variant="outline" className="text-[10px] font-medium text-amber-700 bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/50 shrink-0 whitespace-nowrap">
+            Tự mang dụng cụ cắm trại
+          </Badge>
+        );
+      case 'structure_provided':
+        return (
+          <Badge variant="outline" className="text-[10px] font-medium text-primary bg-primary/10 border-primary/20 shrink-0 whitespace-nowrap">
+            Có sẵn lều
+          </Badge>
+        );
+      case 'vehicle_provided':
+        return (
+          <Badge variant="outline" className="text-[10px] font-medium text-blue-700 bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/50 shrink-0 whitespace-nowrap">
+            Có sẵn xe
+          </Badge>
+        );
+      default:
+        return null;
+    }
   };
 
   // Helper to check if today falls inside any seasonal pricing period
@@ -405,6 +468,8 @@ export function SitesListSection({
       ? differenceInDays(booking.dateRange.to, booking.dateRange.from)
       : 1;
 
+  const hasSelectedDates = !!(booking.dateRange?.from && booking.dateRange?.to);
+
   // Create a map of site ID to reason why it's unavailable (if any)
   const siteUnavailableReason = useMemo(() => {
     const map = new Map<string, string>();
@@ -464,11 +529,15 @@ export function SitesListSection({
     van: 'Xe van cắm trại',
   };
 
-  // Get max capacity from sites
+  // Get max capacity from sites (largest combined capacity of any single site)
   const maxCapacity = useMemo(() => {
-    if (sites.length === 0) return { maxGuests: 20, maxPets: 5 };
-    const maxGuests = Math.max(...sites.map(s => s.capacity.maxGuests || 20));
-    const maxPets = Math.max(...sites.map(s => s.capacity.maxPets || 0));
+    if (sites.length === 0) return { maxGuests: 50, maxPets: 10 };
+    const maxGuests = Math.max(
+      ...sites.map(s => (s.capacity.maxGuests || 0) * (s.capacity.maxConcurrentBookings || 1))
+    ) || 50;
+    const maxPets = Math.max(
+      ...sites.map(s => (s.capacity.maxPets || 0) * (s.capacity.maxConcurrentBookings || 1))
+    ) || 10;
     return { maxGuests, maxPets };
   }, [sites]);
 
@@ -554,6 +623,8 @@ export function SitesListSection({
     enabled: !!property._id,
     staleTime: 5 * 60 * 1000,
   });
+
+
 
   // Convert property-level blocks to disabled dates
   const propertyDisabledDates = useMemo(() => {
@@ -732,6 +803,37 @@ export function SitesListSection({
       );
       return results;
     },
+  });
+
+  // Fetch available units count for each site in the selected date range
+  const { data: sitesAvailableUnits } = useQuery({
+    queryKey: [
+      'sites-available-units-count',
+      siteIdsForAvailability,
+      selectedDateWindow,
+    ],
+    queryFn: async () => {
+      if (siteIdsForAvailability.length === 0 || !selectedDateWindow) return {};
+      const results = await Promise.all(
+        siteIdsForAvailability.map(async siteId => {
+          try {
+            const res = await getAvailableUnits(
+              siteId,
+              selectedDateWindow.checkIn,
+              selectedDateWindow.checkOut,
+            );
+            return { siteId, count: res.data?.availableUnits?.length ?? 0 };
+          } catch (error) {
+            console.error('Failed to get available units count for site:', siteId, error);
+            return { siteId, count: 0 };
+          }
+        }),
+      );
+      return results.reduce((acc, curr) => {
+        acc[curr.siteId] = curr.count;
+        return acc;
+      }, {} as Record<string, number>);
+    },
     enabled: siteIdsForAvailability.length > 0 && !!selectedDateWindow,
     staleTime: 5 * 60 * 1000,
   });
@@ -776,16 +878,20 @@ export function SitesListSection({
       result = result.filter(s => s.accommodationType === filterType);
     }
 
-    // Filter by capacity
+    // Filter by capacity (supporting group booking via concurrent units)
     if (booking.guests) {
-      result = result.filter(s => s.capacity.maxGuests >= booking.guests);
+      result = result.filter(s => {
+        const combinedCapacity = (s.capacity.maxGuests || 0) * (s.capacity.maxConcurrentBookings || 1);
+        return combinedCapacity >= booking.guests;
+      });
     }
 
-    // Filter by pets
+    // Filter by pets (supporting group booking via concurrent units)
     if (petsAllowed && booking.pets > 0) {
-      result = result.filter(
-        s => s.capacity.maxPets && s.capacity.maxPets >= booking.pets,
-      );
+      result = result.filter(s => {
+        const combinedPetsCapacity = (s.capacity.maxPets || 0) * (s.capacity.maxConcurrentBookings || 1);
+        return combinedPetsCapacity >= booking.pets;
+      });
     }
 
     // Filter by instant book
@@ -844,6 +950,419 @@ export function SitesListSection({
         open={showLoginPrompt}
         onOpenChange={setShowLoginPrompt}
       />
+
+      {/* Details Dialog / Modal for selected site */}
+      <Dialog open={!!selectedSite} onOpenChange={(open) => !open && setSelectedSite(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0 gap-0 rounded-2xl border-0 shadow-2xl bg-white dark:bg-slate-900">
+          <DialogTitle className="sr-only">
+            Chi tiết vị trí cắm trại {selectedSite?.name}
+          </DialogTitle>
+
+          {selectedSite && (
+            <div className="flex flex-col">
+              {/* Image Slider at the top */}
+              <div className="px-6 pt-6 md:px-8 md:pt-8">
+                <div className="relative h-64 sm:h-80 w-full overflow-hidden rounded-2xl bg-gray-100 dark:bg-slate-800 shadow-md">
+                  <SiteImageSlider photos={selectedSite.photos || []} name={selectedSite.name} />
+                </div>
+              </div>
+
+              {/* Main Content Area */}
+              <div className="p-6 md:p-8 space-y-6">
+
+                {/* Header info */}
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    {selectedSite.siteClass === 'vip' ? (
+                      <Badge className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-semibold text-xs uppercase shadow-sm">
+                        VIP
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-xs text-gray-500 bg-gray-100 dark:bg-slate-800">
+                        Cơ bản
+                      </Badge>
+                    )}
+                    {renderLodgingBadge(selectedSite.lodgingProvided)}
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                    {selectedSite.name}
+                  </h3>
+                </div>
+
+                {/* Description */}
+                {selectedSite.description && (
+                  <div>
+                    <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                      Giới thiệu
+                    </h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-line">
+                      {selectedSite.description}
+                    </p>
+                  </div>
+                )}
+
+                {/* Capacity & Space Details */}
+                <div className="border-t border-gray-100 dark:border-slate-800 pt-6">
+                  <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                    Thông tin không gian
+                  </h4>
+                  <div className="grid grid-cols-2 gap-y-3 gap-x-6 text-sm text-gray-700 dark:text-gray-300">
+                    <div className="flex justify-between border-b border-slate-50 dark:border-slate-800/50 pb-1.5">
+                      <span className="text-gray-500">Sức chứa tối đa:</span>
+                      <span className="font-semibold">{selectedSite.capacity.maxGuests} người</span>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-50 dark:border-slate-800/50 pb-1.5">
+                      <span className="text-gray-500">Số xe tối đa:</span>
+                      <span className="font-semibold">{selectedSite.capacity.maxVehicles ?? 0} xe</span>
+                    </div>
+                    {selectedSite.capacity.rvMaxLength && selectedSite.capacity.rvMaxLength > 0 && (
+                      <div className="flex justify-between border-b border-slate-50 dark:border-slate-800/50 pb-1.5 col-span-2">
+                        <span className="text-gray-500">Độ dài xe RV tối đa:</span>
+                        <span className="font-semibold">{selectedSite.capacity.rvMaxLength} ft (~{(selectedSite.capacity.rvMaxLength * 0.3048).toFixed(1)}m)</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between border-b border-slate-50 dark:border-slate-800/50 pb-1.5">
+                      <span className="text-gray-500">Thú cưng:</span>
+                      <span className="font-semibold">
+                        {selectedSite.capacity.maxPets && selectedSite.capacity.maxPets > 0
+                          ? `Tối đa ${selectedSite.capacity.maxPets} con`
+                          : 'Không cho phép'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-50 dark:border-slate-800/50 pb-1.5">
+                      <span className="text-gray-500">Phân loại khu vực:</span>
+                      <span className="font-semibold">
+                        {selectedSite.capacity.maxConcurrentBookings > 1
+                          ? `Tự do (${selectedSite.capacity.maxConcurrentBookings} chỗ)`
+                          : 'Khu vực riêng tư'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Amenities */}
+                <div className="border-t border-gray-100 dark:border-slate-800 pt-6">
+                  <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                    Tiện nghi
+                  </h4>
+                  {selectedSite.amenities && selectedSite.amenities.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-3.5">
+                      {selectedSite.amenities.map((amenity: any, idx: number) => {
+                        const name = typeof amenity === 'string' ? amenity : amenity.name;
+                        return (
+                          <div key={idx} className="flex items-center gap-2.5 text-sm text-gray-700 dark:text-gray-300">
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center text-primary rounded-full bg-primary/10">
+                              {getAmenityIcon(name)}
+                            </span>
+                            <span className="truncate">{name}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 italic">Không có tiện nghi đặc biệt nào được liệt kê.</p>
+                  )}
+                </div>
+
+                {/* Services section */}
+                {selectedSite.services && selectedSite.services.length > 0 && (
+                  <div className="border-t border-gray-100 dark:border-slate-800 pt-6">
+                    <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                      Dịch vụ đi kèm
+                    </h4>
+
+                    <div className="space-y-4">
+                      {/* Individual Services */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {selectedSite.services.map((srv: any, idx: number) => {
+                          const srvPrice = srv.pricing?.[0] || srv;
+                          return (
+                            <div key={idx} className="flex justify-between items-center bg-slate-50 dark:bg-slate-900/40 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 text-sm">
+                              <span className="font-medium text-gray-800 dark:text-gray-200">{srv.name}</span>
+                              <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                                {typeof srvPrice.price === 'number'
+                                  ? srvPrice.price === 0
+                                    ? 'Miễn phí'
+                                    : `${srvPrice.price.toLocaleString()} ₫ / ${srvPrice.unit || 'lượt'}`
+                                  : 'Liên hệ'}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+
+                {/* Rules & Stay Policies */}
+                <div className="border-t border-gray-100 dark:border-slate-800 pt-6">
+                  <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                    Quy định lưu trú & Bảng giá
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Standard Rates breakdown */}
+                    <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-gray-105 dark:border-slate-800 shadow-sm">
+                      <h5 className="font-semibold text-xs text-gray-400 uppercase tracking-wider mb-2.5">
+                        Bảng giá tiêu chuẩn
+                      </h5>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-650 dark:text-gray-400">Giá ngày thường:</span>
+                          <span className="font-semibold">{selectedSite.pricing.basePrice.toLocaleString()} ₫ / đêm</span>
+                        </div>
+                        {selectedSite.pricing.weekendPrice && selectedSite.pricing.weekendPrice > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-650 dark:text-gray-400">Giá cuối tuần:</span>
+                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">{selectedSite.pricing.weekendPrice.toLocaleString()} ₫ / đêm</span>
+                          </div>
+                        )}
+                        {selectedSite.pricing.cleaningFee && selectedSite.pricing.cleaningFee > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-650 dark:text-gray-400">Phí dọn dẹp:</span>
+                            <span className="font-semibold">{selectedSite.pricing.cleaningFee.toLocaleString()} ₫</span>
+                          </div>
+                        )}
+                        {selectedSite.pricing.petFee && selectedSite.pricing.petFee > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-650 dark:text-gray-400">Phí mang thú cưng:</span>
+                            <span className="font-semibold">{selectedSite.pricing.petFee.toLocaleString()} ₫ / con</span>
+                          </div>
+                        )}
+                        {selectedSite.pricing.additionalGuestFee && selectedSite.pricing.additionalGuestFee > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-650 dark:text-gray-400">Phí khách phát sinh:</span>
+                            <span className="font-semibold">{selectedSite.pricing.additionalGuestFee.toLocaleString()} ₫ / người</span>
+                          </div>
+                        )}
+                        {(selectedSite.pricing.weeklyDiscount || selectedSite.pricing.monthlyDiscount) && (
+                          <div className="border-t border-dashed border-gray-200 dark:border-slate-800 pt-2 mt-2">
+                            <div className="text-[11px] font-semibold text-primary uppercase tracking-wider mb-1">
+                              Ưu đãi lưu trú dài ngày
+                            </div>
+                            {selectedSite.pricing.weeklyDiscount && (
+                              <div className="flex justify-between text-xs text-indigo-600 dark:text-indigo-400">
+                                <span>Từ 7 đêm trở lên:</span>
+                                <span className="font-bold">-{selectedSite.pricing.weeklyDiscount}%</span>
+                              </div>
+                            )}
+                            {selectedSite.pricing.monthlyDiscount && (
+                              <div className="flex justify-between text-xs text-indigo-600 dark:text-indigo-400">
+                                <span>Từ 28 đêm trở lên:</span>
+                                <span className="font-bold">-{selectedSite.pricing.monthlyDiscount}%</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Stay Rules */}
+                    <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-gray-105 dark:border-slate-800 shadow-sm">
+                      <h5 className="font-semibold text-xs text-gray-400 uppercase tracking-wider mb-2.5">
+                        Quy định
+                      </h5>
+                      <div className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Đêm tối thiểu:</span>
+                          <span className="font-medium">{selectedSite.bookingSettings.minimumNights} đêm</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Giờ nhận/trả phòng:</span>
+                          <span className="font-medium">
+                            {selectedSite.bookingSettings.checkInTime} - {selectedSite.bookingSettings.checkOutTime}
+                          </span>
+                        </div>
+
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Seasonal Pricing list if any */}
+                  {selectedSite.pricing.seasonalPricing && selectedSite.pricing.seasonalPricing.length > 0 && (
+                    <div className="mt-4 bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-900/30 p-3.5 rounded-xl">
+                      <div className="flex items-center gap-1.5 mb-2 text-amber-900 dark:text-amber-300 font-bold text-xs">
+                        <Flame className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                        Giá Mùa Vụ / Lễ Tết
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-24 overflow-y-auto pr-1">
+                        {selectedSite.pricing.seasonalPricing.map((season: any, idx: number) => (
+                          <div key={idx} className="flex justify-between text-[11px] items-center border-b border-amber-100/30 dark:border-amber-900/20 pb-1">
+                            <span className="font-medium text-amber-950 dark:text-amber-400">{season.name}</span>
+                            <span className="text-gray-500 text-[10px]">
+                              {new Date(season.startDate).toLocaleDateString('vi-VN', { month: 'numeric', day: 'numeric' })} - {new Date(season.endDate).toLocaleDateString('vi-VN', { month: 'numeric', day: 'numeric' })}
+                            </span>
+                            <span className="font-bold text-amber-800 dark:text-amber-500">{season.price.toLocaleString()}đ</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Checkout Summary Card */}
+                <div className="border-t border-gray-100 dark:border-slate-800 pt-6">
+                  <div className="bg-white dark:bg-slate-900/60 p-5 rounded-2xl border border-primary/10 shadow-sm">
+                    {hasSelectedDates ? (
+                      (() => {
+                        const dateRange = booking.dateRange;
+                        const calculated = hasSelectedDates
+                          ? calculateSiteSubtotal(selectedSite, dateRange!.from!, dateRange!.to!)
+                          : null;
+
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const activeSeason = !hasSelectedDates
+                          ? selectedSite.pricing.seasonalPricing?.find((season: any) => {
+                            const start = new Date(season.startDate);
+                            start.setHours(0, 0, 0, 0);
+                            const end = new Date(season.endDate);
+                            end.setHours(0, 0, 0, 0);
+                            return today >= start && today <= end;
+                          })
+                          : null;
+                        const dayOfWeek = today.getDay();
+                        const isTodayWeekendDay = dayOfWeek === 5 || dayOfWeek === 6;
+                        const hasWeekendPrice = selectedSite.pricing.weekendPrice && selectedSite.pricing.weekendPrice !== selectedSite.pricing.basePrice;
+                        const defaultPrice = activeSeason ? activeSeason.price : (isTodayWeekendDay && hasWeekendPrice) ? selectedSite.pricing.weekendPrice! : selectedSite.pricing.basePrice;
+
+                        const totalPrice = calculated ? calculated.subtotal : defaultPrice * nights;
+                        const averagePricePerNight = hasSelectedDates ? totalPrice / nights : defaultPrice;
+
+                        const cleaningFee = selectedSite.pricing.cleaningFee || 0;
+                        const petFee = selectedSite.pricing.petFee && booking.pets
+                          ? selectedSite.pricing.petFee * booking.pets
+                          : 0;
+                        const additionalGuestFee = booking.guests > selectedSite.capacity.maxGuests
+                          ? (selectedSite.pricing.additionalGuestFee || 0) * (booking.guests - selectedSite.capacity.maxGuests)
+                          : 0;
+                        const finalTotal = totalPrice + cleaningFee + petFee + additionalGuestFee;
+
+                        return (
+                          <div className="space-y-4">
+                            <div className="flex justify-between items-baseline">
+                              <span className="text-sm font-semibold text-gray-500">Giá dự tính:</span>
+                              <div className="text-right">
+                                <span className="text-xl font-extrabold text-primary">{averagePricePerNight.toLocaleString()}₫</span>
+                                <span className="text-xs text-gray-500"> / đêm</span>
+                              </div>
+                            </div>
+
+                            <div className="border-t border-gray-100 dark:border-slate-800 pt-3 space-y-2 text-xs text-gray-600 dark:text-gray-400">
+                              <div className="flex justify-between">
+                                <span>Giá lưu trú ({nights} đêm):</span>
+                                <span className="font-semibold">{totalPrice.toLocaleString()} ₫</span>
+                              </div>
+                              {cleaningFee > 0 && (
+                                <div className="flex justify-between">
+                                  <span>Phí dọn dẹp:</span>
+                                  <span className="font-semibold">{cleaningFee.toLocaleString()} ₫</span>
+                                </div>
+                              )}
+                              {petFee > 0 && (
+                                <div className="flex justify-between">
+                                  <span>Phí thú cưng ({booking.pets} con):</span>
+                                  <span className="font-semibold">{petFee.toLocaleString()} ₫</span>
+                                </div>
+                              )}
+                              {additionalGuestFee > 0 && (
+                                <div className="flex justify-between">
+                                  <span>Phí khách thêm:</span>
+                                  <span className="font-semibold">{additionalGuestFee.toLocaleString()} ₫</span>
+                                </div>
+                              )}
+                              <div className="flex justify-between text-sm font-bold text-gray-900 dark:text-gray-100 border-t border-gray-100 dark:border-slate-800 pt-2.5">
+                                <span>Tổng thanh toán:</span>
+                                <span className="text-lg text-primary">{finalTotal.toLocaleString()} ₫</span>
+                              </div>
+                            </div>
+
+                            <Button
+                              className="w-full py-6 font-bold text-base rounded-xl mt-2"
+                              asChild
+                            >
+                              <Link
+                                href={
+                                  `/checkouts/payment?` +
+                                  new URLSearchParams({
+                                    siteId: selectedSite._id,
+                                    propertyId:
+                                      typeof selectedSite.property === 'string'
+                                        ? selectedSite.property
+                                        : selectedSite.property._id,
+                                    name: selectedSite.name,
+                                    location: `${property.location.city}, ${property.location.state}`,
+                                    image:
+                                      selectedSite.photos?.find((p: any) => p.isCover)
+                                        ?.url ||
+                                      selectedSite.photos?.[0]?.url ||
+                                      '',
+                                    checkIn:
+                                      booking.dateRange!.from!.toISOString(),
+                                    checkOut:
+                                      booking.dateRange!.to!.toISOString(),
+                                    basePrice:
+                                      selectedSite.pricing.basePrice.toString(),
+                                    nights: nights.toString(),
+                                    cleaningFee: cleaningFee.toString(),
+                                    petFee: petFee.toString(),
+                                    additionalGuestFee: additionalGuestFee.toString(),
+                                    total: finalTotal.toString(),
+                                    currency:
+                                      selectedSite.pricing.currency || 'VND',
+                                    guests: booking.guests.toString(),
+                                    pets: booking.pets.toString(),
+                                    vehicles: '1',
+                                  }).toString()
+                                }
+                                onClick={e => {
+                                  const isAuthenticated =
+                                    useAuthStore.getState()
+                                      .isAuthenticated;
+                                  if (!isAuthenticated) {
+                                    e.preventDefault();
+                                    setShowLoginPrompt(true);
+                                  }
+                                }}
+                              >
+                                ⚡ Đặt ngay
+                              </Link>
+                            </Button>
+                          </div>
+                        );
+                      })()
+                    ) : (
+                      <div className="text-center py-2 space-y-3">
+                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                          Vui lòng chọn ngày để kiểm tra giá và đặt vị trí này.
+                        </p>
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => {
+                            setSelectedSite(null);
+                            // Scroll to date picker
+                            dateRangeRef.current?.scrollIntoView({
+                              behavior: 'smooth',
+                              block: 'center',
+                            });
+                            setTimeout(() => {
+                              setDatePopoverOpen(true);
+                            }, 500);
+                          }}
+                        >
+                          Chọn ngày cắm trại
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
       {/* Sites List + Map Layout */}
       <div className="flex min-h-0 gap-0">
         {/* Sites List - Scrollable */}
@@ -973,23 +1492,73 @@ export function SitesListSection({
                         ? calculateSiteSubtotal(site, dateRange.from!, dateRange.to!)
                         : null;
 
-                      // Check if today falls in a seasonal period when no dates are selected
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      const activeSeason = !hasSelectedDates && site.pricing.seasonalPricing?.find((season: any) => {
-                        const start = new Date(season.startDate);
-                        start.setHours(0, 0, 0, 0);
-                        const end = new Date(season.endDate);
-                        end.setHours(0, 0, 0, 0);
-                        return today >= start && today <= end;
-                      });
-                      const dayOfWeek = today.getDay();
-                      const isTodayWeekendDay = dayOfWeek === 5 || dayOfWeek === 6;
-                      const hasWeekendPrice = site.pricing.weekendPrice && site.pricing.weekendPrice !== site.pricing.basePrice;
-                      const defaultPrice = activeSeason ? activeSeason.price : (isTodayWeekendDay && hasWeekendPrice) ? site.pricing.weekendPrice! : site.pricing.basePrice;
+                      // Determine if we are rendering for a holiday, weekend, etc.
+                      let averagePricePerNight = 0;
+                      let showHolidayLabel = false;
+                      let holidayLabelText = '';
+                      let showWeekendLabel = false;
+                      let weekendLabelText = '';
 
-                      const totalPrice = calculated ? calculated.subtotal : defaultPrice * nights;
-                      const averagePricePerNight = hasSelectedDates ? totalPrice / nights : defaultPrice;
+                      if (calculated && hasSelectedDates) {
+                        // Xác định giá theo ngày check-in
+                        const checkInDate = new Date(dateRange.from!);
+                        checkInDate.setHours(0, 0, 0, 0);
+
+                        // Kiểm tra ngày check-in có phải ngày lễ không
+                        const checkInSeason = site.pricing.seasonalPricing?.find((season: any) => {
+                          const start = new Date(season.startDate);
+                          start.setHours(0, 0, 0, 0);
+                          const end = new Date(season.endDate);
+                          end.setHours(0, 0, 0, 0);
+                          return checkInDate >= start && checkInDate <= end;
+                        });
+
+                        averagePricePerNight = Math.round(calculated.subtotal / nights);
+
+                        if (checkInSeason) {
+                          // Ngày lễ → chỉ hiện giá lễ, không hiện giá cuối tuần
+                          showHolidayLabel = true;
+                          holidayLabelText = `Giá ${checkInSeason.name}`;
+                        } else {
+                          // Không phải ngày lễ → luôn hiện giá ngày thường
+                          // Nếu có giá cuối tuần thì hiện thêm label cuối tuần
+                          const hasWeekendPricing = site.pricing.weekendPrice && site.pricing.weekendPrice !== site.pricing.basePrice && site.pricing.weekendPrice > 0;
+                          if (hasWeekendPricing) {
+                            showWeekendLabel = true;
+                            weekendLabelText = `Cuối tuần: ${site.pricing.weekendPrice?.toLocaleString()} ₫`;
+                          }
+                        }
+                      } else {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const activeSeason = site.pricing.seasonalPricing?.find((season: any) => {
+                          const start = new Date(season.startDate);
+                          start.setHours(0, 0, 0, 0);
+                          const end = new Date(season.endDate);
+                          end.setHours(0, 0, 0, 0);
+                          return today >= start && today <= end;
+                        });
+
+                        const hasWeekendPrice = site.pricing.weekendPrice && site.pricing.weekendPrice !== site.pricing.basePrice && site.pricing.weekendPrice > 0;
+
+                        if (activeSeason) {
+                          // Hôm nay là ngày lễ → chỉ hiện giá lễ
+                          averagePricePerNight = activeSeason.price;
+                          showHolidayLabel = true;
+                          holidayLabelText = `Giá ${activeSeason.name}`;
+                        } else {
+                          // Không phải ngày lễ → hiện giá ngày thường
+                          averagePricePerNight = site.pricing.basePrice;
+                          // Nếu có giá cuối tuần thì hiện thêm label cuối tuần
+                          if (hasWeekendPrice) {
+                            showWeekendLabel = true;
+                            weekendLabelText = `Cuối tuần: ${site.pricing.weekendPrice?.toLocaleString()} ₫`;
+                          }
+                        }
+                      }
+
+                      const totalPrice = calculated ? calculated.subtotal : averagePricePerNight * nights;
+                      const siteUnit = getSiteUnit(site.accommodationType);
 
                       return (
                         <Card
@@ -1017,78 +1586,40 @@ export function SitesListSection({
                             >
                               <div>
                                 {/* Title & Rating */}
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2">
-                                      <h4 className="text-md font-bold">
-                                        {site.name}
-                                      </h4>
-                                      {site.siteClass === 'vip' ? (
-                                        <Badge className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-semibold text-[10px] uppercase shadow-sm shrink-0 whitespace-nowrap">
-                                          VIP
-                                        </Badge>
-                                      ) : (
-                                        <Badge variant="outline" className="text-[10px] text-gray-600 bg-gray-100 dark:bg-slate-800 shrink-0 whitespace-nowrap">
-                                          Cơ bản
-                                        </Badge>
-                                      )}
-                                      {site.capacity.maxConcurrentBookings > 1 && (
-                                        <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold shrink-0 whitespace-nowrap dark:bg-emerald-950/30 dark:text-emerald-450 dark:border-emerald-900/50">
-                                          Còn {site.capacity.maxConcurrentBookings} {getSiteUnit(site.accommodationType)}
-                                        </Badge>
-                                      )}
-                                      {/* {site.bookingSettings.instantBook && (
-                                        <Badge
-                                          variant="outline"
-                                          className="text-center text-xs"
-                                        >
-                                          Đặt ngay
-                                        </Badge>
-                                      )} */}
-                                      {/* Show unavailable reason badge */}
-                                      {siteUnavailableReason.has(site._id) && (
-                                        <Badge
-                                          variant="destructive"
-                                          className="text-xs"
-                                        >
-                                          {siteUnavailableReason.get(site._id)}
-                                        </Badge>
-                                      )}
-                                    </div>
+                                <div className="mb-2 flex items-start justify-between gap-2">
+                                  <h4 className="font-semibold flex-1 leading-snug">
+                                    {site.name}
+                                  </h4>
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    {site.siteClass === 'vip' ? (
+                                      <Badge className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-semibold text-[10px] uppercase shadow-sm shrink-0 whitespace-nowrap">
+                                        VIP
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="secondary" className="text-[10px] text-gray-500 bg-gray-100 dark:bg-slate-800 shrink-0 whitespace-nowrap">
+                                        Cơ bản
+                                      </Badge>
+                                    )}
+
                                   </div>
-                                  {/* {site.stats?.averageRating &&
-                                    site.stats.averageRating > 0 && (
-                                      <div className="flex items-center gap-1">
-                                        <span className="text-lg">👍</span>
-                                        <span className="text-sm font-semibold">
-                                          {Math.round(
-                                            (site.stats.averageRating / 5) *
-                                              100,
-                                          )}
-                                          %
-                                        </span>
-                                        <span className="text-xs text-gray-500">
-                                          ({site.stats.totalReviews || 0})
-                                        </span>
-                                      </div>
-                                    )} */}
                                 </div>
 
-                                {/* Details */}
-                                <p className="mb-1 text-xs text-gray-700">
-                                  {typeLabels[site.accommodationType]} · Tối đa{' '}
-                                  {site.capacity.maxGuests} người
-                                  {site.capacity.maxVehicles &&
-                                    site.capacity.maxVehicles > 0 &&
-                                    ` · Xe dưới ${site.capacity.rvMaxLength || 35} ft`}
-                                </p>
+                                {/* Capacity & Availability Info */}
+                                <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 border-b border-dashed border-slate-100 dark:border-slate-800 pb-2">
+                                  <span className="flex items-center gap-1.5">
+                                    <Users className="w-3.5 h-3.5 text-primary shrink-0" />
+                                    Mỗi {siteUnit}: Tối đa <strong>{site.capacity.maxGuests} người</strong>
+                                  </span>
+                                  <span className="flex items-center gap-1.5">
+                                    <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                    {hasSelectedDates && sitesAvailableUnits && sitesAvailableUnits[site._id] !== undefined ? (
+                                      <span>Còn trống: <strong className="text-emerald-600 font-bold">{sitesAvailableUnits[site._id]} / {site.capacity.maxConcurrentBookings}</strong> {siteUnit}</span>
+                                    ) : (
+                                      <span>Tổng số: <strong className="font-semibold">{site.capacity.maxConcurrentBookings}</strong> {siteUnit}</span>
+                                    )}
+                                  </span>
+                                </div>
 
-                                {/* Description */}
-                                {site.description && (
-                                  <p className="mb-2 line-clamp-2 text-xs text-gray-600">
-                                    {site.description}
-                                  </p>
-                                )}
 
                                 {/* Amenities Grid - 2 columns x 3 rows */}
                                 {site.amenities &&
@@ -1119,136 +1650,139 @@ export function SitesListSection({
                                         })}
                                     </div>
                                   )}
-                              </div>
 
-                              {/* Price & CTA */}
-                              <div className="flex items-end justify-between">
-                                <div className="flex flex-col">
-                                  <div className="flex items-baseline gap-1">
-                                    <p className="text-lg font-bold">
-                                      {averagePricePerNight.toLocaleString()}{' '}
-                                      <span className="text-sm font-normal">₫</span>
-                                    </p>
-                                    <span className="text-sm text-gray-500">
-                                      / đêm
-                                      {!hasSelectedDates && activeSeason && (
-                                        <span className="text-sm font-normal text-amber-600 dark:text-amber-400 ml-1">
-                                          {' '}(Giá  {activeSeason.name})
-                                        </span>
-                                      )}
-                                      {!hasSelectedDates && hasWeekendPrice && !activeSeason && (
-                                        <span className="text-sm font-normal text-emerald-600 dark:text-emerald-455 ml-1">
-                                          {' '}(Cuối tuần: {site.pricing.weekendPrice?.toLocaleString()} ₫)
-                                        </span>
-                                      )}
-                                    </span>
-                                  </div>
-                                  {hasSelectedDates &&
-                                    (calculated?.hasSeasonalPrice ||
-                                      calculated?.hasWeekendPrice ||
-                                      calculated?.hasLongStayDiscount) && (
-                                      <div className="flex flex-wrap gap-1 mt-1.5">
-                                        {calculated.hasSeasonalPrice && (
-                                          <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-amber-850 bg-amber-50 border border-amber-200/60 rounded px-1 py-0.2 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50">
-                                            <Flame className="w-2.5 h-2.5 text-black dark:text-white animate-pulse" />
-                                            Mùa vụ
-                                          </span>
-                                        )}
-                                        {calculated.hasWeekendPrice && !calculated.hasSeasonalPrice && (
-                                          <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/60 rounded px-1 py-0.2 dark:bg-emerald-950/30 dark:text-emerald-455 dark:border-emerald-900/50">
-                                            <CalendarIcon className="w-2.5 h-2.5 text-black dark:text-white" />
-                                            Cuối tuần
-                                          </span>
-                                        )}
-                                        {calculated.hasLongStayDiscount && (
-                                          <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-indigo-800 bg-indigo-50 border border-indigo-200/60 rounded px-1 py-0.2 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900/50">
-                                            ✨ -{calculated.discountPercent}%
-                                          </span>
-                                        )}
-                                      </div>
-                                    )}
-                                  {/* {!hasSelectedDates && site.pricing.seasonalPricing && site.pricing.seasonalPricing.length > 0 && (
-                                    <div className="flex flex-wrap gap-1 mt-1.5">
-                                      <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-amber-850 bg-amber-50 border border-amber-200/60 rounded px-1 py-0.2 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50">
-                                        <Flame className="w-2.5 h-2.5 text-black dark:text-white animate-pulse" />
-                                        Lễ, Tết: Có giá riêng
-                                      </span>
+                                {/* Site Services */}
+                                {site.services && site.services.length > 0 && (
+                                  <div className="mb-2 border-t pt-2 mt-2">
+                                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Dịch vụ đi kèm tại Site:</p>
+                                    <div className="flex flex-wrap gap-1">
+                                      {site.services.map((srv: any, idx: number) => {
+                                        if (srv.pricing && srv.pricing.length > 0) {
+                                          return srv.pricing.map((pOpt: any, pIdx: number) => (
+                                            <Badge
+                                              key={`${idx}-${pIdx}`}
+                                              variant="secondary"
+                                              className="text-[10px] bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 hover:bg-emerald-100/50 py-0.5 px-1.5 border-0"
+                                            >
+                                              {srv.name} ({pOpt.price === 0 ? 'Miễn phí' : `${pOpt.price.toLocaleString()} đ / ${pOpt.unit}`})
+                                            </Badge>
+                                          ));
+                                        }
+                                        return typeof srv.price === "number" ? (
+                                          <Badge
+                                            key={idx}
+                                            variant="secondary"
+                                            className="text-[10px] bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 hover:bg-emerald-100/50 py-0.5 px-1.5 border-0"
+                                          >
+                                            {srv.name} ({srv.price === 0 ? 'Miễn phí' : `${srv.price.toLocaleString()} đ / ${srv.unit || "lượt"}`})
+                                          </Badge>
+                                        ) : null;
+                                      })}
                                     </div>
-                                  )} */}
-                                </div>
-                                <Button
-                                  size="lg"
-                                  className="hover:bg-primary/90 px-8"
-                                  asChild={hasSelectedDates}
-                                  onClick={handleBookNowClick}
-                                >
-                                  {hasSelectedDates ? (
-                                    <Link
-                                      href={
-                                        `/checkouts/payment?` +
-                                        new URLSearchParams({
-                                          siteId: site._id,
-                                          propertyId:
-                                            typeof site.property === 'string'
-                                              ? site.property
-                                              : site.property._id,
-                                          name: site.name,
-                                          location: `${property.location.city}, ${property.location.state}`,
-                                          image:
-                                            site.photos?.find(p => p.isCover)
-                                              ?.url ||
-                                            site.photos?.[0]?.url ||
-                                            '',
-                                          checkIn:
-                                            booking.dateRange!.from!.toISOString(),
-                                          checkOut:
-                                            booking.dateRange!.to!.toISOString(),
-                                          basePrice:
-                                            site.pricing.basePrice.toString(),
-                                          nights: nights.toString(),
-                                          cleaningFee: (
-                                            site.pricing.cleaningFee || 0
-                                          ).toString(),
-                                          petFee: booking.pets
-                                            ? (
-                                              (site.pricing.petFee || 0) *
-                                              booking.pets
-                                            ).toString()
-                                            : '0',
-                                          additionalGuestFee:
-                                            booking.guests >
-                                              site.capacity.maxGuests
+                                  </div>
+                                )}
+                              </div>
+                              <div className="space-y-1 w-full">
+                                {renderLodgingBadge(site.lodgingProvided, true)}
+                                {/* Price & CTA */}
+                                <div className="flex items-end justify-between">
+                                  <div className="flex flex-col">
+                                    <div className="flex items-baseline gap-1">
+                                      <p className="text-lg font-bold">
+                                        {averagePricePerNight.toLocaleString()}{' '}
+                                        <span className="text-sm font-normal">₫</span>
+                                      </p>
+                                      <span className="text-sm text-gray-500">/ đêm</span>
+                                    </div>
+                                    {showHolidayLabel && (
+                                      <p className="text-xs font-normal text-amber-600 dark:text-amber-400 mt-0.5">
+                                        ({holidayLabelText})
+                                      </p>
+                                    )}
+                                    {showWeekendLabel && (
+                                      <p className="text-xs font-normal text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                        ({weekendLabelText})
+                                      </p>
+                                    )}
+
+                                  </div>
+                                  <Button
+                                    size="lg"
+                                    className="hover:bg-primary/90 px-8"
+                                    asChild={hasSelectedDates}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleBookNowClick(e);
+                                    }}
+                                  >
+                                    {hasSelectedDates ? (
+                                      <Link
+                                        href={
+                                          `/checkouts/payment?` +
+                                          new URLSearchParams({
+                                            siteId: site._id,
+                                            propertyId:
+                                              typeof site.property === 'string'
+                                                ? site.property
+                                                : site.property._id,
+                                            name: site.name,
+                                            location: `${property.location.city}, ${property.location.state}`,
+                                            image:
+                                              site.photos?.find(p => p.isCover)
+                                                ?.url ||
+                                              site.photos?.[0]?.url ||
+                                              '',
+                                            checkIn:
+                                              booking.dateRange!.from!.toISOString(),
+                                            checkOut:
+                                              booking.dateRange!.to!.toISOString(),
+                                            basePrice:
+                                              site.pricing.basePrice.toString(),
+                                            nights: nights.toString(),
+                                            cleaningFee: (
+                                              site.pricing.cleaningFee || 0
+                                            ).toString(),
+                                            petFee: booking.pets
                                               ? (
-                                                (site.pricing
-                                                  .additionalGuestFee || 0) *
-                                                (booking.guests -
-                                                  site.capacity.maxGuests)
+                                                (site.pricing.petFee || 0) *
+                                                booking.pets
                                               ).toString()
                                               : '0',
-                                          total: totalPrice.toString(),
-                                          currency:
-                                            site.pricing.currency || 'VND',
-                                          guests: booking.guests.toString(),
-                                          pets: booking.pets.toString(),
-                                          vehicles: '1',
-                                        }).toString()
-                                      }
-                                      onClick={e => {
-                                        const isAuthenticated =
-                                          useAuthStore.getState()
-                                            .isAuthenticated;
-                                        if (!isAuthenticated) {
-                                          e.preventDefault();
-                                          setShowLoginPrompt(true);
+                                            additionalGuestFee:
+                                              booking.guests >
+                                                site.capacity.maxGuests
+                                                ? (
+                                                  (site.pricing
+                                                    .additionalGuestFee || 0) *
+                                                  (booking.guests -
+                                                    site.capacity.maxGuests)
+                                                ).toString()
+                                                : '0',
+                                            total: totalPrice.toString(),
+                                            currency:
+                                              site.pricing.currency || 'VND',
+                                            guests: booking.guests.toString(),
+                                            pets: booking.pets.toString(),
+                                            vehicles: '1',
+                                          }).toString()
                                         }
-                                      }}
-                                    >
-                                      Đặt ngay
-                                    </Link>
-                                  ) : (
-                                    <span>Đặt ngay</span>
-                                  )}
-                                </Button>
+                                        onClick={e => {
+                                          const isAuthenticated =
+                                            useAuthStore.getState()
+                                              .isAuthenticated;
+                                          if (!isAuthenticated) {
+                                            e.preventDefault();
+                                            setShowLoginPrompt(true);
+                                          }
+                                        }}
+                                      >
+                                        Đặt ngay
+                                      </Link>
+                                    ) : (
+                                      <span>Đặt ngay</span>
+                                    )}
+                                  </Button>
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -1300,71 +1834,121 @@ export function SitesListSection({
                     {sites
                       .filter(s => !filteredSites.includes(s) && s.isActive)
                       .map(site => {
-                        const isBlocked = siteBlockedMap.get(site._id);
                         const dateRange = booking.dateRange;
                         const hasSelectedDates = !!(dateRange?.from && dateRange?.to);
+                        const isBlocked = siteBlockedMap.get(site._id);
+                        const combinedCapacity = (site.capacity.maxGuests || 0) * (site.capacity.maxConcurrentBookings || 1);
+                        const isCapacityExceeded = booking.guests > combinedCapacity;
+                        const isUnavailable = isCapacityExceeded || (isBlocked && hasSelectedDates);
+
                         const calculated = hasSelectedDates
                           ? calculateSiteSubtotal(site, dateRange.from!, dateRange.to!)
                           : null;
+                        const siteUnit = getSiteUnit(site.accommodationType);
 
-                        // Check if today falls in a seasonal period when no dates are selected
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        const activeSeason = !hasSelectedDates && site.pricing.seasonalPricing?.find((season: any) => {
-                          const start = new Date(season.startDate);
-                          start.setHours(0, 0, 0, 0);
-                          const end = new Date(season.endDate);
-                          end.setHours(0, 0, 0, 0);
-                          return today >= start && today <= end;
-                        });
-                        const dayOfWeek = today.getDay();
-                        const isTodayWeekendDay = dayOfWeek === 5 || dayOfWeek === 6;
+                        // Determine if we are rendering for a holiday, weekend, etc.
+                        let averagePricePerNight = 0;
+                        let showHolidayLabel = false;
+                        let holidayLabelText = '';
+                        let showWeekendLabel = false;
+                        let weekendLabelText = '';
+                        let activeSeason: any = null;
                         const hasWeekendPrice = site.pricing.weekendPrice && site.pricing.weekendPrice !== site.pricing.basePrice;
-                        const defaultPrice = activeSeason ? activeSeason.price : (isTodayWeekendDay && hasWeekendPrice) ? site.pricing.weekendPrice! : site.pricing.basePrice;
 
-                        const totalPrice = calculated ? calculated.subtotal : defaultPrice * nights;
-                        const averagePricePerNight = hasSelectedDates ? totalPrice / nights : defaultPrice;
+                        if (calculated && hasSelectedDates) {
+                          averagePricePerNight = Math.round(calculated.subtotal / nights);
+                          if (calculated.hasSeasonalPrice) {
+                            showHolidayLabel = true;
+                            const overlappingSeason = site.pricing.seasonalPricing?.find((season: any) => {
+                              const start = new Date(season.startDate);
+                              start.setHours(0, 0, 0, 0);
+                              const end = new Date(season.endDate);
+                              end.setHours(0, 0, 0, 0);
+                              return start <= dateRange.to! && end >= dateRange.from!;
+                            });
+                            holidayLabelText = overlappingSeason ? `Giá ${overlappingSeason.name}` : 'Giá lễ';
+                          } else if (calculated.hasWeekendPrice) {
+                            showWeekendLabel = true;
+                            weekendLabelText = `Cuối tuần: ${site.pricing.weekendPrice?.toLocaleString()} ₫`;
+                          }
+                        } else {
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          activeSeason = site.pricing.seasonalPricing?.find((season: any) => {
+                            const start = new Date(season.startDate);
+                            start.setHours(0, 0, 0, 0);
+                            const end = new Date(season.endDate);
+                            end.setHours(0, 0, 0, 0);
+                            return today >= start && today <= end;
+                          });
+
+                          const dayOfWeek = today.getDay();
+                          const isTodayWeekendDay = dayOfWeek === 5 || dayOfWeek === 6;
+
+                          if (activeSeason) {
+                            averagePricePerNight = activeSeason.price;
+                            showHolidayLabel = true;
+                            holidayLabelText = `Giá ${activeSeason.name}`;
+                          } else {
+                            if (isTodayWeekendDay && hasWeekendPrice) {
+                              averagePricePerNight = site.pricing.weekendPrice!;
+                            } else {
+                              averagePricePerNight = site.pricing.basePrice;
+                            }
+
+                            if (hasWeekendPrice) {
+                              showWeekendLabel = true;
+                              weekendLabelText = `Cuối tuần: ${site.pricing.weekendPrice?.toLocaleString()} ₫`;
+                            }
+                          }
+                        }
+
+                        const totalPrice = calculated ? calculated.subtotal : averagePricePerNight * nights;
 
                         return (
                           <div
                             key={site._id}
                             className="max-w-60 min-w-[300px] shrink-0"
                           >
-                            <Card className="h-full overflow-hidden border border-gray-200 shadow-sm transition-shadow hover:shadow-md">
+                            <Card
+                              className="h-full overflow-hidden border border-gray-200 shadow-sm transition-shadow hover:shadow-md cursor-pointer"
+                              onClick={() => setSelectedSite(site)}
+                            >
                               {site.photos && site.photos.length > 0 && (
                                 <div className="relative h-[220px] w-full overflow-hidden">
                                   <SiteImageSlider photos={site.photos} name={site.name} />
-                                  {isBlocked &&
-                                    booking.dateRange?.from &&
-                                    booking.dateRange?.to && (
-                                      <div className="absolute inset-0 flex items-center justify-center bg-black/50 pointer-events-none">
-                                        <Badge
-                                          variant="destructive"
-                                          className="text-sm"
-                                        >
-                                          {siteUnavailableReason.get(
-                                            site._id,
-                                          ) || 'Không khả dụng'}
-                                        </Badge>
-                                      </div>
-                                    )}
+                                  {isUnavailable && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 pointer-events-none">
+                                      <Badge
+                                        variant="destructive"
+                                        className="text-sm"
+                                      >
+                                        {isCapacityExceeded
+                                          ? 'Không đáp ứng đủ số người'
+                                          : (siteUnavailableReason.get(site._id) || 'Không khả dụng')}
+                                      </Badge>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                               <CardContent className="p-4">
                                 <div className="mb-2 flex items-start justify-between gap-2">
-                                  <h4 className="line-clamp-1 font-semibold">
+                                  <h4 className="font-semibold flex-1 leading-snug">
                                     {site.name}
                                   </h4>
-                                  {site.siteClass === 'vip' ? (
-                                    <Badge className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-semibold text-[10px] uppercase shadow-sm shrink-0 whitespace-nowrap">
-                                      VIP
-                                    </Badge>
-                                  ) : (
-                                    <Badge variant="secondary" className="text-[10px] text-gray-500 bg-gray-100 dark:bg-slate-800 shrink-0 whitespace-nowrap">
-                                      Cơ bản
-                                    </Badge>
-                                  )}
-                                  {site.stats?.averageRating && (
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    {site.siteClass === 'vip' ? (
+                                      <Badge className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-semibold text-[10px] uppercase shadow-sm shrink-0 whitespace-nowrap">
+                                        VIP
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="secondary" className="text-[10px] text-gray-500 bg-gray-100 dark:bg-slate-800 shrink-0 whitespace-nowrap">
+                                        Cơ bản
+                                      </Badge>
+                                    )}
+                                    {renderLodgingBadge(site.lodgingProvided)}
+                                  </div>
+                                  {!!site.stats?.averageRating && (
                                     <span className="flex shrink-0 items-center gap-1 text-sm">
                                       👍
                                       <span className="font-medium">
@@ -1379,13 +1963,23 @@ export function SitesListSection({
                                     </span>
                                   )}
                                 </div>
-                                <p className="mb-3 text-sm text-gray-600">
-                                  {typeLabels[site.accommodationType]} · Tối đa{' '}
-                                  {site.capacity.maxGuests} người
-                                  {site.capacity.maxVehicles &&
-                                    site.capacity.maxVehicles > 0 &&
-                                    ` · Xe dưới ${site.capacity.rvMaxLength || 35} ft`}
-                                </p>
+
+                                {/* Capacity & Availability Info */}
+                                <div className="mt-3 flex flex-col gap-1.5 text-xs text-slate-500 border-t border-dashed border-slate-100 dark:border-slate-800 pt-2 pb-0.5">
+                                  <span className="flex items-center gap-1.5">
+                                    <Users className="w-3.5 h-3.5 text-primary shrink-0" />
+                                    Mỗi {siteUnit}: Tối đa <strong>{site.capacity.maxGuests} người</strong>
+                                  </span>
+                                  <span className="flex items-center gap-1.5">
+                                    <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                    {hasSelectedDates && sitesAvailableUnits && sitesAvailableUnits[site._id] !== undefined ? (
+                                      <span>Còn trống: <strong className="text-emerald-600 font-bold">{sitesAvailableUnits[site._id]} / {site.capacity.maxConcurrentBookings}</strong> {siteUnit}</span>
+                                    ) : (
+                                      <span>Tổng số: <strong className="font-semibold">{site.capacity.maxConcurrentBookings}</strong> {siteUnit}</span>
+                                    )}
+                                  </span>
+                                </div>
+
                                 <div className="flex items-end justify-between mt-4">
                                   <div className="flex flex-col">
                                     <div className="flex items-baseline gap-1">
@@ -1393,61 +1987,29 @@ export function SitesListSection({
                                         {averagePricePerNight.toLocaleString()}{' '}
                                         <span className="text-sm font-normal">₫</span>
                                       </p>
-                                      <span className="text-sm text-gray-500">
-                                        / đêm
-                                        {!hasSelectedDates && activeSeason && (
-                                          <span className="text-xs font-normal text-amber-600 dark:text-amber-400 ml-1">
-                                            {' '}(giá {activeSeason.name})
-                                          </span>
-                                        )}
-                                        {!hasSelectedDates && hasWeekendPrice && !activeSeason && (
-                                          <span className="text-xs font-normal text-emerald-600 dark:text-emerald-455 ml-1">
-                                            {' '}(Cuối tuần: {site.pricing.weekendPrice?.toLocaleString()} ₫)
-                                          </span>
-                                        )}
-                                      </span>
+                                      <span className="text-sm text-gray-500">/ đêm</span>
                                     </div>
-                                    {hasSelectedDates &&
-                                      (calculated?.hasSeasonalPrice ||
-                                        calculated?.hasWeekendPrice ||
-                                        calculated?.hasLongStayDiscount) && (
-                                        <div className="flex flex-wrap gap-1 mt-1.5">
-                                          {calculated.hasSeasonalPrice && (
-                                            <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-amber-850 bg-amber-50 border border-amber-200/60 rounded px-1 py-0.2 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50">
-                                              <Flame className="w-2.5 h-2.5 text-black dark:text-white animate-pulse" />
-                                              Mùa vụ
-                                            </span>
-                                          )}
-                                          {calculated.hasWeekendPrice && !calculated.hasSeasonalPrice && (
-                                            <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/60 rounded px-1 py-0.2 dark:bg-emerald-950/30 dark:text-emerald-455 dark:border-emerald-900/50">
-                                              <CalendarIcon className="w-2.5 h-2.5 text-black dark:text-white" />
-                                              Cuối tuần
-                                            </span>
-                                          )}
-                                          {calculated.hasLongStayDiscount && (
-                                            <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-indigo-800 bg-indigo-50 border border-indigo-200/60 rounded px-1 py-0.2 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900/50">
-                                              ✨ -{calculated.discountPercent}%
-                                            </span>
-                                          )}
-                                        </div>
-                                      )}
-                                    {!hasSelectedDates && site.pricing.seasonalPricing && site.pricing.seasonalPricing.length > 0 && (
-                                      <div className="flex flex-wrap gap-1 mt-1.5">
-                                        <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-amber-850 bg-amber-50 border border-amber-200/60 rounded px-1 py-0.2 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50">
-                                          <Flame className="w-2.5 h-2.5 text-black dark:text-white animate-pulse" />
-                                          Lễ, Tết: Có giá riêng
-                                        </span>
-                                      </div>
+                                    {activeSeason && (
+                                      <p className="text-xs font-normal text-amber-600 dark:text-amber-400 mt-0.5">
+                                        (Giá {activeSeason.name})
+                                      </p>
                                     )}
+                                    {hasWeekendPrice && !activeSeason && (
+                                      <p className="text-xs font-normal text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                        (Cuối tuần: {site.pricing.weekendPrice?.toLocaleString()} ₫)
+                                      </p>
+                                    )}
+
                                   </div>
-                                  {isBlocked &&
-                                    booking.dateRange?.from &&
-                                    booking.dateRange?.to ? (
+                                  {isUnavailable ? (
                                     <Button
                                       size="default"
                                       variant="outline"
                                       disabled
                                       className="cursor-not-allowed"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                      }}
                                     >
                                       Không khả dụng
                                     </Button>

@@ -80,7 +80,14 @@ export default function TripsPage() {
     b => b.status === 'cancelled' || b.status === 'refunded',
   );
 
-  const getStatusBadge = (status: BookingData['status']) => {
+  const getStatusBadge = (booking: BookingData) => {
+    const { status, paymentStatus } = booking;
+    
+    // Nếu chưa thanh toán và booking đang hoạt động (chờ xác nhận/đã xác nhận), hiện "Chưa thanh toán"
+    if (paymentStatus === 'pending' && (status === 'pending' || status === 'confirmed')) {
+      return <Badge className="bg-yellow-100 text-yellow-800">Chưa thanh toán</Badge>;
+    }
+
     const styles: Record<BookingData['status'], string> = {
       pending: 'bg-yellow-100 text-yellow-800',
       confirmed: 'bg-primary/10 text-primary',
@@ -94,22 +101,6 @@ export default function TripsPage() {
       cancelled: 'Đã hủy',
       completed: 'Hoàn thành',
       refunded: 'Đã hoàn tiền',
-    };
-    return <Badge className={`${styles[status]}`}>{labels[status]}</Badge>;
-  };
-
-  const getPaymentStatusBadge = (status: BookingData['paymentStatus']) => {
-    const styles: Record<BookingData['paymentStatus'], string> = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      paid: 'bg-primary/10 text-primary',
-      refunded: 'bg-gray-100 text-gray-800',
-      failed: 'bg-red-100 text-red-800',
-    };
-    const labels: Record<BookingData['paymentStatus'], string> = {
-      pending: 'Chưa thanh toán',
-      paid: 'Đã thanh toán',
-      refunded: 'Đã hoàn tiền',
-      failed: 'Thanh toán thất bại',
     };
     return <Badge className={`${styles[status]}`}>{labels[status]}</Badge>;
   };
@@ -168,10 +159,7 @@ export default function TripsPage() {
         <CardContent className="p-4">
           {/* Status Badge */}
           <div className="flex gap-2">
-            <div className="mb-2">{getStatusBadge(booking.status)}</div>
-            <div className="mb-2">
-              {getPaymentStatusBadge(booking.paymentStatus)}
-            </div>
+            <div className="mb-2">{getStatusBadge(booking)}</div>
           </div>
 
           {/* Site Name */}
@@ -200,9 +188,9 @@ export default function TripsPage() {
           {/* Guests & Pets */}
           <p className="text-muted-foreground mt-2 text-sm">
             {booking.numberOfGuests} khách
-            {booking.numberOfPets &&
-              booking.numberOfPets > 0 &&
-              ` · ${booking.numberOfPets} thú cưng`}
+            {booking.numberOfPets !== undefined && booking.numberOfPets > 0
+              ? ` · ${booking.numberOfPets} thú cưng`
+              : null}
           </p>
 
           {/* Extras */}

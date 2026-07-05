@@ -80,7 +80,7 @@ export class BookingLifecycleService {
     // 2) CANCEL EXPIRED
     const expiredBookings = await BookingModel.find({
       paymentStatus: "pending",
-      status: "pending",
+      status: { $in: ["pending", "confirmed"] },
       createdAt: { $lt: cancelTime },
     })
       .populate("guest", "username email fullName")
@@ -268,7 +268,7 @@ export class BookingLifecycleService {
 
     const unpaidBookings = await BookingModel.find({
       paymentStatus: { $ne: "paid" },
-      checkIn: { $gte: today, $lte: endOfDay },
+      checkIn: { $lte: endOfDay },
       status: { $nin: ["cancelled", "completed", "refunded"] },
     });
 

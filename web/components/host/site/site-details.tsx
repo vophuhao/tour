@@ -14,8 +14,9 @@ interface SiteDetailsProps {
     terrain?: any;
     capacity?: any;
     pricing?: any;
+    unitNames?: string[];
   } | undefined;
-  onChange: (patch: Partial<{ basic: any; accommodationType: any; lodgingProvided: any; terrain: any; capacity: any; pricing: any }>) => void;
+  onChange: (patch: Partial<{ basic: any; accommodationType: any; lodgingProvided: any; terrain: any; capacity: any; pricing: any; unitNames: string[] }>) => void;
 }
 
 export function SiteDetails({ data = {}, onChange }: SiteDetailsProps) {
@@ -40,7 +41,10 @@ export function SiteDetails({ data = {}, onChange }: SiteDetailsProps) {
           <SiteCapacity
             data={data.capacity}
             accommodationType={typeof data.accommodationType === "string" ? data.accommodationType : data.accommodationType?.type}
+            lodgingProvided={data.lodgingProvided}
+            unitNames={data.unitNames}
             onChange={(newCapacity) => onChange({ capacity: newCapacity })}
+            onUnitNamesChange={(newUnitNames) => onChange({ unitNames: newUnitNames })}
           />
 
           <SitePricing

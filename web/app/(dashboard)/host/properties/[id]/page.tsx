@@ -12,6 +12,7 @@ import { PropertyLocation } from "@/components/host/property/property-location";
 import { PropertyPhotos } from "@/components/host/property/property-photo";
 import { PropertyPolicies } from "@/components/host/property/property-policies";
 import { PropertySettings } from "@/components/host/property/property-settings";
+import { PropertyServicesStep } from "@/components/host/property/property-services-step";
 import { Badge } from "@/components/ui/badge";
 
 import { getPropertyById, updateProperty, uploadMedia } from "@/lib/client-actions";
@@ -23,6 +24,7 @@ const STEPS = [
   { label: "Vị trí", description: "Địa chỉ và bản đồ" },
   { label: "Hình ảnh", description: "Ảnh property" },
   { label: "Quy định", description: "Nội quy lưu trú" },
+  { label: "Dịch vụ", description: "Dịch vụ đi kèm" },
 ];
 
 export default function EditPropertyPage() {
@@ -100,6 +102,7 @@ export default function EditPropertyPage() {
           checkInInstructions: propertyData.checkInInstructions || "",
           checkOutInstructions: propertyData.checkOutInstructions || "",
         },
+        services: propertyData.services || [],
       });
     }
   }, [propertyData]);
@@ -285,6 +288,7 @@ export default function EditPropertyPage() {
         status: b.status ?? "active",
         isActive: b.isActive !== undefined ? !!b.isActive : true,
         isFeatured: !!b.isFeatured,
+        services: formData.services ?? [],
       };
 
       console.log("Submitting property update:", payload);
@@ -465,6 +469,15 @@ export default function EditPropertyPage() {
         );
       case 3:
         return <PropertyPolicies data={formData.policies} onChange={(d: any) => updateFormData("policies", d)} />;
+      case 4:
+        return (
+          <PropertyServicesStep
+            data={formData.services || []}
+            onChange={(services: any[]) =>
+              setFormData((prev: any) => ({ ...prev, services }))
+            }
+          />
+        );
       default:
         return null;
     }
@@ -521,7 +534,7 @@ export default function EditPropertyPage() {
             <Button
               onClick={handleSubmit}
               disabled={updateMutation.isPending || uploading}
-              className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold rounded-xl px-6 gap-2 shadow-md shadow-emerald-500/20 dark:shadow-none hover:shadow-lg hover:shadow-emerald-500/30 transition-all hover:-translate-y-0.5 active:translate-y-0"
+              className="bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl px-6 gap-2 shadow-md shadow-primary/10 transition-all hover:-translate-y-0.5 active:translate-y-0"
             >
               {uploading || updateMutation.isPending ? (
                 <>
@@ -537,7 +550,7 @@ export default function EditPropertyPage() {
           ) : (
             <Button
               onClick={handleNext}
-              className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold rounded-xl px-6 gap-2 shadow-md shadow-emerald-500/20 dark:shadow-none hover:shadow-lg hover:shadow-emerald-500/30 transition-all hover:-translate-y-0.5 active:translate-y-0"
+              className="bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl px-6 gap-2 shadow-md shadow-primary/10 transition-all hover:-translate-y-0.5 active:translate-y-0"
             >
               Tiếp theo
               <ArrowRight className="h-4 w-4" />

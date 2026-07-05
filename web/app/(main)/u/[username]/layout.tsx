@@ -22,6 +22,7 @@ import {
   FileText,
   Tent,
   ShieldCheck,
+  MessageSquare,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
@@ -283,6 +284,22 @@ export default function UserProfileLayout({
                 {stats?.saves ?? 0}
               </span>
             </Link>
+
+            {isOwnProfile && (
+              <Link
+                href={`/u/${username}/reviews`}
+                className={`flex items-center gap-2 pb-4 text-xs font-bold border-b-2 transition-all shrink-0 ${activeTab === 'reviews'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-slate-500 hover:text-slate-850 dark:hover:text-white'
+                  }`}
+              >
+                <MessageSquare className="h-4 w-4" />
+                <span>Đánh giá đã gửi</span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${activeTab === 'reviews' ? 'bg-primary/10 text-primary' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>
+                  {stats?.reviews ?? 0}
+                </span>
+              </Link>
+            )}
 
             {/* Bài viết diễn đàn */}
             {isOwnProfile && (

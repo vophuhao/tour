@@ -2,8 +2,8 @@ import { BookingModel } from "@/models";
 import PayoutModel from "@/models/payout.model";
 import HostModel from "@/models/host.model";
 import mongoose from "mongoose";
+import { SettingService } from "./setting.service";
 
-const PLATFORM_FEE_RATE = 0.05; // 5%
 
 export default class PayoutService {
   /**
@@ -58,8 +58,10 @@ export default class PayoutService {
       };
 
       // Tính tổng
+      const settings = await SettingService.getSettings();
+      const platformFeeRate = settings.platformFeeRate;
       const grossAmount = hostBookings.reduce((sum, b) => sum + (b.pricing?.total || 0), 0);
-      const platformFee = Math.round(grossAmount * PLATFORM_FEE_RATE);
+      const platformFee = Math.round(grossAmount * platformFeeRate);
       const netAmount = grossAmount - platformFee;
 
       // Tạo payout
@@ -70,7 +72,7 @@ export default class PayoutService {
         bookings: hostBookings.map((b) => b._id),
         grossAmount,
         platformFee,
-        platformFeeRate: PLATFORM_FEE_RATE,
+        platformFeeRate,
         netAmount,
         status: "pending",
         bankInfo,
@@ -241,8 +243,10 @@ export default class PayoutService {
       },
     ]);
 
+    const settings = await SettingService.getSettings();
+    const platformFeeRate = settings.platformFeeRate;
     const totalRevenue = summary?.totalRevenue || 0;
-    const platformFee = Math.round(totalRevenue * PLATFORM_FEE_RATE);
+    const platformFee = Math.round(totalRevenue * platformFeeRate);
 
     return {
       totalRevenue,
@@ -296,9 +300,11 @@ export default class PayoutService {
       "Xác nhận khách đến",
     ].join(",");
 
+    const settings = await SettingService.getSettings();
+    const platformFeeRate = settings.platformFeeRate;
     const rows = bookings.map((b: any) => {
       const total = b.pricing?.total || 0;
-      const fee = Math.round(total * PLATFORM_FEE_RATE);
+      const fee = Math.round(total * platformFeeRate);
       return [
         b.code || "",
         `"${(b.guest as any)?.username || ""}"`,
@@ -325,6 +331,8 @@ export default class PayoutService {
    * Group theo host để hiển thị danh sách cần thanh toán
    */
   async getUnpaidBookingsByHost() {
+    const settings = await SettingService.getSettings();
+    const platformFeeRate = settings.platformFeeRate;
     const bookings = await BookingModel.find({
       status: "completed",
       paymentStatus: "paid",
@@ -355,7 +363,7 @@ export default class PayoutService {
       Object.entries(hostGroups).map(async ([hostId, group]) => {
         const hostKyc = await HostModel.findOne({ user: hostId }).lean();
         const grossAmount = group.totalAmount;
-        const platformFee = Math.round(grossAmount * PLATFORM_FEE_RATE);
+        const platformFee = Math.round(grossAmount * platformFeeRate);
         return {
           hostId,
           host: group.host,

@@ -238,14 +238,14 @@ export async function deleteProperty(id: string): Promise<ApiResponse> {
  * Activate property (host only)
  */
 export async function activateProperty(id: string): Promise<Property> {
-  return apiClient.patch(`/properties/${id}/activate`);
+  return apiClient.post(`/properties/${id}/activate`);
 }
 
 /**
  * Deactivate property (host only)
  */
 export async function deactivateProperty(id: string): Promise<Property> {
-  return apiClient.patch(`/properties/${id}/deactivate`);
+  return apiClient.post(`/properties/${id}/deactivate`);
 }
 
 /**
@@ -270,6 +270,17 @@ export async function getPropertiesForAdmin(
 }
 
 // ==================== SITE ENDPOINTS ====================
+
+/**
+ * Get available units (e.g. Tents 1-10) for a site in a date range
+ */
+export async function getAvailableUnits(
+  siteId: string,
+  checkIn: string,
+  checkOut: string
+): Promise<ApiResponse<{ availableUnits: Array<{ id: string; name: string }>; maxConcurrent: number }>> {
+  return apiClient.get(`/sites/${siteId}/available-units?checkIn=${checkIn}&checkOut=${checkOut}`);
+}
 
 /**
  * Search sites with optional filters
@@ -453,38 +464,16 @@ export async function deleteSite(
  * Activate site (host only)
  */
 export async function activateSite(id: string): Promise<Site> {
-  return apiClient.patch(`/sites/${id}/activate`);
+  return apiClient.post(`/sites/${id}/activate`);
 }
 
 /**
  * Deactivate site (host only)
  */
 export async function deactivateSite(id: string): Promise<Site> {
-  return apiClient.patch(`/sites/${id}/deactivate`);
+  return apiClient.post(`/sites/${id}/deactivate`);
 }
 
-/**
- * Block dates for a site (host only)
- */
-export async function blockSiteDates(
-  siteId: string,
-  dates: string[],
-  reason?: string,
-): Promise<any> {
-  return apiClient.post(`/sites/${siteId}/block-dates`, { dates, reason });
-}
-
-/**
- * Unblock dates for a site (host only)
- */
-export async function unblockSiteDates(
-  siteId: string,
-  dates: string[],
-): Promise<any> {
-  return apiClient.delete(`/sites/${siteId}/block-dates`, {
-    data: { dates },
-  });
-}
 
 /**
  * Update seasonal pricing for a site (host only)
@@ -629,6 +618,33 @@ export async function getPropertyBlockedDates(propertyId: string) {
     `/properties/${propertyId}/blocked-dates`,
   );
   return response.data || [];
+}
+
+/**
+ * Block dates for a site (host only)
+ */
+export async function blockSiteDates(
+  siteId: string,
+  dates: string[],
+  reason?: string,
+  slotsToBlock?: number,
+) {
+  const response = await apiClient.post(`/sites/${siteId}/block-dates`, {
+    dates,
+    reason,
+    slotsToBlock,
+  });
+  return response.data;
+}
+
+/**
+ * Unblock dates for a site (host only)
+ */
+export async function unblockSiteDates(siteId: string, dates: string[]) {
+  const response = await apiClient.delete(`/sites/${siteId}/block-dates`, {
+    data: { dates },
+  });
+  return response.data;
 }
 
 /**

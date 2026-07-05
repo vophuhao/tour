@@ -17,3 +17,5 @@ export { ReviewService } from "@/services/review.service";
 export { SiteService } from "@/services/site.service";
 export { CommentService } from "@/services/comment.service";
 export { ForumService } from "@/services/forum.service";
+export { SettingService } from "@/services/setting.service";
+

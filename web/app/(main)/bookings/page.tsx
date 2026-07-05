@@ -205,7 +205,7 @@ export default function BookingsPage() {
                 bankName: cannotAttendForm.bankName,
             });
             if (res.success) {
-                toast.success("Đã gửi yêu cầu. Admin sẽ xét duyệt hoàn tiền 50% trong thời gian sớm nhất.");
+                toast.success("Đã gửi yêu cầu thành công. Admin sẽ xét duyệt hoàn tiền trong thời gian sớm nhất.");
                 setCannotAttendDialog(false);
                 setCannotAttendForm({ reason: "", bankAccountName: "", bankAccountNumber: "", bankName: "" });
                 await fetchBookings();
@@ -359,7 +359,7 @@ export default function BookingsPage() {
                                                     <div>
                                                         <p className="text-sm font-medium text-amber-800">Đã báo không thể đến</p>
                                                         <p className="text-xs text-amber-600 mt-0.5">
-                                                            Hoàn tiền {formatPrice(booking.cannotAttendRequest.refundAmount || 0)}₫ (50%) —
+                                                            Hoàn tiền {formatPrice(booking.cannotAttendRequest.refundAmount || 0)}₫ ({booking.cannotAttendRequest.refundRate !== undefined ? `${Math.round(booking.cannotAttendRequest.refundRate * 100)}%` : "50%"}) —
                                                             {booking.cannotAttendRequest.status === "pending" && " Đang chờ admin xét duyệt"}
                                                             {booking.cannotAttendRequest.status === "approved" && " Đã được duyệt"}
                                                             {booking.cannotAttendRequest.status === "rejected" && " Đã bị từ chối"}

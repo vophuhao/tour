@@ -19,6 +19,16 @@ export async function createBooking(data: {
   fullnameGuest: string;
   phone?: string;
   email?: string;
+  promoCodeId?: string;
+  comboId?: string;
+  unitNumber?: string;
+  numberOfUnits?: number;
+  services?: Array<{
+    name: string;
+    price: number;
+    unit: string;
+    quantity: number;
+  }>;
 }): Promise<ApiResponse<Booking>> {
   return apiClient.post('/bookings', data);
 }

@@ -3,13 +3,20 @@
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { createBooking, getSiteById } from '@/lib/client-actions';
+import { createBooking, getSiteById, getAvailableUnits } from '@/lib/client-actions';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useAuthStore } from '@/store/auth.store';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
@@ -22,10 +29,17 @@ import {
   MapPin,
   Percent,
   Users,
+  Sparkles,
+  Ticket,
+  Check,
+  AlertTriangle,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
+
 
 interface BookingSummaryData {
   siteId?: string;
@@ -159,6 +173,17 @@ export default function PaymentPage() {
     }
   }, [siteDetails]);
 
+  const maxConcurrent = siteDetails?.data?.capacity?.maxConcurrentBookings || 1;
+
+  // Fetch available units if site is concurrent
+  const { data: availableUnitsData, isLoading: isAvailableUnitsLoading } = useQuery({
+    queryKey: ['available-units', bookingData.siteId, bookingData.checkIn, bookingData.checkOut],
+    queryFn: () => getAvailableUnits(bookingData.siteId!, bookingData.checkIn, bookingData.checkOut),
+    enabled: !!bookingData.siteId && !!bookingData.checkIn && !!bookingData.checkOut && maxConcurrent > 1,
+  });
+
+  const availableUnitsList = availableUnitsData?.data?.availableUnits || [];
+
   const isPropertySiteBooking =
     !!bookingData.siteId && !!bookingData.propertyId;
   const displayName = isPropertySiteBooking
@@ -170,6 +195,52 @@ export default function PaymentPage() {
   const [email, setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState('');
   const [guestMessage, setGuestMessage] = useState('');
+
+  // Selected services state
+  const [selectedServices, setSelectedServices] = useState<
+    Array<{ name: string; price: number; unit: string; quantity: number }>
+  >([]);
+
+  const propertyServices = siteDetails?.data?.property?.services || [];
+
+  const handleServiceChange = (serviceName: string, checked: boolean, price: number, unit: string) => {
+    setSelectedServices(prev => {
+      if (checked) {
+        if (prev.some(s => s.name === serviceName)) return prev;
+        return [...prev, { name: serviceName, price, unit, quantity: 1 }];
+      } else {
+        return prev.filter(s => s.name !== serviceName);
+      }
+    });
+  };
+
+  const handleServiceQuantityChange = (serviceName: string, quantity: number) => {
+    setSelectedServices(prev =>
+      prev.map(s => (s.name === serviceName ? { ...s, quantity: Math.max(1, quantity) } : s))
+    );
+  };
+
+  const servicesFee = useMemo(() => {
+    return selectedServices.reduce((sum, s) => sum + s.price * s.quantity, 0);
+  }, [selectedServices]);
+
+
+  const numberOfUnits = useMemo(() => {
+    const maxGuests = siteDetails?.data?.capacity?.maxGuests || 1;
+    return Math.ceil(bookingData.guests / maxGuests) || 1;
+  }, [bookingData.guests, siteDetails]);
+
+  const selectedUnitsList = useMemo(() => {
+    if (availableUnitsList.length === 0) return [];
+    return availableUnitsList.slice(0, numberOfUnits).map((unit: any) => {
+      const id = typeof unit === 'string' ? unit : unit.id;
+      const name = typeof unit === 'string' ? unit.padStart(2, '0') : unit.name;
+      return { id, name };
+    });
+  }, [availableUnitsList, numberOfUnits]);
+
+
+
   const [paymentMethod, setPaymentMethod] = useState<'deposit' | 'full'>(
     'full',
   );
@@ -193,7 +264,7 @@ export default function PaymentPage() {
 
     if (!checkIn || !checkOut) {
       return {
-        subtotal: basePrice * nights,
+        subtotal: basePrice * nights * numberOfUnits,
         weekdayNights: nights,
         weekendNights: 0,
         seasonalNights: 0,
@@ -267,35 +338,38 @@ export default function PaymentPage() {
     }
 
     return {
-      subtotal: calculatedSubtotal,
+      subtotal: calculatedSubtotal * numberOfUnits,
       weekdayNights: computedWeekdayNights,
       weekendNights: computedWeekendNights,
       seasonalNights: computedSeasonalNights,
       seasonalDetails: Object.values(seasonalMatchCounts),
     };
-  }, [bookingData.checkIn, bookingData.checkOut, bookingData.basePrice, siteDetails, nights]);
+  }, [bookingData.checkIn, bookingData.checkOut, bookingData.basePrice, siteDetails, nights, numberOfUnits]);
 
   const weekendPrice = siteDetails?.data?.pricing?.weekendPrice ?? bookingData.basePrice;
   const hasDetailedPricing = weekendNights > 0 || seasonalNights > 0;
 
   // Calculate fees based on site pricing
-  const totalCleaningFee = bookingData.cleaningFee || 0;
+  const totalCleaningFee = (bookingData.cleaningFee || 0) * numberOfUnits;
   const totalPetFee = (bookingData.petFee || 0) * bookingData.pets;
   const totalVehicleFee = (bookingData.vehicleFee || 0) * bookingData.vehicles;
 
-  // Calculate additional guest fee (guests over base capacity)
-  const baseGuestsIncluded = siteDetails?.data.capacity.maxGuests || 2;
+  // Calculate additional guest fee (guests over base capacity of all units combined)
+  const baseGuestsIncluded = (siteDetails?.data?.capacity?.maxGuests || 2) * numberOfUnits;
   const additionalGuests = Math.max(0, bookingData.guests - baseGuestsIncluded);
   const totalAdditionalGuestFee =
     (bookingData.additionalGuestFee || 0) * additionalGuests;
 
+  const netSubtotal = subtotal;
+
   // Calculate total
   const total =
-    subtotal +
+    netSubtotal +
     totalCleaningFee +
     totalPetFee +
     totalVehicleFee +
-    totalAdditionalGuestFee;
+    totalAdditionalGuestFee +
+    servicesFee;
 
   // FIX: Deposit calculation - calculate percentage from total
   const siteDepositAmount = bookingData.depositAmount || 0;
@@ -317,12 +391,18 @@ export default function PaymentPage() {
     }).format(price);
 
   // Form validation
+  const hasEnoughUnits = maxConcurrent > 1
+    ? (availableUnitsList.length >= numberOfUnits && numberOfUnits <= maxConcurrent)
+    : (numberOfUnits === 1);
+
   const isFormValid =
     fullName.trim() &&
     email.trim() &&
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) &&
     phone.trim() &&
-    /^[0-9]{10,11}$/.test(phone);
+    /^[0-9]{10,11}$/.test(phone) &&
+    hasEnoughUnits &&
+    (!isAvailableUnitsLoading);
 
   // Booking mutation
   const bookingMutation = useMutation({
@@ -344,6 +424,9 @@ export default function PaymentPage() {
         fullnameGuest: fullName,
         phone,
         email,
+        unitNumber: undefined,
+        numberOfUnits,
+        services: selectedServices,
       });
     },
     onSuccess: data => {
@@ -465,6 +548,8 @@ export default function PaymentPage() {
                     />
                   </div>
 
+
+
                   <div className="space-y-2">
                     <Label htmlFor="message">Lời nhắn cho chủ nhà</Label>
                     <Textarea
@@ -481,6 +566,74 @@ export default function PaymentPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Extra Services Card */}
+              {propertyServices.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Dịch vụ đi kèm</CardTitle>
+                    <CardDescription>Chọn thêm dịch vụ bạn muốn sử dụng trong suốt chuyến cắm trại</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {propertyServices.map((srv: any, idx: number) => {
+                      const isSelected = selectedServices.some(s => s.name === srv.name);
+                      const currentService = selectedServices.find(s => s.name === srv.name);
+                      const currentQty = currentService?.quantity || 1;
+                      const priceOpt = srv.pricing?.[0];
+                      const price = priceOpt?.price || 0;
+                      const unit = priceOpt?.unit || 'lượt';
+
+                      return (
+                        <div key={idx} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
+                          <div className="flex items-start space-x-3 flex-1 min-w-0 mr-4">
+                            <input
+                              type="checkbox"
+                              id={`srv-${idx}`}
+                              checked={isSelected}
+                              onChange={(e) => handleServiceChange(srv.name, e.target.checked, price, unit)}
+                              className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                            />
+                            <label htmlFor={`srv-${idx}`} className="cursor-pointer select-none">
+                              <p className="font-semibold text-sm text-slate-800 dark:text-slate-200">{srv.name}</p>
+                              {srv.description && (
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
+                                  {srv.description}
+                                </p>
+                              )}
+                              <span className="inline-block text-xs font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400 px-2 py-0.5 rounded mt-1">
+                                {formatPrice(price)} / {unit}
+                              </span>
+                            </label>
+                          </div>
+
+                          {isSelected && (
+                            <div className="flex items-center space-x-2 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleServiceQuantityChange(srv.name, currentQty - 1)}
+                                className="h-7 w-7 flex items-center justify-center rounded-md border border-gray-300 dark:border-slate-800 hover:bg-gray-100 dark:hover:bg-slate-800 text-sm font-semibold"
+                                disabled={currentQty <= 1}
+                              >
+                                -
+                              </button>
+                              <span className="w-8 text-center text-sm font-bold">{currentQty}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleServiceQuantityChange(srv.name, currentQty + 1)}
+                                className="h-7 w-7 flex items-center justify-center rounded-md border border-gray-300 dark:border-slate-800 hover:bg-gray-100 dark:hover:bg-slate-800 text-sm font-semibold"
+                              >
+                                +
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </CardContent>
+                </Card>
+              )}
+
+
 
               {/* Payment Method */}
               <Card>
@@ -633,7 +786,7 @@ export default function PaymentPage() {
                       {bookingData.location}
                     </p>
                     <p className="text-muted-foreground mt-1 text-xs">
-                      {bookingData.nights} đêm • {bookingData.guests} khách
+                      {bookingData.nights} đêm • {bookingData.guests} khách • {numberOfUnits} vị trí/lều
                       {bookingData.pets > 0 &&
                         ` • ${bookingData.pets} thú cưng`}
                       {bookingData.vehicles > 0 &&
@@ -692,10 +845,10 @@ export default function PaymentPage() {
                         <div className="flex justify-between text-sm">
                           <span>
                             {formatPrice(bookingData.basePrice)} ×{' '}
-                            {weekdayNights} đêm thường
+                            {weekdayNights} đêm thường {numberOfUnits > 1 && `× ${numberOfUnits} vị trí`}
                           </span>
                           <span>
-                            {formatPrice(weekdayNights * bookingData.basePrice)}
+                            {formatPrice(weekdayNights * bookingData.basePrice * numberOfUnits)}
                           </span>
                         </div>
                       )}
@@ -703,13 +856,13 @@ export default function PaymentPage() {
                         <div className="flex justify-between text-sm">
                           <span className="flex items-center gap-1">
                             {formatPrice(weekendPrice)} × {weekendNights} đêm
-                            cuối tuần
+                            cuối tuần {numberOfUnits > 1 && `× ${numberOfUnits} vị trí`}
                             <span className="text-xs text-blue-600">
                               (Thứ 6, 7)
                             </span>
                           </span>
                           <span>
-                            {formatPrice(weekendNights * weekendPrice)}
+                            {formatPrice(weekendNights * weekendPrice * numberOfUnits)}
                           </span>
                         </div>
                       )}
@@ -717,13 +870,13 @@ export default function PaymentPage() {
                         <div key={season.name} className="flex justify-between text-sm">
                           <span className="flex items-center gap-1">
                             {formatPrice(season.price)} × {season.count} đêm{' '}
-                            {season.name}
+                            {season.name} {numberOfUnits > 1 && `× ${numberOfUnits} vị trí`}
                             <span className="text-xs text-amber-600 font-medium">
                               (Mùa vụ)
                             </span>
                           </span>
                           <span>
-                            {formatPrice(season.count * season.price)}
+                            {formatPrice(season.count * season.price * numberOfUnits)}
                           </span>
                         </div>
                       ))}
@@ -736,7 +889,7 @@ export default function PaymentPage() {
                   ) : (
                     <div className="flex justify-between text-sm">
                       <span>
-                        {formatPrice(bookingData.basePrice)} × {nights} đêm
+                        {formatPrice(bookingData.basePrice)} × {nights} đêm {numberOfUnits > 1 && `× ${numberOfUnits} vị trí`}
                       </span>
                       <span>{formatPrice(subtotal)}</span>
                     </div>
@@ -744,7 +897,7 @@ export default function PaymentPage() {
 
                   {totalCleaningFee > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span>Phí vệ sinh</span>
+                      <span>Phí vệ sinh {numberOfUnits > 1 && `(× ${numberOfUnits} vị trí)`}</span>
                       <span>{formatPrice(totalCleaningFee)}</span>
                     </div>
                   )}
@@ -768,6 +921,21 @@ export default function PaymentPage() {
                       <span>Phí khách thêm ({additionalGuests} người)</span>
                       <span>{formatPrice(totalAdditionalGuestFee)}</span>
                     </div>
+                  )}
+
+                  {servicesFee > 0 && (
+                    <>
+                      <Separator className="my-1" />
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold text-muted-foreground">Dịch vụ đi kèm:</p>
+                        {selectedServices.map((srv, index) => (
+                          <div key={index} className="flex justify-between text-sm">
+                            <span>{srv.name} (x{srv.quantity} {srv.unit})</span>
+                            <span>{formatPrice(srv.price * srv.quantity)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
                   )}
 
                   <Separator />

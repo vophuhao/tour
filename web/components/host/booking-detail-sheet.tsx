@@ -218,11 +218,12 @@ export function BookingDetailSheet({
                 </div>
               </div>
 
-              {(booking.numberOfPets || booking.numberOfVehicles) && (
+              {((booking.numberOfPets && booking.numberOfPets > 0) ||
+                (booking.numberOfVehicles && booking.numberOfVehicles > 0)) ? (
                 <>
                   <Separator />
                   <div className="grid grid-cols-2 gap-3">
-                    {booking.numberOfPets ? (
+                    {booking.numberOfPets && booking.numberOfPets > 0 ? (
                       <div className="flex items-center gap-2">
                         <PawPrint className="h-4 w-4 text-gray-400" />
                         <div>
@@ -233,7 +234,7 @@ export function BookingDetailSheet({
                         </div>
                       </div>
                     ) : null}
-                    {booking.numberOfVehicles ? (
+                    {booking.numberOfVehicles && booking.numberOfVehicles > 0 ? (
                       <div className="flex items-center gap-2">
                         <Car className="h-4 w-4 text-gray-400" />
                         <div>
@@ -246,7 +247,7 @@ export function BookingDetailSheet({
                     ) : null}
                   </div>
                 </>
-              )}
+              ) : null}
             </div>
           </div>
 

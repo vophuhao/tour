@@ -20,4 +20,9 @@ export { BookingModel, type BookingDocument } from "./booking.model";
 export { PropertyModel, type PropertyDocument } from "./property.model";
 export { ReviewModel, type ReviewDocument } from "./review.model";
 export { SiteModel, type SiteDocument } from "./site.model";
+export { SystemSettingModel, type ISystemSetting } from "./system-setting.model";
+export { ServicePackageModel, type ServicePackageDocument, type IService } from "./service-package.model";
+
+export { PromoCodeModel, type PromoCodeDocument } from "./promo-code.model";
+export { ComboModel, type ComboDocument } from "./combo.model";
 

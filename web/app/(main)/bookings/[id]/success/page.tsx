@@ -224,12 +224,12 @@ export default function ConfirmationPage() {
                 <Users className="text-muted-foreground mt-1 h-4 w-4" />
                 <p className="text-sm">
                   {booking.numberOfGuests} khách
-                  {booking.numberOfPets &&
-                    booking.numberOfPets > 0 &&
-                    `, ${booking.numberOfPets} thú cưng`}
-                  {booking.numberOfVehicles &&
-                    booking.numberOfVehicles > 0 &&
-                    `, ${booking.numberOfVehicles} xe`}
+                  {booking.numberOfPets !== undefined && booking.numberOfPets > 0
+                    ? `, ${booking.numberOfPets} thú cưng`
+                    : null}
+                  {booking.numberOfVehicles !== undefined && booking.numberOfVehicles > 0
+                    ? `, ${booking.numberOfVehicles} xe`
+                    : null}
                 </p>
               </div>
             </div>

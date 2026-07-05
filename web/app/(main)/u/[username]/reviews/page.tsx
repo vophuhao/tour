@@ -1,22 +1,33 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { getUserReviews } from '@/lib/client-actions';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { getUserReviews, updateReview } from '@/lib/client-actions';
 import { useAuthStore } from '@/store/auth.store';
 import type { Property, Site } from '@/types/property-site';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { vi } from 'date-fns/locale';
 import {
-  CalendarDays,
   Loader2,
-  MapPin,
   MessageCircle,
   Star,
+  Settings,
 } from 'lucide-react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
@@ -49,6 +60,7 @@ interface Review {
     comment: string;
     respondedAt: string;
   };
+  isEdited?: boolean;
   createdAt: string;
 }
 
@@ -58,13 +70,60 @@ export default function UserReviewsPage() {
   const { user: currentUser } = useAuthStore();
   const isOwnProfile = currentUser?.username === username;
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ['user-reviews', username],
     queryFn: () => getUserReviews(username),
     enabled: !!username,
   });
 
   const reviews = (data?.data || []) as Review[];
+
+  const [editingReview, setEditingReview] = useState<Review | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [editForm, setEditForm] = useState({
+    title: '',
+    comment: '',
+    propertyRatings: { location: 5, communication: 5, value: 5 },
+    siteRatings: { cleanliness: 5, accuracy: 5, amenities: 5 },
+  });
+
+  useEffect(() => {
+    if (editingReview) {
+      setEditForm({
+        title: editingReview.title || '',
+        comment: editingReview.comment || '',
+        propertyRatings: {
+          location: editingReview.propertyRatings?.location ?? 5,
+          communication: editingReview.propertyRatings?.communication ?? 5,
+          value: editingReview.propertyRatings?.value ?? 5,
+        },
+        siteRatings: {
+          cleanliness: editingReview.siteRatings?.cleanliness ?? 5,
+          accuracy: editingReview.siteRatings?.accuracy ?? 5,
+          amenities: editingReview.siteRatings?.amenities ?? 5,
+        },
+      });
+    }
+  }, [editingReview]);
+
+  const handleUpdate = async () => {
+    if (!editingReview) return;
+    if (editForm.comment.length < 10) {
+      toast.error('Nhận xét phải có ít nhất 10 ký tự');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await updateReview(editingReview._id, editForm);
+      toast.success('Cập nhật đánh giá thành công!');
+      setEditingReview(null);
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.message || 'Có lỗi xảy ra khi cập nhật');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (!isOwnProfile) {
     return (
@@ -118,207 +177,80 @@ export default function UserReviewsPage() {
   };
 
   const ReviewCard = ({ review }: { review: Review }) => {
-    const propertyImageUrl =
-      review.property.photos?.find(p => p.isCover)?.url ||
-      review.property.photos?.[0]?.url ||
-      '/placeholder-property.jpg';
-
     return (
-      <Card className="overflow-hidden transition-shadow hover:shadow-lg">
-        <CardContent className="p-0">
-          <div className="grid gap-4 md:grid-cols-12">
-            {/* Property Image & Info */}
-            <Link
-              href={`/land/${review.property.slug}`}
-              className="group md:col-span-4"
-            >
-              <div className="relative h-48 w-full md:h-full">
-                <Image
-                  src={propertyImageUrl}
-                  alt={review.property.name}
-                  fill
-                  sizes="(max-width: 768px) 100vw, 33vw"
-                  className="object-cover transition-transform group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                <div className="absolute right-0 bottom-0 left-0 p-4 text-white">
-                  <h3 className="text-lg font-semibold">
-                    {review.property.name}
-                  </h3>
-                  {review.property.location && (
-                    <div className="mt-1 flex items-center gap-1 text-sm">
-                      <MapPin className="h-3 w-3" />
-                      <span>
-                        {review.property.location.city},{' '}
-                        {review.property.location.state}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </Link>
-
-            {/* Review Content */}
-            <div className="p-4 md:col-span-8">
-              {/* Header */}
-              <div className="mb-3 flex items-start justify-between">
-                <div>
-                  <div className="mb-1">
-                    {renderStarRating(review.overallRating)}
-                  </div>
-                  {review.title && (
-                    <h4 className="text-lg font-semibold">{review.title}</h4>
-                  )}
-                  <div className="text-muted-foreground mt-1 flex items-center gap-2 text-sm">
-                    <CalendarDays className="h-3.5 w-3.5" />
-                    <span>
-                      {format(new Date(review.createdAt), 'dd MMMM yyyy', {
-                        locale: vi,
-                      })}
+      <Card className="transition-all duration-200 hover:border-stone-300 shadow-sm border border-stone-200 rounded-2xl overflow-hidden bg-white">
+        <CardContent className="p-4 sm:p-5">
+          <div className="flex flex-col gap-3">
+            {/* Top row: Property Name & Quick Info */}
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 pb-2">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm">
+                <Link
+                  href={`/land/${review.property.slug}`}
+                  className="font-semibold text-stone-850 hover:text-primary transition-colors hover:underline"
+                >
+                  {review.property.name}
+                </Link>
+                <span className="text-stone-300">•</span>
+                <span className="text-stone-500 font-medium">{review.site.name}</span>
+                <span className="text-stone-300">•</span>
+                <span className="text-stone-400">
+                  {format(new Date(review.createdAt), 'dd/MM/yyyy')}
+                </span>
+                {review.isEdited && (
+                  <>
+                    <span className="text-stone-300">•</span>
+                    <span className="text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded font-medium">
+                      Đã sửa
                     </span>
-                    <Separator orientation="vertical" className="h-4" />
-                    <span>Site: {review.site.name}</span>
-                  </div>
-                </div>
+                  </>
+                )}
               </div>
 
-              {/* Comment */}
-              <p className="text-muted-foreground mb-3 text-sm leading-relaxed">
+              <div className="flex items-center gap-3">
+                {renderStarRating(review.overallRating)}
+                
+                {!review.isEdited && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2.5 gap-1 border border-stone-200 hover:bg-stone-50 text-stone-600 rounded-lg text-xs font-medium transition-all"
+                    onClick={() => setEditingReview(review)}
+                  >
+                    <Settings className="h-3 w-3" />
+                    Chỉnh sửa
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Comment Body */}
+            <div>
+              {review.title && (
+                <h4 className="text-sm font-semibold text-stone-800 mb-0.5">
+                  {review.title}
+                </h4>
+              )}
+              <p className="text-stone-600 text-sm leading-relaxed">
                 {review.comment}
               </p>
-
-              {/* Pros & Cons */}
-              {(review.pros?.length || review.cons?.length) && (
-                <div className="mb-3 grid gap-3 md:grid-cols-2">
-                  {review.pros && review.pros.length > 0 && (
-                    <div>
-                      <Badge
-                        variant="outline"
-                        className="mb-2 border-green-200 bg-green-50 text-green-700"
-                      >
-                        👍 Điểm tốt
-                      </Badge>
-                      <ul className="text-muted-foreground space-y-1 text-sm">
-                        {review.pros.map((pro, idx) => (
-                          <li key={idx} className="flex items-start gap-2">
-                            <span className="text-green-500">•</span>
-                            <span>{pro}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {review.cons && review.cons.length > 0 && (
-                    <div>
-                      <Badge
-                        variant="outline"
-                        className="mb-2 border-orange-200 bg-orange-50 text-orange-700"
-                      >
-                        👎 Điểm chưa tốt
-                      </Badge>
-                      <ul className="text-muted-foreground space-y-1 text-sm">
-                        {review.cons.map((con, idx) => (
-                          <li key={idx} className="flex items-start gap-2">
-                            <span className="text-orange-500">•</span>
-                            <span>{con}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Rating Breakdown */}
-              <div className="mb-3 grid grid-cols-2 gap-2 rounded-lg bg-gray-50 p-3 text-sm md:grid-cols-3">
-                <div>
-                  <div className="text-muted-foreground mb-1 text-xs">
-                    Vị trí
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                    <span className="font-semibold">
-                      {review.propertyRatings.location}
-                    </span>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground mb-1 text-xs">
-                    Giao tiếp
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                    <span className="font-semibold">
-                      {review.propertyRatings.communication}
-                    </span>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground mb-1 text-xs">
-                    Giá trị
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                    <span className="font-semibold">
-                      {review.propertyRatings.value}
-                    </span>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground mb-1 text-xs">
-                    Vệ sinh
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                    <span className="font-semibold">
-                      {review.siteRatings.cleanliness}
-                    </span>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground mb-1 text-xs">
-                    Độ chính xác
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                    <span className="font-semibold">
-                      {review.siteRatings.accuracy}
-                    </span>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground mb-1 text-xs">
-                    Tiện nghi
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                    <span className="font-semibold">
-                      {review.siteRatings.amenities}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Host Response */}
-              {review.hostResponse && (
-                <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
-                  <div className="mb-1 flex items-center gap-2">
-                    <Badge className="bg-primary text-white">
-                      Phản hồi từ chủ nhà
-                    </Badge>
-                    <span className="text-muted-foreground text-xs">
-                      {format(
-                        new Date(review.hostResponse.respondedAt),
-                        'dd/MM/yyyy',
-                      )}
-                    </span>
-                  </div>
-                  <p className="text-sm text-primary dark:text-primary-300">
-                    {review.hostResponse.comment}
-                  </p>
-                </div>
-              )}
             </div>
+
+            {/* Host Response (Compact) */}
+            {review.hostResponse && (
+              <div className="mt-1 pl-3 border-l-2 border-primary/30 py-0.5">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className="text-[11px] font-bold text-primary bg-primary/5 px-1.5 py-0.5 rounded">
+                    Phản hồi từ chủ nhà
+                  </span>
+                  <span className="text-[10px] text-stone-400">
+                    {format(new Date(review.hostResponse.respondedAt), 'dd/MM/yyyy')}
+                  </span>
+                </div>
+                <p className="text-xs text-stone-600">
+                  {review.hostResponse.comment}
+                </p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -328,7 +260,7 @@ export default function UserReviewsPage() {
   return (
     <div className="space-y-4">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold">Đánh giá của tôi</h2>
+        <h2 className="text-2xl font-bold">Đánh giá đã gửi</h2>
         <p className="text-muted-foreground mt-1 text-sm">
           {reviews.length} đánh giá
         </p>
@@ -339,6 +271,218 @@ export default function UserReviewsPage() {
           <ReviewCard key={review._id} review={review} />
         ))}
       </div>
+
+      {/* Edit Review Dialog */}
+      <Dialog open={!!editingReview} onOpenChange={(open) => !open && setEditingReview(null)}>
+        <DialogContent className="sm:max-w-[480px] max-h-[90vh] overflow-y-auto rounded-3xl p-6 border-slate-100 bg-white shadow-2xl">
+          <DialogHeader className="space-y-2">
+            <DialogTitle className="text-xl font-bold text-slate-900 tracking-tight">Chỉnh sửa đánh giá</DialogTitle>
+            <DialogDescription className="text-xs text-stone-500 leading-relaxed">
+              Bạn chỉ được chỉnh sửa đánh giá này <strong className="text-primary">1 lần duy nhất</strong>. Các số liệu và nhận xét cũ sẽ bị thay thế vĩnh viễn.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Ratings Selection Group */}
+            <div className="space-y-3 rounded-2xl border border-stone-150/70 bg-stone-50/50 p-4">
+              <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Đánh giá chung (Khu cắm trại)</span>
+              
+              <div className="flex items-center justify-between py-1">
+                <span className="text-xs font-semibold text-stone-650">Vị trí địa lý</span>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setEditForm(prev => ({
+                        ...prev,
+                        propertyRatings: { ...prev.propertyRatings, location: star }
+                      }))}
+                      className="hover:scale-110 active:scale-95 transition-transform focus:outline-none"
+                    >
+                      <Star
+                        className={`h-5 w-5 transition-colors ${
+                          star <= editForm.propertyRatings.location ? 'fill-yellow-400 text-yellow-400' : 'text-stone-200'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between py-1">
+                <span className="text-xs font-semibold text-stone-650">Hỗ trợ & Giao tiếp</span>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setEditForm(prev => ({
+                        ...prev,
+                        propertyRatings: { ...prev.propertyRatings, communication: star }
+                      }))}
+                      className="hover:scale-110 active:scale-95 transition-transform focus:outline-none"
+                    >
+                      <Star
+                        className={`h-5 w-5 transition-colors ${
+                          star <= editForm.propertyRatings.communication ? 'fill-yellow-400 text-yellow-400' : 'text-stone-200'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between py-1">
+                <span className="text-xs font-semibold text-stone-650">Xứng đáng với giá tiền</span>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setEditForm(prev => ({
+                        ...prev,
+                        propertyRatings: { ...prev.propertyRatings, value: star }
+                      }))}
+                      className="hover:scale-110 active:scale-95 transition-transform focus:outline-none"
+                    >
+                      <Star
+                        className={`h-5 w-5 transition-colors ${
+                          star <= editForm.propertyRatings.value ? 'fill-yellow-400 text-yellow-400' : 'text-stone-200'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="my-2 border-t border-stone-200/50" />
+
+              <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Đánh giá vị trí (Site của bạn)</span>
+              
+              <div className="flex items-center justify-between py-1">
+                <span className="text-xs font-semibold text-stone-650">Sạch sẽ & Vệ sinh</span>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setEditForm(prev => ({
+                        ...prev,
+                        siteRatings: { ...prev.siteRatings, cleanliness: star }
+                      }))}
+                      className="hover:scale-110 active:scale-95 transition-transform focus:outline-none"
+                    >
+                      <Star
+                        className={`h-5 w-5 transition-colors ${
+                          star <= editForm.siteRatings.cleanliness ? 'fill-yellow-400 text-yellow-400' : 'text-stone-200'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between py-1">
+                <span className="text-xs font-semibold text-stone-650">Thông tin chính xác</span>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setEditForm(prev => ({
+                        ...prev,
+                        siteRatings: { ...prev.siteRatings, accuracy: star }
+                      }))}
+                      className="hover:scale-110 active:scale-95 transition-transform focus:outline-none"
+                    >
+                      <Star
+                        className={`h-5 w-5 transition-colors ${
+                          star <= editForm.siteRatings.accuracy ? 'fill-yellow-400 text-yellow-400' : 'text-stone-200'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between py-1">
+                <span className="text-xs font-semibold text-stone-650">Tiện nghi có sẵn</span>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setEditForm(prev => ({
+                        ...prev,
+                        siteRatings: { ...prev.siteRatings, amenities: star }
+                      }))}
+                      className="hover:scale-110 active:scale-95 transition-transform focus:outline-none"
+                    >
+                      <Star
+                        className={`h-5 w-5 transition-colors ${
+                          star <= editForm.siteRatings.amenities ? 'fill-yellow-400 text-yellow-400' : 'text-stone-200'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Fields Text */}
+            <div className="space-y-3">
+              <div>
+                <Label htmlFor="edit-title" className="text-xs font-semibold text-stone-700">Tiêu đề đánh giá</Label>
+                <Input
+                  id="edit-title"
+                  placeholder="VD: Trải nghiệm tuyệt vời cùng gia đình"
+                  value={editForm.title}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, title: e.target.value }))}
+                  className="mt-1 rounded-xl border-stone-200 focus-visible:ring-primary focus-visible:border-primary h-10 text-sm"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="edit-comment" className="text-xs font-semibold text-stone-700">Nội dung đánh giá <span className="text-red-500">*</span></Label>
+                <Textarea
+                  id="edit-comment"
+                  placeholder="Chia sẻ chi tiết hơn cảm nhận của bạn để cải thiện dịch vụ cắm trại..."
+                  rows={4}
+                  value={editForm.comment}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, comment: e.target.value }))}
+                  className="mt-1 rounded-xl border-stone-200 focus-visible:ring-primary focus-visible:border-primary text-sm leading-relaxed"
+                />
+                <div className="mt-1 flex items-center justify-between text-[10px] text-stone-400">
+                  <span>Tối thiểu 10 ký tự</span>
+                  <span className={editForm.comment.length < 10 ? 'text-rose-500 font-medium' : 'text-stone-400'}>
+                    Hiện tại: {editForm.comment.length} ký tự
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 mt-4 flex sm:flex-row flex-col-reverse justify-end">
+            <Button
+              variant="outline"
+              disabled={submitting}
+              onClick={() => setEditingReview(null)}
+              className="rounded-xl border-stone-250 hover:bg-stone-50 text-xs px-5 h-10"
+            >
+              Hủy
+            </Button>
+            <Button
+              disabled={submitting || editForm.comment.length < 10}
+              onClick={handleUpdate}
+              className="bg-primary hover:bg-primary/90 text-white rounded-xl text-xs px-6 h-10 font-bold gap-1.5 transition-all shadow-md shadow-primary/10"
+            >
+              {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              Lưu thay đổi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

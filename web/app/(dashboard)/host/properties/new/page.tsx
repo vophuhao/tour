@@ -280,7 +280,7 @@ export default function NewPropertyPage() {
             <Button
               onClick={handleSubmit}
               disabled={createMutation.isPending || uploading}
-              className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold rounded-xl px-6 gap-2 shadow-md shadow-emerald-500/20 dark:shadow-none hover:shadow-lg hover:shadow-emerald-500/30 transition-all hover:-translate-y-0.5 active:translate-y-0"
+              className="bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl px-6 gap-2 shadow-md shadow-primary/10 transition-all hover:-translate-y-0.5 active:translate-y-0"
             >
               {uploading || createMutation.isPending ? (
                 <>
@@ -296,7 +296,7 @@ export default function NewPropertyPage() {
           ) : (
             <Button
               onClick={next}
-              className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold rounded-xl px-6 gap-2 shadow-md shadow-emerald-500/20 dark:shadow-none hover:shadow-lg hover:shadow-emerald-500/30 transition-all hover:-translate-y-0.5 active:translate-y-0"
+              className="bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl px-6 gap-2 shadow-md shadow-primary/10 transition-all hover:-translate-y-0.5 active:translate-y-0"
             >
               Tiếp theo
               <ArrowRight className="h-4 w-4" />

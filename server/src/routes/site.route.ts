@@ -30,6 +30,7 @@ siteRoutes.get("/:siteId/reviews/stats", reviewController.getSiteReviewStats);
 // Site availability and pricing (must be before /:idOrSlug)
 siteRoutes.get("/:id/blocked-dates", siteController.getBlockedDates);
 siteRoutes.get("/:id/availability", siteController.checkAvailability);
+siteRoutes.get("/:id/available-units", siteController.getAvailableUnits);
 siteRoutes.get("/:id/calculate-pricing", siteController.calculatePricing);
 siteRoutes.get("/:idOrSlug/with-availability", siteController.getSiteWithAvailability);
 

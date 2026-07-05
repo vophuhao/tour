@@ -22,10 +22,20 @@ interface Capacity {
 interface SiteCapacityProps {
   data: Capacity | undefined;
   accommodationType?: string;
+  lodgingProvided?: string;
+  unitNames?: string[];
   onChange: (newCapacity: Capacity) => void;
+  onUnitNamesChange?: (names: string[]) => void;
 }
 
-export function SiteCapacity({ data, accommodationType, onChange }: SiteCapacityProps) {
+export function SiteCapacity({
+  data,
+  accommodationType,
+  lodgingProvided,
+  unitNames = [],
+  onChange,
+  onUnitNamesChange,
+}: SiteCapacityProps) {
   const capacity: Capacity = data ?? {};
 
   const updateField = (field: keyof Capacity, value: any) => {
@@ -34,10 +44,32 @@ export function SiteCapacity({ data, accommodationType, onChange }: SiteCapacity
 
   const safe = (v: any, d: any = "") => (v === undefined || v === null ? d : v);
 
+  const showUnitNaming = lodgingProvided && lodgingProvided !== "bring_your_own" && (capacity.maxConcurrentBookings ?? 1) > 1;
+
+  React.useEffect(() => {
+    if (showUnitNaming && onUnitNamesChange) {
+      const N = capacity.maxConcurrentBookings ?? 1;
+      if (unitNames.length !== N) {
+        const newNames = [...unitNames];
+        if (newNames.length > N) {
+          newNames.splice(N);
+        } else {
+          for (let i = newNames.length + 1; i <= N; i++) {
+            const pad = i < 10 ? `0${i}` : `${i}`;
+            newNames.push(pad);
+          }
+        }
+        onUnitNamesChange(newNames);
+      }
+    } else if (!showUnitNaming && unitNames && unitNames.length > 0 && onUnitNamesChange) {
+      onUnitNamesChange([]);
+    }
+  }, [showUnitNaming, capacity.maxConcurrentBookings, lodgingProvided, accommodationType]);
+
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-3xl font-semibold text-gray-900 mb-2">Sức chứa</p>
+        <p className="text-3xl font-semibold text-gray-900 mb-2">Sức chứa 1 lều</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -127,7 +159,7 @@ export function SiteCapacity({ data, accommodationType, onChange }: SiteCapacity
 
         <div>
           <Label htmlFor="maxConcurrentBookings">
-            Booking đồng thời tối đa <span className="text-red-500">*</span>
+            Booking đồng thời tối đa ( số lều ) <span className="text-red-500">*</span>
           </Label>
           <Input
             id="maxConcurrentBookings"
@@ -137,7 +169,6 @@ export function SiteCapacity({ data, accommodationType, onChange }: SiteCapacity
             min={1}
             className="mt-1"
           />
-          <p className="text-xs text-gray-500 mt-1">1 = designated site, &gt;1 = undesignated</p>
         </div>
 
         {/* RV specific */}
@@ -169,6 +200,41 @@ export function SiteCapacity({ data, accommodationType, onChange }: SiteCapacity
           </>
         )}
       </div>
+
+      {showUnitNaming && unitNames && unitNames.length > 0 && (
+        <div className="space-y-4 border-t border-slate-100 dark:border-slate-800 pt-6 mt-6">
+          <div>
+            <h4 className="text-lg font-bold text-gray-900 dark:text-white">Cấu hình tên chi tiết từng vị trí/lều</h4>
+            <p className="text-xs text-slate-500 mt-1">
+              Hệ thống tự động sinh tên mặc định từ 01 đến {unitNames.length < 10 ? `0${unitNames.length}` : unitNames.length}. Bạn có thể thay đổi tên của từng vị trí bên dưới để khách hàng chọn khi đặt phòng.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {unitNames.map((name, index) => (
+              <div key={index} className="space-y-1.5 p-3 border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/30 rounded-xl">
+                <Label htmlFor={`unit-${index}`} className="text-xs font-semibold text-slate-500">
+                  Vị trí {index + 1}
+                </Label>
+                <Input
+                  id={`unit-${index}`}
+                  type="text"
+                  value={name}
+                  onChange={(e) => {
+                    const updated = [...unitNames];
+                    updated[index] = e.target.value;
+                    if (onUnitNamesChange) {
+                      onUnitNamesChange(updated);
+                    }
+                  }}
+                  className="h-9 rounded-lg text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                  required
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
