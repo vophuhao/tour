@@ -317,6 +317,7 @@ export interface Booking {
   numberOfPets?: number;
   numberOfVehicles?: number;
   unitNumber?: string;
+  numberOfUnits?: number;
 
   // Pricing Breakdown (matches backend exactly)
   pricing: {

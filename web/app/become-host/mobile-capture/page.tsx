@@ -122,7 +122,7 @@ export default function MobileCapturePage() {
           <div className="relative w-full max-w-sm aspect-[3/4] rounded-2xl overflow-hidden bg-gray-950 shadow-xl border border-border">
             <video
               ref={videoRef}
-              className={`w-full h-full object-cover ${!cameraActive ? "hidden" : ""}`}
+              className={`w-full h-full object-cover -scale-x-100 ${!cameraActive ? "hidden" : ""}`}
               autoPlay
               muted
               playsInline
@@ -130,7 +130,7 @@ export default function MobileCapturePage() {
             {!cameraActive && (
               <div className="absolute inset-0 flex flex-col items-center justify-center text-white gap-3 bg-gray-900/95">
                 {selfieUrl ? (
-                  <img src={selfieUrl} alt="Selfie" className="w-full h-full object-cover" />
+                  <img src={selfieUrl} alt="Selfie" className="w-full h-full object-cover -scale-x-100" />
                 ) : (
                   <>
                     <Camera className="h-16 w-16 text-muted-foreground opacity-40 animate-pulse-subtle" />

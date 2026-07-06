@@ -20,6 +20,8 @@ interface BookingCalendarProps {
   onMonthChange?: (date: Date) => void;
   maxConcurrent?: number;
   blockedSlotsByDate?: Record<string, number>;
+  blocks?: any[];
+  showSlotsInfo?: boolean;
   onBlockDate?: (date: Date, slotsToBlock: number, reason?: string) => Promise<void>;
   onUnblockDate?: (date: Date) => Promise<void>;
 }
@@ -65,6 +67,8 @@ export function BookingCalendar({
   onMonthChange,
   maxConcurrent = 1,
   blockedSlotsByDate = {},
+  blocks = [],
+  showSlotsInfo = false,
   onBlockDate,
   onUnblockDate,
 }: BookingCalendarProps) {
@@ -250,6 +254,24 @@ export function BookingCalendar({
         <div className="grid grid-cols-7 divide-x divide-y divide-border">
           {calendarDays.map((day, idx) => {
             const hasBookings = day.bookings.length > 0;
+            const dateStr = day.date.toISOString().split('T')[0];
+            const manualBlockedSlots = blockedSlotsByDate[dateStr] || 0;
+
+            const isFullyBlocked = blocks?.some((b: any) => {
+              if (!b.date) return false;
+              const bDateStr = typeof b.date === 'string' ? b.date.split('T')[0] : new Date(b.date).toISOString().split('T')[0];
+              return bDateStr === dateStr && b.isAvailable === false;
+            });
+
+            // Calculate booked units for this day (checkout-exclusive)
+            const bookedCount = day.bookings.filter(b => {
+              const ci = new Date(b.checkIn).toISOString().split('T')[0];
+              const co = new Date(b.checkOut).toISOString().split('T')[0];
+              return dateStr >= ci && dateStr < co;
+            }).reduce((sum, b) => sum + (b.numberOfUnits || 1), 0);
+
+            const availableSlots = isFullyBlocked ? 0 : Math.max(0, maxConcurrent - bookedCount - manualBlockedSlots);
+
             return (
               <div
                 key={idx}
@@ -265,14 +287,29 @@ export function BookingCalendar({
                   }
                 }}
               >
-                {/* Day number */}
-                <div className={cn(
-                  'inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium mb-1',
-                  day.isToday ? 'bg-emerald-600 text-white font-bold' :
-                    day.isCurrentMonth ? 'text-foreground' : 'text-muted-foreground/50',
-                  idx % 7 === 6 && !day.isToday && 'text-red-500 dark:text-red-400',
-                )}>
-                  {day.date.getDate()}
+                <div className="flex items-center justify-between mb-1">
+                  {/* Day number */}
+                  <div className={cn(
+                    'inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium',
+                    day.isToday ? 'bg-emerald-600 text-white font-bold' :
+                      day.isCurrentMonth ? 'text-foreground' : 'text-muted-foreground/50',
+                    idx % 7 === 6 && !day.isToday && 'text-red-500 dark:text-red-400',
+                  )}>
+                    {day.date.getDate()}
+                  </div>
+
+                  {showSlotsInfo && (
+                    <div className={cn(
+                      'text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-md border shrink-0',
+                      isFullyBlocked || availableSlots === 0
+                        ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/30'
+                        : availableSlots === maxConcurrent
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30'
+                          : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/30'
+                    )}>
+                      {isFullyBlocked ? `0/${maxConcurrent}` : `${availableSlots}/${maxConcurrent}`}
+                    </div>
+                  )}
                 </div>
 
 

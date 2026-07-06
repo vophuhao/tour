@@ -374,6 +374,8 @@ export default function HostCalendarPage() {
                 onMonthChange={setCalendarMonth}
                 maxConcurrent={maxConcurrent}
                 blockedSlotsByDate={blockedSlotsByDate}
+                blocks={availabilityData.blocks}
+                showSlotsInfo={true}
               />
             </div>
           </TabsContent>
