@@ -180,14 +180,28 @@ export default function HostRegisterPage() {
   /* ─── Submit ─── */
   async function handleSubmit() {
     if (faceStatus !== "matched") { toast.error("Vui lòng hoàn thành xác minh khuôn mặt"); return; }
+    if (!idFrontFile) { toast.error("Vui lòng tải lên ảnh mặt trước CCCD"); return; }
     setSubmitting(true);
     try {
       const selfieBase64 = selfieUrl.split(",")[1] ?? selfieUrl;
+      const idFrontBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64 = (reader.result as string).split(",")[1] ?? reader.result as string;
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(idFrontFile);
+      });
+
       const res = await verifyKycAndBecomeHost({
-        name: form.name, gmail: form.gmail, phone: form.phone,
+        name: form.name,
+        gmail: form.gmail,
+        phone: form.phone,
         idNumber: form.idNumber.replace(/\s/g, ""),
         faceMatchScore: faceScore,
         selfieImage: selfieBase64,
+        idCardImage: idFrontBase64,
       });
       if (!res.success) throw new Error((res as any).message || "Xác minh thất bại");
       // Update local auth state

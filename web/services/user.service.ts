@@ -55,6 +55,7 @@ export const verifyKycAndBecomeHost = async (data: {
   idNumber: string;
   faceMatchScore: number;
   selfieImage: string;
+  idCardImage: string;
 }): Promise<ApiResponse> => apiClient.post('/users/kyc-become-host', data);
 
 export const getAllHostRequests = async (): Promise<ApiResponse> =>
