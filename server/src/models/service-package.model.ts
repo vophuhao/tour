@@ -3,13 +3,13 @@ import mongoose from "mongoose";
 export interface IServicePricing {
   price: number;
   unit: string;
-  timeValue?: number;
-  timeUnit?: string;
+  timeValue?: number | undefined;
+  timeUnit?: string | undefined;
 }
 
 export interface IService {
   name: string;
-  description?: string;
+  description?: string | undefined;
   pricing: IServicePricing[];
 }
 
