@@ -394,6 +394,82 @@ export default class UserController {
     return ResponseUtil.success(res, null, "Khóa người dùng thành công");
   });
 
+  validateCccdHandler = catchErrors(async (req, res) => {
+    const { idNumber, idCardImage } = req.body;
+
+    appAssert(idNumber, ErrorFactory.badRequest("Thiếu số CCCD"));
+    appAssert(idCardImage, ErrorFactory.badRequest("Thiếu ảnh mặt trước CCCD"));
+
+    const cccdRegex = /^\d{12}$/;
+    appAssert(cccdRegex.test(idNumber.replace(/\s/g, "")), ErrorFactory.badRequest("Số CCCD không hợp lệ (cần 12 chữ số)"));
+
+    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+    try {
+      const prompt = `Bạn là một trợ lý OCR và xác thực giấy tờ tùy thân.
+Hãy phân tích hình ảnh mặt trước của thẻ căn cước được cung cấp và xác định xem đó có phải là ảnh chụp mặt trước của Căn cước công dân (CCCD) hoặc Thẻ Căn cước của Việt Nam hay không.
+
+Trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc trong block code \`\`\`json, không chứa bất kỳ lời giải thích nào khác ngoài JSON) có định dạng như sau:
+{
+  "isVNIDCard": boolean, // true nếu là mặt trước của CCCD/Thẻ Căn cước Việt Nam hợp lệ, false nếu không phải (ví dụ: ảnh phong cảnh, ảnh người thông thường, bằng lái xe, hoặc CMND cũ/nước ngoài...)
+  "idNumber": "string | null", // Số CCCD gồm 12 chữ số được trích xuất từ ảnh. Ghi null nếu không tìm thấy.
+  "fullName": "string | null", // Họ và tên đầy đủ viết hoa (ví dụ: "NGUYỄN VĂN A") trích xuất từ ảnh. Ghi null nếu không tìm thấy.
+  "reason": "string" // Lý do nếu không phải CCCD Việt Nam, hoặc mô tả kết quả nếu đúng.
+}`;
+
+      const geminiResponse = await axios.post(geminiUrl, {
+        contents: [{
+          parts: [
+            { text: prompt },
+            {
+              inlineData: {
+                mimeType: "image/jpeg",
+                data: idCardImage
+              }
+            }
+          ]
+        }]
+      });
+
+      const generatedText = geminiResponse.data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      let cleanedText = generatedText.trim();
+      if (cleanedText.startsWith("```json")) {
+        cleanedText = cleanedText.slice(7);
+      } else if (cleanedText.startsWith("```")) {
+        cleanedText = cleanedText.slice(3);
+      }
+      if (cleanedText.endsWith("```")) {
+        cleanedText = cleanedText.slice(0, -3);
+      }
+      cleanedText = cleanedText.trim();
+
+      const result = JSON.parse(cleanedText);
+
+      appAssert(
+        result.isVNIDCard,
+        ErrorFactory.badRequest(result.reason || "Ảnh tải lên không phải là ảnh mặt trước Căn cước công dân (CCCD) Việt Nam hợp lệ. Vui lòng chụp rõ nét mặt trước CCCD.")
+      );
+
+      if (result.idNumber) {
+        const userCccd = idNumber.replace(/\s/g, "");
+        const ocrCccd = result.idNumber.replace(/\s/g, "");
+        appAssert(
+          userCccd === ocrCccd,
+          ErrorFactory.badRequest(`Số CCCD trích xuất từ ảnh (${result.idNumber}) không khớp với số CCCD bạn đã nhập (${idNumber}).`)
+        );
+      }
+
+      return ResponseUtil.success(res, result, "CCCD Việt Nam hợp lệ");
+    } catch (err: any) {
+      console.error("Lỗi xác thực CCCD bằng Gemini:", err);
+      if (err.statusCode) {
+        throw err;
+      }
+      throw ErrorFactory.badRequest(err.message || "Không thể xác thực ảnh CCCD. Vui lòng chụp rõ nét, đủ ánh sáng và thử lại.");
+    }
+  });
+
   /**
    * KYC-based host registration
    * Validates age from CCCD number and upgrades role automatically
@@ -417,7 +493,7 @@ export default class UserController {
     appAssert(cccdRegex.test(idNumber.replace(/\s/g, "")), ErrorFactory.badRequest("Số CCCD không hợp lệ (cần 12 chữ số)"));
 
     // Validate CCCD front image using Gemini OCR/Verification
-    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || "AIzaSyBy_EK5R9OL0LwVzA8c3ZrLcO-PdVg_NZs";
+    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
     try {

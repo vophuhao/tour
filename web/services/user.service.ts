@@ -48,6 +48,11 @@ export const blockedUser = async (id: string): Promise<ApiResponse> =>
 export const becomeHost = async (data: unknown): Promise<ApiResponse> =>
   apiClient.post('/users/become-host', data);
 
+export const validateCccd = async (data: {
+  idNumber: string;
+  idCardImage: string;
+}): Promise<ApiResponse> => apiClient.post('/users/validate-cccd', data);
+
 export const verifyKycAndBecomeHost = async (data: {
   name: string;
   gmail: string;

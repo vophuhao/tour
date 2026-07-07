@@ -32,6 +32,9 @@ export default function HostRegisterPage() {
   // Step 2 – ID card
   const [idFrontFile, setIdFrontFile] = useState<File | null>(null);
   const [idFrontUrl, setIdFrontUrl] = useState<string>("");
+  const [isValidatingCccd, setIsValidatingCccd] = useState(false);
+  const [cccdValid, setCccdValid] = useState<boolean | null>(null);
+  const [cccdValidationError, setCccdValidationError] = useState("");
 
   // Step 3 – face scan
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -114,6 +117,8 @@ export default function HostRegisterPage() {
 
   function validateStep2() {
     if (!idFrontFile) { toast.error("Vui lòng upload ảnh mặt trước CCCD"); return false; }
+    if (isValidatingCccd) { toast.error("Đang xác thực ảnh CCCD, vui lòng đợi..."); return false; }
+    if (cccdValid !== true) { toast.error(cccdValidationError || "Vui lòng upload ảnh CCCD Việt Nam hợp lệ"); return false; }
     return true;
   }
 
@@ -168,6 +173,46 @@ export default function HostRegisterPage() {
     }
   }
 
+  async function runCccdValidation(file: File, url: string) {
+    setIsValidatingCccd(true);
+    setCccdValid(null);
+    setCccdValidationError("");
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const res = (reader.result as string).split(",")[1] ?? (reader.result as string);
+          resolve(res);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const { validateCccd } = await import("@/services/user.service");
+      const res = await validateCccd({
+        idNumber: form.idNumber,
+        idCardImage: base64,
+      });
+
+      if (res.success) {
+        setCccdValid(true);
+        toast.success("✅ Căn cước công dân Việt Nam hợp lệ!");
+      } else {
+        setCccdValid(false);
+        setCccdValidationError(res.message || "Ảnh không phải là CCCD Việt Nam hợp lệ hoặc thông tin không khớp.");
+        toast.error(res.message || "Xác thực CCCD thất bại.");
+      }
+    } catch (err: any) {
+      console.error("❌ Lỗi xác thực CCCD:", err);
+      setCccdValid(false);
+      const errMsg = err.message || err.response?.data?.message || "Không thể xác thực ảnh CCCD. Vui lòng thử lại.";
+      setCccdValidationError(errMsg);
+      toast.error(errMsg);
+    } finally {
+      setIsValidatingCccd(false);
+    }
+  }
+
   function handleIdUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -175,6 +220,9 @@ export default function HostRegisterPage() {
     setIdFrontFile(file);
     const url = URL.createObjectURL(file);
     setIdFrontUrl(url);
+    setCccdValid(null);
+    setCccdValidationError("");
+    runCccdValidation(file, url);
   }
 
   /* ─── Submit ─── */
@@ -311,7 +359,14 @@ export default function HostRegisterPage() {
                       </label>
                       <Input type={f.type} placeholder={f.placeholder}
                         value={(form as any)[f.field]}
-                        onChange={e => { setForm(prev => ({ ...prev, [f.field]: e.target.value })); setErrors(prev => ({ ...prev, [f.field]: undefined })); }}
+                        onChange={e => {
+                          setForm(prev => ({ ...prev, [f.field]: e.target.value }));
+                          setErrors(prev => ({ ...prev, [f.field]: undefined }));
+                          if (f.field === "idNumber") {
+                            setCccdValid(null);
+                            setCccdValidationError("");
+                          }
+                        }}
                         className={cn("h-11 rounded-xl bg-background border-input focus-visible:ring-primary/20 focus-visible:border-primary", (errors as any)[f.field] && "border-destructive/80 focus-visible:ring-destructive/20 focus-visible:border-destructive")}
                         maxLength={f.field === "idNumber" ? 12 : undefined}
                       />
@@ -353,7 +408,18 @@ export default function HostRegisterPage() {
                     {idFrontUrl ? (
                       <div className="relative">
                         <Image src={idFrontUrl} alt="CCCD mặt trước" width={400} height={240} className="mx-auto rounded-lg object-contain max-h-48 w-auto shadow-xs" unoptimized />
-                        <p className="mt-3.5 text-sm text-primary font-semibold">✅ Đã upload – {idFrontFile?.name}</p>
+                        {isValidatingCccd ? (
+                          <div className="mt-3.5 flex items-center justify-center gap-2 text-primary font-semibold">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span>Đang xác thực ảnh CCCD...</span>
+                          </div>
+                        ) : cccdValid === true ? (
+                          <p className="mt-3.5 text-sm text-green-600 dark:text-green-400 font-semibold">✅ Ảnh CCCD Việt Nam hợp lệ</p>
+                        ) : cccdValid === false ? (
+                          <p className="mt-3.5 text-sm text-destructive font-semibold">❌ {cccdValidationError || "Ảnh không hợp lệ"}</p>
+                        ) : (
+                          <p className="mt-3.5 text-sm text-primary font-semibold">Đã chọn – {idFrontFile?.name}</p>
+                        )}
                       </div>
                     ) : (
                       <>
@@ -370,9 +436,21 @@ export default function HostRegisterPage() {
                   </div>
 
                   <div className="flex gap-3 pt-2">
-                    <Button variant="outline" className="flex-1 h-11 rounded-xl cursor-pointer" onClick={() => setStep(1)}>Quay lại</Button>
-                    <Button className="flex-1 h-11 rounded-xl font-semibold cursor-pointer" onClick={() => { if (validateStep2()) setStep(3); }}>
-                      Tiếp theo <ArrowRight className="ml-2 h-4 w-4" />
+                    <Button variant="outline" className="flex-1 h-11 rounded-xl cursor-pointer" onClick={() => setStep(1)} disabled={isValidatingCccd}>Quay lại</Button>
+                    <Button 
+                      className="flex-1 h-11 rounded-xl font-semibold cursor-pointer" 
+                      onClick={() => { if (validateStep2()) setStep(3); }}
+                      disabled={isValidatingCccd || cccdValid !== true}
+                    >
+                      {isValidatingCccd ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang kiểm tra...
+                        </>
+                      ) : (
+                        <>
+                          Tiếp theo <ArrowRight className="ml-2 h-4 w-4" />
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>

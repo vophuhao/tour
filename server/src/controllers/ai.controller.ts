@@ -89,7 +89,7 @@ const FALLBACK_CAMPING_IMAGES = [
 
 class AIController {
   private getApiKey() {
-    return process.env.GOOGLE_GENERATIVE_AI_API_KEY || "AIzaSyBy_EK5R9OL0LwVzA8c3ZrLcO-PdVg_NZs";
+    return process.env.GOOGLE_GENERATIVE_AI_API_KEY
   }
 
   private async generateContentWithGemini(prompt: string): Promise<string> {
