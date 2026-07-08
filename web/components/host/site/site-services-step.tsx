@@ -137,11 +137,11 @@ export function SiteServicesStep({ data = [], onChange }: SiteServicesStepProps)
       description: s.description || "",
       pricing: s.pricing && s.pricing.length > 0
         ? s.pricing.map(p => ({
-            price: p.price,
-            unit: p.unit,
-            timeValue: p.timeValue ?? 1,
-            timeUnit: p.timeUnit ?? "luot",
-          }))
+          price: p.price,
+          unit: p.unit,
+          timeValue: p.timeValue ?? 1,
+          timeUnit: p.timeUnit ?? "luot",
+        }))
         : [mapSimplePricingToServicePricing({ price: 0, unit: "lượt" })]
     }));
 
@@ -165,7 +165,7 @@ export function SiteServicesStep({ data = [], onChange }: SiteServicesStepProps)
       {/* Introduction */}
       <div>
         <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-emerald-600 dark:text-emerald-500 animate-pulse" />
+
           Dịch vụ đi kèm tại Vị trí cắm trại
         </h3>
         <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm">

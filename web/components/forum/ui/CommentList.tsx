@@ -23,6 +23,7 @@ import '../../../components/forum/style/CommentInputNew.css';
 import '../../../components/forum/style/StickerPicker.css';
 import { useAuthStore } from '@/store/auth.store';
 import { useChatModal } from '@/store/chatstore';
+import { uploadMedia } from '@/lib/client-actions';
 
 // API interface để dùng chung cho forum và document
 interface CommentApi {
@@ -172,8 +173,23 @@ const CommentList: React.FC<CommentListProps> = ({ targetId, onCommentCountChang
       setPreviewImages(prev => [...prev, ...newPreviews]);
 
       // Upload to Cloudinary
-      // const uploaded = await chatApi.uploadFiles(filesArray.slice(0, 5).filter((f: any) => f.type.startsWith('image/')));
-      // setUploadedImages(prev => [...prev, ...uploaded.map((f: any) => f.url)]);
+      const formData = new FormData();
+      filesArray.slice(0, 5).filter(f => f.type.startsWith('image/')).forEach(file => {
+        formData.append('files', file);
+      });
+
+      const uploadRes = await uploadMedia(formData);
+      if (uploadRes.success && uploadRes.data) {
+        let urls: string[] = [];
+        if (Array.isArray(uploadRes.data)) {
+          urls = uploadRes.data as string[];
+        } else if (typeof uploadRes.data === 'string') {
+          urls = [uploadRes.data];
+        }
+        setUploadedImages(prev => [...prev, ...urls]);
+      } else {
+        toast.error('Không thể upload ảnh lên Cloudinary');
+      }
     } catch (error) {
       toast.error('Lỗi khi upload ảnh');
     }
@@ -204,11 +220,27 @@ const CommentList: React.FC<CommentListProps> = ({ targetId, onCommentCountChang
         [replyId]: [...(prev[replyId] || []), ...newPreviews]
       }));
 
-      // const uploaded = await chatApi.uploadFiles(filesArray.slice(0, 5).filter((f: any) => f.type.startsWith('image/')));
-      // setReplyImages(prev => ({
-      //   ...prev,
-      //   [replyId]: [...(prev[replyId] || []), ...uploaded.map((f: any) => f.url)]
-      // }));
+      // Upload to Cloudinary
+      const formData = new FormData();
+      filesArray.slice(0, 5).filter(f => f.type.startsWith('image/')).forEach(file => {
+        formData.append('files', file);
+      });
+
+      const uploadRes = await uploadMedia(formData);
+      if (uploadRes.success && uploadRes.data) {
+        let urls: string[] = [];
+        if (Array.isArray(uploadRes.data)) {
+          urls = uploadRes.data as string[];
+        } else if (typeof uploadRes.data === 'string') {
+          urls = [uploadRes.data];
+        }
+        setReplyImages(prev => ({
+          ...prev,
+          [replyId]: [...(prev[replyId] || []), ...urls]
+        }));
+      } else {
+        toast.error('Không thể upload ảnh lên Cloudinary');
+      }
     } catch (error) {
       toast.error('Lỗi khi upload ảnh');
     }

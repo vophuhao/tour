@@ -38,7 +38,10 @@ const EditPostPage = () => {
   const [summary, setSummary] = useState('');
   const [coverImage, setCoverImage] = useState<File | null>(null);
   const [currentCoverUrl, setCurrentCoverUrl] = useState('');
-  const [images] = useState<File[]>([]);
+  const [images, setImages] = useState<File[]>([]);
+  const [videos, setVideos] = useState<File[]>([]);
+  const [currentImages, setCurrentImages] = useState<string[]>([]);
+  const [currentVideos, setCurrentVideos] = useState<string[]>([]);
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   // const [customTopic] = useState('');
   const [content, setContent] = useState('');
@@ -49,6 +52,36 @@ const EditPostPage = () => {
   const [tags, setTags] = useState<string[]>([]);
   const [customSubject, setCustomSubject] = useState('');
   const [tagInput, setTagInput] = useState('');
+
+  const handleImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const selectedFiles = Array.from(e.target.files);
+      setImages(prev => [...prev, ...selectedFiles]);
+    }
+  };
+
+  const handleVideosChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const selectedFiles = Array.from(e.target.files);
+      setVideos(prev => [...prev, ...selectedFiles]);
+    }
+  };
+
+  const removeImageAttachment = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeVideoAttachment = (index: number) => {
+    setVideos(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeCurrentUploadedImage = (urlToRemove: string) => {
+    setCurrentImages(prev => prev.filter(url => url !== urlToRemove));
+  };
+
+  const removeCurrentUploadedVideo = (urlToRemove: string) => {
+    setCurrentVideos(prev => prev.filter(url => url !== urlToRemove));
+  };
 
   // Load bài viết hiện tại
   useEffect(() => {
@@ -65,7 +98,9 @@ const EditPostPage = () => {
           setSlug(post.slug || '');
           setSummary(post.summary || '');
           setContent(post.content || '');
-          setCurrentCoverUrl(post.coverImage || '');
+          setCurrentCoverUrl(post.coverImage || post.imageUrl || '');
+          setCurrentImages(post.images || []);
+          setCurrentVideos(post.videos || []);
           
           // Xử lý subject
           if (post.subject) {
@@ -163,6 +198,11 @@ const EditPostPage = () => {
       }
       
       images.forEach(img => formData.append('images', img));
+      videos.forEach(vid => formData.append('videos', vid));
+      
+      // Gửi danh sách các file hiện tại được giữ lại
+      currentImages.forEach(url => formData.append('images', url));
+      currentVideos.forEach(url => formData.append('videos', url));
       
       await forumApi.updatePost(postId!, formData);
       toast.success('Cập nhật bài viết thành công!');
@@ -322,6 +362,128 @@ const EditPostPage = () => {
                       <small style={{marginTop: 6, color: 'var(--text-secondary)'}}>Chưa có ảnh chủ đề, vui lòng chọn ảnh</small>
                     )}
                   </div>
+                </div>
+              </div>
+
+              {/* Hình ảnh & video đính kèm */}
+              <div className="modern-card">
+                <div className="modern-card-header">
+                  <Upload className="modern-card-icon cover" />
+                  <h2 className="modern-card-title">Hình ảnh & video đính kèm</h2>
+                </div>
+                <div className="modern-card-body">
+                  <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                    <div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleImagesChange}
+                        id="attachment-images"
+                        style={{ display: 'none' }}
+                      />
+                      <label htmlFor="attachment-images" className="modern-preview-btn" style={{ cursor: 'pointer', padding: '8px 16px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                        <Upload size={16} /> Thêm hình ảnh mới
+                      </label>
+                    </div>
+                    <div>
+                      <input
+                        type="file"
+                        accept="video/*"
+                        multiple
+                        onChange={handleVideosChange}
+                        id="attachment-videos"
+                        style={{ display: 'none' }}
+                      />
+                      <label htmlFor="attachment-videos" className="modern-preview-btn" style={{ cursor: 'pointer', padding: '8px 16px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                        <Upload size={16} /> Thêm video mới
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Previews of existing uploaded images */}
+                  {currentImages.length > 0 && (
+                    <div style={{ marginBottom: '16px' }}>
+                      <h4 style={{ fontSize: '14px', fontWeight: 500, marginBottom: '8px', color: '#4b5563' }}>Hình ảnh hiện tại ({currentImages.length})</h4>
+                      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                        {currentImages.map((url, idx) => (
+                          <div key={idx} style={{ position: 'relative', width: '100px', height: '100px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e5e7eb' }}>
+                            <img src={url} alt="Uploaded attachment" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <button
+                              type="button"
+                              onClick={() => removeCurrentUploadedImage(url)}
+                              style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(239, 68, 68, 0.8)', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Previews of newly selected images */}
+                  {images.length > 0 && (
+                    <div style={{ marginBottom: '16px' }}>
+                      <h4 style={{ fontSize: '14px', fontWeight: 500, marginBottom: '8px', color: '#10b981' }}>Hình ảnh mới chọn ({images.length})</h4>
+                      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                        {images.map((file, idx) => (
+                          <div key={idx} style={{ position: 'relative', width: '100px', height: '100px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e5e7eb' }}>
+                            <img src={URL.createObjectURL(file)} alt="New attachment" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <button
+                              type="button"
+                              onClick={() => removeImageAttachment(idx)}
+                              style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '12px' }}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Previews of existing uploaded videos */}
+                  {currentVideos.length > 0 && (
+                    <div style={{ marginBottom: '16px' }}>
+                      <h4 style={{ fontSize: '14px', fontWeight: 500, marginBottom: '8px', color: '#4b5563' }}>Videos hiện tại ({currentVideos.length})</h4>
+                      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                        {currentVideos.map((url, idx) => (
+                          <div key={idx} style={{ position: 'relative', width: '150px', height: '100px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e5e7eb', background: '#000' }}>
+                            <video src={url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted controls />
+                            <button
+                              type="button"
+                              onClick={() => removeCurrentUploadedVideo(url)}
+                              style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(239, 68, 68, 0.8)', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Previews of newly selected videos */}
+                  {videos.length > 0 && (
+                    <div>
+                      <h4 style={{ fontSize: '14px', fontWeight: 500, marginBottom: '8px', color: '#10b981' }}>Videos mới chọn ({videos.length})</h4>
+                      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                        {videos.map((file, idx) => (
+                          <div key={idx} style={{ position: 'relative', width: '150px', height: '100px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e5e7eb', background: '#000' }}>
+                            <video src={URL.createObjectURL(file)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted />
+                            <button
+                              type="button"
+                              onClick={() => removeVideoAttachment(idx)}
+                              style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '12px' }}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

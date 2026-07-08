@@ -57,12 +57,12 @@ export function SuperhostBadge({
           {badge}
         </TooltipTrigger>
         <TooltipContent className="max-w-[220px] text-center" side="top">
-          <p className="font-semibold text-amber-700">🏅 Superhost</p>
-          <p className="mt-1 text-xs text-gray-600">
+          <p className="font-semibold text-amber-400 dark:text-amber-700">🏅 Superhost</p>
+          <p className="mt-1 text-xs text-zinc-300 dark:text-zinc-700">
             Host xuất sắc với rating ≥ 4.8, tỷ lệ phản hồi ≥ 90% và hơn 10 chuyến đi thành công.
           </p>
           {sinceText && (
-            <p className="mt-1 text-xs text-gray-400">{sinceText}</p>
+            <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">{sinceText}</p>
           )}
         </TooltipContent>
       </Tooltip>

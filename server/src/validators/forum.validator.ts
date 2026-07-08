@@ -27,6 +27,7 @@ export const createPostSchema = z.object({
     .enum(["featured", "ai", "meme", "quote", "hot", "new"])
     .optional(),
   images: z.array(z.string()).optional(),
+  videos: z.array(z.string()).optional(),
   attachments: z.array(z.string()).optional(),
   visibility: z.enum(["public", "private"]).default("public"),
   status: z.string().default("active").optional(),
@@ -67,6 +68,7 @@ export const updatePostSchema = z.object({
     .enum(["featured", "ai", "meme", "quote", "hot", "new"])
     .optional(),
   images: z.array(z.string()).optional(),
+  videos: z.array(z.string()).optional(),
   attachments: z.array(z.string()).optional(),
   visibility: z.enum(["public", "private"]).optional(),
   status: z.string().optional(),

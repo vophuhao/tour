@@ -147,15 +147,15 @@ export default function HeroSection() {
           </h1>
         </div>
 
-        <div className="mx-10 rounded-2xl bg-white p-8 shadow-[0_12px_35px_rgba(0,0,0,0.12)] relative z-30">
+        <div className="mx-10 rounded-2xl bg-white dark:bg-slate-900 p-8 shadow-[0_12px_35px_rgba(0,0,0,0.12)] relative z-30">
           {/* Tabs */}
-          <div className="mb-7 inline-flex rounded-full bg-[#efeee9] p-1">
+          <div className="mb-7 inline-flex rounded-full bg-[#efeee9] dark:bg-slate-800 p-1">
             <button
               onClick={() => setActiveTab('places')}
               className={`rounded-full px-5 py-2 text-base font-bold transition-all duration-200 cursor-pointer ${
                 activeTab === 'places'
-                  ? 'bg-white text-[#2f2d24] shadow-xs'
-                  : 'text-[#6b675d] hover:text-[#2f2d24]'
+                  ? 'bg-white text-[#2f2d24] dark:bg-slate-900 dark:text-slate-100 shadow-xs'
+                  : 'text-[#6b675d] hover:text-[#2f2d24] dark:text-slate-400 dark:hover:text-slate-100'
               }`}
             >
               Địa điểm
@@ -164,8 +164,8 @@ export default function HeroSection() {
               onClick={() => setActiveTab('roadtrip')}
               className={`rounded-full px-5 py-2 text-base font-bold transition-all duration-200 cursor-pointer ${
                 activeTab === 'roadtrip'
-                  ? 'bg-white text-[#2f2d24] shadow-xs'
-                  : 'text-[#6b675d] hover:text-[#2f2d24]'
+                  ? 'bg-white text-[#2f2d24] dark:bg-slate-900 dark:text-slate-100 shadow-xs'
+                  : 'text-[#6b675d] hover:text-[#2f2d24] dark:text-slate-400 dark:hover:text-slate-100'
               }`}
             >
               Chuyến đi
@@ -204,19 +204,19 @@ export default function HeroSection() {
                 }}
               />
             ) : (
-              <div className="flex flex-col md:flex-row w-full items-stretch gap-3 md:gap-4 bg-white md:bg-transparent rounded-xl md:border-none">
+              <div className="flex flex-col md:flex-row w-full items-stretch gap-3 md:gap-4 bg-white dark:bg-slate-900 md:bg-transparent rounded-xl md:border-none">
                 {/* Starting location input */}
                 <div className="relative flex-1">
                   <Popover open={startOpen} onOpenChange={setStartOpen}>
                     <PopoverTrigger asChild>
                       <button
                         className={cn(
-                          'flex h-14 w-full cursor-pointer items-center gap-3 rounded-lg border border-gray-300 bg-white px-4 text-left shadow-xs transition-all hover:bg-white',
-                          startOpen && 'border-gray-900 ring-2 ring-gray-900',
+                          'flex h-14 w-full cursor-pointer items-center gap-3 rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 text-left shadow-xs transition-all hover:bg-white dark:hover:bg-slate-800 text-gray-900 dark:text-slate-100',
+                          startOpen && 'border-gray-900 dark:border-slate-100 ring-2 ring-gray-900 dark:ring-slate-100',
                         )}
                       >
-                        <MapPin className="h-5 w-5 shrink-0 text-gray-700" />
-                        <span className="truncate text-base text-gray-950 font-normal">
+                        <MapPin className="h-5 w-5 shrink-0 text-gray-700 dark:text-slate-400" />
+                        <span className="truncate text-base text-gray-950 dark:text-slate-100 font-normal">
                           {startQuery || 'Điểm xuất phát...'}
                         </span>
                       </button>
@@ -250,12 +250,12 @@ export default function HeroSection() {
                     <PopoverTrigger asChild>
                       <button
                         className={cn(
-                          'flex h-14 w-full cursor-pointer items-center gap-3 rounded-lg border border-gray-300 bg-white px-4 text-left shadow-xs transition-all hover:bg-white',
-                          endOpen && 'border-gray-900 ring-2 ring-gray-900',
+                          'flex h-14 w-full cursor-pointer items-center gap-3 rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 text-left shadow-xs transition-all hover:bg-white dark:hover:bg-slate-800 text-gray-900 dark:text-slate-100',
+                          endOpen && 'border-gray-900 dark:border-slate-100 ring-2 ring-gray-900 dark:ring-slate-100',
                         )}
                       >
-                        <MapPin className="h-5 w-5 shrink-0 text-gray-700" />
-                        <span className="truncate text-base text-gray-950 font-normal">
+                        <MapPin className="h-5 w-5 shrink-0 text-gray-700 dark:text-slate-400" />
+                        <span className="truncate text-base text-gray-950 dark:text-slate-100 font-normal">
                           {endQuery || 'Điểm đến...'}
                         </span>
                       </button>
@@ -292,8 +292,8 @@ export default function HeroSection() {
                     onAdultsChange={setGuests}
                     onChildrenChange={setChildrenCount}
                     onPetsChange={setPets}
-                    buttonClassName="w-full h-14 border border-gray-300 bg-white rounded-lg px-4 flex items-center justify-start text-left text-base font-normal text-gray-900 hover:bg-white shadow-xs focus:ring-2 focus:ring-gray-900"
-                    icon={<User className="mr-3 h-5 w-5 text-gray-700 shrink-0" />}
+                    buttonClassName="w-full h-14 border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-lg px-4 flex items-center justify-start text-left text-base font-normal text-gray-900 dark:text-slate-100 hover:bg-white dark:hover:bg-slate-800 shadow-xs focus:ring-2 focus:ring-gray-900 dark:focus:ring-slate-100"
+                    icon={<User className="mr-3 h-5 w-5 text-gray-700 dark:text-slate-400 shrink-0" />}
                     labels={{
                       guestsText: (guests: number) => guests > 0 ? `${guests} khách` : 'Thêm khách'
                     }}

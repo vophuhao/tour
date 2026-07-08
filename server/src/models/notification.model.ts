@@ -178,7 +178,6 @@ const notificationSchema = new mongoose.Schema<NotificationDocument>(
 // Indexes
 notificationSchema.index({ recipient: 1, createdAt: -1 });
 notificationSchema.index({ recipient: 1, isRead: 1 });
-notificationSchema.index({ type: 1 });
 notificationSchema.index({ createdAt: -1 });
 
 // TTL index to auto-delete old notifications after 90 days

@@ -85,16 +85,23 @@ export default class DirectMessageService {
     const convId = new Types.ObjectId(conversationId);
     const senderIdObj = new Types.ObjectId(senderId);
 
-    // 1) Rate limiting: Max 30 messages per minute per user
-    const rateLimitKey = `msg_rate:${senderId}`;
-    const messageCount = await redisClient.incr(rateLimitKey);
-    if (messageCount === 1) {
-      await redisClient.expire(rateLimitKey, 60);
+    // 1) Rate limiting: Tối đa 30 tin nhắn mỗi phút cho một người dùng (Chỉ kiểm tra khi Redis đang hoạt động)
+    if (redisClient.isOpen) {
+      try {
+        const rateLimitKey = `msg_rate:${senderId}`;
+        const messageCount = await redisClient.incr(rateLimitKey);
+        if (messageCount === 1) {
+          await redisClient.expire(rateLimitKey, 60);
+        }
+        appAssert(
+          messageCount <= 30,
+          ErrorFactory.badRequest("Bạn đã gửi tin nhắn quá nhanh. Vui lòng thử lại sau.")
+        );
+      } catch (redisErr) {
+        console.error("❌ [DirectMessageService] Lỗi khi kiểm tra giới hạn tần suất tin nhắn qua Redis:", redisErr);
+        // Bỏ qua lỗi kết nối Redis để đảm bảo tin nhắn vẫn được gửi đi bình thường
+      }
     }
-    appAssert(
-      messageCount <= 30,
-      ErrorFactory.badRequest("Bạn đã gửi tin nhắn quá nhanh. Vui lòng thử lại sau.")
-    );
 
     // 2) Attachments validation: max 5 files, max 10MB per file, allowed image formats only
     if (attachments && attachments.length > 0) {
@@ -110,7 +117,7 @@ export default class DirectMessageService {
           );
         }
         if (att.type) {
-          const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
+          const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/jpg", "image"];
           appAssert(
             allowedTypes.includes(att.type.toLowerCase()) || att.type.startsWith("image/"),
             ErrorFactory.badRequest("Định dạng tệp không được hỗ trợ (chỉ chấp nhận JPG, JPEG, PNG, WEBP)")

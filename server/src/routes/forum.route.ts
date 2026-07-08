@@ -23,11 +23,13 @@ forumRoutes.get("/:userId/posts", forumController.getUserPosts);
 // Authenticated routes
 forumRoutes.post("/", authenticate, upload.fields([
   { name: 'coverImage', maxCount: 1 },
-  { name: 'images', maxCount: 10 }
+  { name: 'images', maxCount: 10 },
+  { name: 'videos', maxCount: 5 }
 ]), forumController.createPost);
 forumRoutes.put("/:id", authenticate, upload.fields([
   { name: 'coverImage', maxCount: 1 },
-  { name: 'images', maxCount: 10 }
+  { name: 'images', maxCount: 10 },
+  { name: 'videos', maxCount: 5 }
 ]), forumController.updatePost);
 forumRoutes.delete("/:id", authenticate, forumController.deletePost);
 forumRoutes.post("/:id/like", authenticate, forumController.toggleLike);

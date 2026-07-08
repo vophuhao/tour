@@ -15,6 +15,7 @@ const forumPostSchema = new Schema({
   tags: [{ type: String }], // Mảng tag/chủ đề
   badge: { type: String, enum: ['featured', 'ai', 'meme', 'quote', 'hot', 'new'], required: false }, // Badge đặc biệt, optional
   images: [{ type: String }], // Mảng url ảnh nội dung
+  videos: [{ type: String }], // Mảng url video nội dung
   viewCount: { type: Number, default: 0 }, // Lượt xem
   updatedAt: { type: Date }, // Ngày cập nhật cuối
   isEdited: { type: Boolean, default: false }, // Đánh dấu đã chỉnh sửa
@@ -57,7 +58,6 @@ forumPostSchema.index({ userId: 1, createdAt: -1 });
 forumPostSchema.index({ status: 1, visibility: 1 });
 forumPostSchema.index({ status: 1, createdAt: -1 });
 forumPostSchema.index({ createdAt: -1 });
-forumPostSchema.index({ slug: 1 }, { unique: true, sparse: true });
 
 const ForumPost = mongoose.model('ForumPost', forumPostSchema);
 

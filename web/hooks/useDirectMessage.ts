@@ -258,6 +258,7 @@ export function useDirectMessage() {
             _id: user._id,
           },
           messageType: payload.messageType || "text",
+          attachments: payload.attachments,
           createdAt: new Date().toISOString(),
           __optimistic: true,
         };
@@ -278,6 +279,9 @@ export function useDirectMessage() {
         return res.data;
       } catch (err) {
         console.error("[useDirectMessage] ❌ sendMessage error:", err);
+        // Lọc bỏ tin nhắn optimistic nếu luồng gửi API bị lỗi/thất bại
+        const tempId = `tmp-${Date.now()}`; // fallback
+        setMessages((p) => p.filter((m) => !m._id || !String(m._id).startsWith("tmp-")));
         throw err;
       } finally {
         setSending(false);

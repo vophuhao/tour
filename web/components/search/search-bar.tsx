@@ -69,12 +69,12 @@ export function SearchBar({
           <PopoverTrigger asChild>
             <button
               className={cn(
-                'flex flex-1 cursor-pointer items-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-3 text-left shadow-sm transition-all hover:shadow-md w-full',
-                locationOpen && 'border-gray-900 ring-2 ring-gray-900',
+                'flex flex-1 cursor-pointer items-center gap-3 rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-left shadow-sm transition-all hover:shadow-md w-full text-gray-900 dark:text-slate-100',
+                locationOpen && 'border-gray-900 dark:border-slate-100 ring-2 ring-gray-900 dark:ring-slate-100',
               )}
             >
-              <MapPin className="h-5 w-5 shrink-0 text-gray-700" />
-              <span className="truncate text-base text-gray-900">
+              <MapPin className="h-5 w-5 shrink-0 text-gray-700 dark:text-slate-400" />
+              <span className="truncate text-base text-gray-900 dark:text-slate-100">
                 {location || 'Tìm địa điểm'}
               </span>
             </button>
@@ -118,12 +118,12 @@ export function SearchBar({
           onOpenChange={setDateOpen}
           placeholder="Thêm ngày"
           buttonClassName={cn(
-            'h-auto flex-1 gap-3 rounded-lg border-gray-300 px-4 py-3 shadow-sm hover:shadow-md w-full',
-            dateOpen && 'border-gray-900 ring-2 ring-gray-900',
+            'h-auto flex-1 gap-3 rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 shadow-sm hover:shadow-md w-full text-gray-900 dark:text-slate-100',
+            dateOpen && 'border-gray-900 dark:border-slate-100 ring-2 ring-gray-900 dark:ring-slate-100',
           )}
           align="center"
           dateFormat="d MMM"
-          icon={<Calendar className="h-5 w-5 shrink-0 text-gray-700" />}
+          icon={<Calendar className="h-5 w-5 shrink-0 text-gray-700 dark:text-slate-400" />}
         />
 
         {/* Guest Popover */}
@@ -137,11 +137,11 @@ export function SearchBar({
           open={guestOpen}
           onOpenChange={setGuestOpen}
           buttonClassName={cn(
-            'h-auto flex-1 gap-3 rounded-lg border-gray-300 px-4 py-3 shadow-sm hover:shadow-md w-full',
-            guestOpen && 'border-gray-900 ring-2 ring-gray-900',
+            'h-auto flex-1 gap-3 rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 shadow-sm hover:shadow-md w-full text-gray-900 dark:text-slate-100',
+            guestOpen && 'border-gray-900 dark:border-slate-100 ring-2 ring-gray-900 dark:ring-slate-100',
           )}
           align="end"
-          icon={<Users className="h-5 w-5 shrink-0 text-gray-700" />}
+          icon={<Users className="h-5 w-5 shrink-0 text-gray-700 dark:text-slate-400" />}
           labels={{
             guestsText: guests => {
               const total = guests;

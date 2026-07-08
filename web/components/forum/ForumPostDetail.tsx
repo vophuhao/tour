@@ -776,6 +776,40 @@ const ForumPostDetail: React.FC = () => {
                 />
               )}
             </section>
+            
+            {/* Gallery ảnh & video đính kèm */}
+            {post && ((post.images && post.images.length > 0) || (post.videos && post.videos.length > 0)) && (
+              <div className="forum-post-detail-attachments-gallery" style={{ marginTop: '24px', padding: '20px', borderTop: '1px solid #f3f4f6', backgroundColor: '#f9fafb', borderRadius: '12px' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px', color: '#1f2937' }}>Tệp đính kèm</h3>
+                
+                {/* Section Videos */}
+                {post.videos && post.videos.length > 0 && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+                      {post.videos.map((vidUrl: string, idx: number) => (
+                        <div key={idx} style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #e5e7eb', background: '#000', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                          <video src={vidUrl} controls style={{ width: '100%', height: 'auto', display: 'block' }} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Section Images */}
+                {post.images && post.images.length > 0 && (
+                  <div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px' }}>
+                      {post.images.map((imgUrl: string, idx: number) => (
+                        <div key={idx} style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #e5e7eb', cursor: 'pointer', aspectRatio: '1/1', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', backgroundColor: '#fff' }} onClick={() => window.open(imgUrl, '_blank')}>
+                          <img src={imgUrl} alt={`Attachment ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.2s' }} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Hành động */}
             <div className="forum-post-detail-footer forum-post-detail-actions">
               <button

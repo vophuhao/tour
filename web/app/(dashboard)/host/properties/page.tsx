@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { deleteProperty, getMyProperties } from '@/lib/client-actions';
+import { deleteProperty, getMyProperties, activateProperty } from '@/lib/client-actions';
 import { useQuery } from '@tanstack/react-query';
 import {
   Calendar,
@@ -50,6 +50,8 @@ import {
   MoreHorizontal,
   Copy,
   Heading5,
+  Play,
+  Power,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -90,12 +92,22 @@ export default function PropertiesPage() {
     if (!propertyToDelete) return;
     try {
       await deleteProperty(propertyToDelete);
-      toast.success('Xóa property thành công!');
+      toast.success('Tắt hoạt động khu cắm trại thành công!');
       refetch();
       setDeleteDialogOpen(false);
       setPropertyToDelete(null);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Có lỗi xảy ra khi xóa property');
+      toast.error(error.response?.data?.message || 'Có lỗi xảy ra khi tắt hoạt động khu cắm trại');
+    }
+  };
+
+  const handleActivateProperty = async (id: string) => {
+    try {
+      await activateProperty(id);
+      toast.success('Kích hoạt khu cắm trại thành công!');
+      refetch();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Có lỗi xảy ra khi kích hoạt khu cắm trại');
     }
   };
 
@@ -138,14 +150,14 @@ export default function PropertiesPage() {
       <div className="sticky top-0 z-40  backdrop-blur-md  border-stone-200/80">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl  font-bold text-stone-900 tracking-tight">Khu cắm trại</h1>
+            <h1 className="text-3xl  font-bold text-stone-900 tracking-tight">Khu đất</h1>
           </div>
           <Button
             className="bg-primary hover:bg-primary/90 text-white shadow-md hover:shadow-lg transition-all rounded-xl px-5 py-5 text-sm font-medium gap-2"
             onClick={() => router.push('/host/properties/new')}
           >
             <Plus className="h-4 w-4" />
-            Thêm khu mới
+            Thêm khu đất mới
           </Button>
         </div>
       </div>
@@ -178,9 +190,9 @@ export default function PropertiesPage() {
             <div className="pt-5 border-t border-stone-100 space-y-2.5">
               <label className="text-xs font-semibold text-stone-500 block mb-2">Thống kê nhanh</label>
               {[
-                { label: 'Tổng khu cắm trại', count: stats.total, color: 'bg-stone-100 text-stone-700' },
-                { label: 'Khu đang hoạt động', count: stats.active, color: 'bg-emerald-100 text-emerald-800' },
-                { label: 'Tổng số Sites', count: stats.totalSites, color: 'bg-blue-100 text-blue-800' },
+                { label: 'Tổng khu đất', count: stats.total, color: 'bg-stone-100 text-stone-700' },
+                { label: 'Khu đất đang hoạt động', count: stats.active, color: 'bg-emerald-100 text-emerald-800' },
+                { label: 'Tổng số bãi cắm', count: stats.totalSites, color: 'bg-blue-100 text-blue-800' },
                 { label: 'Tổng bookings', count: stats.totalBookings, color: 'bg-purple-100 text-purple-800' },
               ].map((item, idx) => (
                 <div
@@ -204,7 +216,7 @@ export default function PropertiesPage() {
             <div className="flex-1 relative">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
               <Input
-                placeholder="Tìm kiếm khu cắm trại..."
+                placeholder="Tìm kiếm khu đất..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-11 bg-white border-stone-200/80 h-11 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
@@ -237,10 +249,10 @@ export default function PropertiesPage() {
                 <Home className="h-8 w-8 text-stone-400" />
               </div>
               <h3 className="text-lg  font-bold text-stone-900 mb-1">
-                {searchQuery || statusFilter !== 'all' ? 'Không tìm thấy khu nào' : 'Chưa có khu cắm trại nào'}
+                {searchQuery || statusFilter !== 'all' ? 'Không tìm thấy khu đất nào' : 'Chưa có khu đất nào'}
               </h3>
               <p className="text-sm text-stone-500 max-w-sm mb-6">
-                {searchQuery || statusFilter !== 'all' ? 'Thử thay đổi từ khóa hoặc bộ lọc trạng thái' : 'Bắt đầu hành trình bằng cách tạo khu cắm trại đầu tiên của bạn'}
+                {searchQuery || statusFilter !== 'all' ? 'Thử thay đổi từ khóa hoặc bộ lọc trạng thái' : 'Bắt đầu hành trình bằng cách tạo khu đất đầu tiên của bạn'}
               </p>
               {!searchQuery && statusFilter === 'all' && (
                 <Button
@@ -248,7 +260,7 @@ export default function PropertiesPage() {
                   onClick={() => router.push('/host/properties/new')}
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Tạo khu mới
+                  Tạo khu đất mới
                 </Button>
               )}
             </div>
@@ -267,6 +279,7 @@ export default function PropertiesPage() {
                     setPropertyToDelete(id);
                     setDeleteDialogOpen(true);
                   }}
+                  onActivate={handleActivateProperty}
                 />
               ))}
             </div>
@@ -277,9 +290,9 @@ export default function PropertiesPage() {
                 <table className="w-full text-stone-900">
                   <thead className="bg-stone-50 border-b border-stone-200">
                     <tr>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-stone-500 uppercase tracking-wider">Khu cắm trại</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-stone-500 uppercase tracking-wider">Khu đất</th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-stone-500 uppercase tracking-wider">Địa điểm</th>
-                      <th className="px-6 py-4 text-center text-xs font-bold text-stone-500 uppercase tracking-wider">Sites</th>
+                      <th className="px-6 py-4 text-center text-xs font-bold text-stone-500 uppercase tracking-wider">Bãi cắm</th>
                       <th className="px-6 py-4 text-center text-xs font-bold text-stone-500 uppercase tracking-wider">Bookings</th>
                       <th className="px-6 py-4 text-center text-xs font-bold text-stone-500 uppercase tracking-wider">Đánh giá</th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-stone-500 uppercase tracking-wider">Trạng thái</th>
@@ -299,6 +312,7 @@ export default function PropertiesPage() {
                           setPropertyToDelete(id);
                           setDeleteDialogOpen(true);
                         }}
+                        onActivate={handleActivateProperty}
                       />
                     ))}
                   </tbody>
@@ -313,9 +327,9 @@ export default function PropertiesPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent className="rounded-2xl border-stone-200">
           <AlertDialogHeader>
-            <AlertDialogTitle className=" text-xl font-bold">Xóa khu cắm trại?</AlertDialogTitle>
+            <AlertDialogTitle className=" text-xl font-bold">Tắt hoạt động khu đất?</AlertDialogTitle>
             <AlertDialogDescription className="text-stone-500 text-sm">
-              Hành động này không thể hoàn tác. Khu cắm trại chỉ có thể xóa khi không còn vị trí (site) nào thuộc về khu này.
+              Hành động này sẽ tắt trạng thái hoạt động của khu đất và tất cả các bãi cắm thuộc khu này. Bạn có thể bật lại hoạt động bất cứ lúc nào khi có bãi cắm hoạt động.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -324,7 +338,7 @@ export default function PropertiesPage() {
               onClick={handleDeleteProperty}
               className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl"
             >
-              Xóa khu cắm trại
+              Tắt hoạt động
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -334,7 +348,7 @@ export default function PropertiesPage() {
 }
 
 // Grid Card Component formatted as horizontal layouts
-function PropertyGridCard({ property, statusConfig, onEdit, onViewSites, onAddSite, onDelete }: any) {
+function PropertyGridCard({ property, statusConfig, onEdit, onViewSites, onAddSite, onDelete, onActivate }: any) {
   const config = statusConfig[property.status] || statusConfig.inactive;
 
   return (
@@ -371,7 +385,7 @@ function PropertyGridCard({ property, statusConfig, onEdit, onViewSites, onAddSi
         <div className="flex flex-wrap gap-3 mt-auto">
           <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-stone-50 border border-stone-250/30">
             <Home className="h-3.5 w-3.5 text-emerald-700" />
-            <span className="text-xs text-stone-500">Sites</span>
+            <span className="text-xs text-stone-500">Bãi cắm</span>
             <span className="text-sm font-bold text-stone-800">{property.stats?.totalSites || 0}</span>
           </div>
           <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-stone-50 border border-stone-250/30">
@@ -394,7 +408,7 @@ function PropertyGridCard({ property, statusConfig, onEdit, onViewSites, onAddSi
           className="flex-1 md:flex-initial bg-primary hover:bg-primary/90 text-white font-medium py-5 shadow-sm hover:shadow transition-all rounded-xl gap-2 text-sm"
         >
           <Eye className="h-4 w-4" />
-          Quản lý sites
+          Quản lý bãi cắm
         </Button>
         <Button
           variant="outline"
@@ -402,7 +416,7 @@ function PropertyGridCard({ property, statusConfig, onEdit, onViewSites, onAddSi
           className="flex-1 md:flex-initial border-stone-200 hover:bg-stone-50 text-stone-700 hover:text-stone-900 font-medium py-5 rounded-xl gap-2 text-sm"
         >
           <Settings className="h-4 w-4 text-stone-500" />
-          Chỉnh sửa khu
+          Chỉnh sửa khu đất
         </Button>
         <Button
           variant="ghost"
@@ -410,23 +424,43 @@ function PropertyGridCard({ property, statusConfig, onEdit, onViewSites, onAddSi
           className="flex-1 md:flex-initial text-emerald-800 hover:bg-emerald-50 font-medium py-5 rounded-xl gap-2 text-sm"
         >
           <Plus className="h-4 w-4" />
-          Thêm site mới
+          Thêm bãi cắm mới
         </Button>
-        <Button
-          variant="ghost"
-          onClick={() => onDelete(property._id)}
-          className="flex-1 md:flex-initial text-rose-600 hover:bg-rose-50 hover:text-rose-750 font-medium py-5 rounded-xl gap-2 text-sm"
-        >
-          <Trash2 className="h-4 w-4" />
-          Xóa khu cắm trại
-        </Button>
+        {property.status === 'active' ? (
+          <Button
+            variant="ghost"
+            onClick={() => onDelete(property._id)}
+            className="flex-1 md:flex-initial text-rose-600 hover:bg-rose-50 hover:text-rose-750 font-medium py-5 rounded-xl gap-2 text-sm"
+          >
+            <Power className="h-4 w-4" />
+            Tắt hoạt động
+          </Button>
+        ) : property.status === 'inactive' ? (
+          <Button
+            variant="ghost"
+            onClick={() => onActivate(property._id)}
+            className="flex-1 md:flex-initial text-emerald-600 hover:bg-emerald-50 hover:text-emerald-750 font-medium py-5 rounded-xl gap-2 text-sm"
+          >
+            <Play className="h-4 w-4" />
+            Bật hoạt động
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            onClick={() => onDelete(property._id)}
+            className="flex-1 md:flex-initial text-rose-600 hover:bg-rose-50 hover:text-rose-750 font-medium py-5 rounded-xl gap-2 text-sm"
+          >
+            <Trash2 className="h-4 w-4" />
+            Xóa khu đất
+          </Button>
+        )}
       </div>
     </div>
   );
 }
 
 // List Row Component
-function PropertyListRow({ property, statusConfig, onEdit, onViewSites, onAddSite, onDelete }: any) {
+function PropertyListRow({ property, statusConfig, onEdit, onViewSites, onAddSite, onDelete, onActivate }: any) {
   const config = statusConfig[property.status] || statusConfig.inactive;
 
   return (
@@ -485,7 +519,7 @@ function PropertyListRow({ property, statusConfig, onEdit, onViewSites, onAddSit
             onClick={() => onViewSites(property._id)}
           >
             <Eye className="h-3.5 w-3.5" />
-            Sites
+            Bãi cắm
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -496,17 +530,29 @@ function PropertyListRow({ property, statusConfig, onEdit, onViewSites, onAddSit
             <DropdownMenuContent align="end" className="rounded-xl border-stone-200">
               <DropdownMenuItem onClick={() => onEdit(property._id)} className="cursor-pointer text-stone-700 rounded-lg">
                 <Settings className="h-4 w-4 mr-2 text-stone-500" />
-                Chỉnh sửa khu
+                Chỉnh sửa khu đất
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onAddSite(property._id)} className="cursor-pointer text-stone-700 rounded-lg">
                 <Plus className="h-4 w-4 mr-2 text-stone-500" />
-                Thêm site mới
+                Thêm bãi cắm mới
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-stone-100" />
-              <DropdownMenuItem onClick={() => onDelete(property._id)} className="cursor-pointer text-rose-600 hover:bg-rose-50 rounded-lg">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Xóa khu
-              </DropdownMenuItem>
+              {property.status === 'active' ? (
+                <DropdownMenuItem onClick={() => onDelete(property._id)} className="cursor-pointer text-rose-600 hover:bg-rose-50 rounded-lg">
+                  <Power className="h-4 w-4 mr-2" />
+                  Tắt hoạt động
+                </DropdownMenuItem>
+              ) : property.status === 'inactive' ? (
+                <DropdownMenuItem onClick={() => onActivate(property._id)} className="cursor-pointer text-emerald-600 hover:bg-emerald-50 rounded-lg">
+                  <Play className="h-4 w-4 mr-2" />
+                  Bật hoạt động
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onClick={() => onDelete(property._id)} className="cursor-pointer text-rose-600 hover:bg-rose-50 rounded-lg">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Xóa khu đất
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

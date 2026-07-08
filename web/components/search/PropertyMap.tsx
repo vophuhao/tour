@@ -35,7 +35,6 @@ export function PropertyMap({
   hoveredProperty,
   searchCoordinates,
   onPropertySelect,
-  onBoundsChange,
 }: PropertyMapProps) {
   const mapRef = useRef<MapRef>(null);
   const isMounted = useRef(false);
@@ -46,43 +45,6 @@ export function PropertyMap({
   });
   const [popupInfo, setPopupInfo] = useState<Property | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
-  const [showSearchAreaButton, setShowSearchAreaButton] = useState(false);
-
-  const handleMapMoveEnd = useCallback(() => {
-    if (!mapLoaded || !onBoundsChange || !mapRef.current) return;
-    
-    try {
-      const map = mapRef.current.getMap();
-      const bounds = map.getBounds();
-      const sw = bounds.getSouthWest();
-      const ne = bounds.getNorthEast();
-      
-      // Let's show the "Search this area" button overlay
-      setShowSearchAreaButton(true);
-    } catch (err) {
-      console.error(err);
-    }
-  }, [mapLoaded, onBoundsChange]);
-
-  const triggerAreaSearch = useCallback(() => {
-    if (!mapRef.current || !onBoundsChange) return;
-    try {
-      const map = mapRef.current.getMap();
-      const bounds = map.getBounds();
-      const sw = bounds.getSouthWest();
-      const ne = bounds.getNorthEast();
-      
-      onBoundsChange({
-        minLat: sw.lat,
-        maxLat: ne.lat,
-        minLng: sw.lng,
-        maxLng: ne.lng,
-      });
-      setShowSearchAreaButton(false);
-    } catch (err) {
-      console.error(err);
-    }
-  }, [onBoundsChange]);
 
   // Initialize and cleanup map state properly
   useEffect(() => {
@@ -271,7 +233,6 @@ export function PropertyMap({
         ref={mapRef}
         {...viewState}
         onMove={evt => setViewState(evt.viewState)}
-        onMoveEnd={handleMapMoveEnd}
         onLoad={() => {
           // Small delay to ensure DOM is fully ready before rendering markers
           setTimeout(() => {
@@ -295,18 +256,7 @@ export function PropertyMap({
         dragRotate={false}
         touchPitch={false}
       >
-        {/* Floating Search Area Button */}
-        {showSearchAreaButton && onBoundsChange && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30">
-            <Button
-              size="sm"
-              onClick={triggerAreaSearch}
-              className="bg-white hover:bg-slate-100 text-slate-800 border border-slate-200 shadow-xl rounded-full text-xs font-bold px-4 py-2 flex items-center gap-1.5 transition-all duration-300 transform scale-100 hover:scale-105"
-            >
-              <span>🔍 Tìm kiếm khu vực này</span>
-            </Button>
-          </div>
-        )}
+
       {/* Navigation Controls */}
       <NavigationControl
         position="top-right"

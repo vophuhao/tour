@@ -87,6 +87,17 @@ export function BookingDetailSheet({
     return new Intl.NumberFormat('vi-VN').format(price);
   };
 
+  const getCancellationReason = (reason?: string) => {
+    if (!reason) return '';
+    if (reason === "Auto-cancelled: Payment timeout after 12 hours") {
+      return "Tự động hủy: Hết thời gian chờ thanh toán sau 12 giờ";
+    }
+    if (reason === "Auto-cancelled: Unpaid booking on check-in day") {
+      return "Tự động hủy: Đơn đặt chỗ chưa thanh toán vào ngày nhận phòng";
+    }
+    return reason;
+  };
+
   const canConfirm = booking.status === 'pending';
   const canCancel = booking.status === 'pending';
   const canComplete =
@@ -273,7 +284,7 @@ export function BookingDetailSheet({
               </h4>
               <div className="rounded-lg bg-red-50 p-4">
                 <p className="text-sm text-gray-700">
-                  {booking.cancellationReason}
+                  {getCancellationReason(booking.cancellationReason)}
                 </p>
                 {booking.cancelledAt && (
                   <p className="mt-2 text-xs text-gray-500">
@@ -301,17 +312,16 @@ export function BookingDetailSheet({
                 </span>
               </div>
 
-              {booking.pricing.cleaningFee &&
-                booking.pricing.cleaningFee > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span>Phí vệ sinh</span>
-                    <span className="font-medium">
-                      {formatPrice(booking.pricing.cleaningFee)} ₫
-                    </span>
-                  </div>
-                )}
+              {Number(booking.pricing.cleaningFee) > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span>Phí vệ sinh</span>
+                  <span className="font-medium">
+                    {formatPrice(booking.pricing.cleaningFee)} ₫
+                  </span>
+                </div>
+              )}
 
-              {booking.pricing.petFee && booking.pricing.petFee > 0 && (
+              {Number(booking.pricing.petFee) > 0 && (
                 <div className="flex justify-between text-sm">
                   <span>Phí thú cưng</span>
                   <span className="font-medium">
@@ -320,15 +330,14 @@ export function BookingDetailSheet({
                 </div>
               )}
 
-              {booking.pricing.extraGuestFee &&
-                booking.pricing.extraGuestFee > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span>Phí khách thêm</span>
-                    <span className="font-medium">
-                      {formatPrice(booking.pricing.extraGuestFee)} ₫
-                    </span>
-                  </div>
-                )}
+              {Number(booking.pricing.extraGuestFee) > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span>Phí khách thêm</span>
+                  <span className="font-medium">
+                    {formatPrice(booking.pricing.extraGuestFee)} ₫
+                  </span>
+                </div>
+              )}
 
               <div className="flex justify-between text-sm">
                 <span>Phí dịch vụ</span>

@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import API from '@/lib/api-client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { getMyBookings } from '@/lib/client-actions';
+import { getUserBookings } from '@/lib/client-actions';
 import {
   DollarSign,
   TrendingUp,
@@ -176,7 +176,7 @@ export default function HostRevenuePage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await getMyBookings({ limit: 1000 });
+      const res = await getUserBookings({ role: 'host', limit: 100 });
       if (res.success) {
         setBookings(res.data ?? []);
       } else {
@@ -515,7 +515,7 @@ export default function HostRevenuePage() {
       upcoming,
       occupancy,
       avgValue,
-      growth: 12.4
+      growth: count > 0 ? 12.4 : 0
     };
   }, [filteredBookings, bookings]);
 
@@ -597,7 +597,16 @@ export default function HostRevenuePage() {
 
   // Donut Chart: Revenue Sources Breakdown
   const donutData = useMemo(() => {
-    const total = metrics.grossTotal || 1;
+    const total = metrics.grossTotal;
+    if (total === 0) {
+      return [
+        { name: 'Campsite Bookings', value: 0, color: 'var(--primary)' },
+        { name: 'Glamping Bookings', value: 0, color: '#f59e0b' },
+        { name: 'Cabin Bookings', value: 0, color: '#3b82f6' },
+        { name: 'Equipment Rentals', value: 0, color: '#8b5cf6' },
+        { name: 'Experiences / Add-ons', value: 0, color: '#ec4899' },
+      ];
+    }
     return [
       { name: 'Campsite Bookings', value: Math.round(total * 0.68), color: 'var(--primary)' },
       { name: 'Glamping Bookings', value: Math.round(total * 0.15), color: '#f59e0b' },
@@ -622,11 +631,7 @@ export default function HostRevenuePage() {
 
     const list = Object.values(propMap);
     if (list.length === 0) {
-      return [
-        { name: 'Khu cắm trại ven suối Đà Lạt', revenue: 14500000, bookings: 12, occupancy: 82, rate: 450000, conversion: 4.2, rating: 4.9, isBest: true, isWorst: false },
-        { name: 'Lều Glamping Đồi Thông', revenue: 8900000, bookings: 8, occupancy: 70, rate: 600000, conversion: 3.5, rating: 4.7, isBest: false, isWorst: false },
-        { name: 'Glamping Hòa Bình Lakeside', revenue: 4500000, bookings: 3, occupancy: 35, rate: 750000, conversion: 1.8, rating: 4.2, isBest: false, isWorst: true },
-      ];
+      return [];
     }
 
     const sorted = [...list].sort((a, b) => b.revenue - a.revenue);
@@ -647,11 +652,20 @@ export default function HostRevenuePage() {
   }, [filteredBookings]);
 
   // Upcoming Forecast data
-  const forecastData = [
-    { name: '7 Ngày Tới', Confirmed: Math.round(metrics.upcoming * 0.4), Pending: Math.round(metrics.upcoming * 0.1), Payout: Math.round(metrics.upcoming * 0.35) },
-    { name: '30 Ngày Tới', Confirmed: Math.round(metrics.upcoming * 1.2 + 2500000), Pending: Math.round(metrics.upcoming * 0.3 + 500000), Payout: Math.round(metrics.upcoming * 1.1 + 2000000) },
-    { name: '60 Ngày Tới', Confirmed: Math.round(metrics.upcoming * 2.1 + 4500000), Pending: Math.round(metrics.upcoming * 0.5 + 800000), Payout: Math.round(metrics.upcoming * 1.9 + 3800000) },
-  ];
+  const forecastData = useMemo(() => {
+    if (metrics.upcoming === 0) {
+      return [
+        { name: '7 Ngày Tới', Confirmed: 0, Pending: 0, Payout: 0 },
+        { name: '30 Ngày Tới', Confirmed: 0, Pending: 0, Payout: 0 },
+        { name: '60 Ngày Tới', Confirmed: 0, Pending: 0, Payout: 0 },
+      ];
+    }
+    return [
+      { name: '7 Ngày Tới', Confirmed: Math.round(metrics.upcoming * 0.4), Pending: Math.round(metrics.upcoming * 0.1), Payout: Math.round(metrics.upcoming * 0.35) },
+      { name: '30 Ngày Tới', Confirmed: Math.round(metrics.upcoming * 1.2), Pending: Math.round(metrics.upcoming * 0.3), Payout: Math.round(metrics.upcoming * 1.1) },
+      { name: '60 Ngày Tới', Confirmed: Math.round(metrics.upcoming * 2.1), Pending: Math.round(metrics.upcoming * 0.5), Payout: Math.round(metrics.upcoming * 1.9) },
+    ];
+  }, [metrics.upcoming]);
 
   // Booking Revenue Analysis extra metrics
   const revPAN = Math.round(metrics.avgValue > 0 ? metrics.avgValue / 3 : 150000);
@@ -781,15 +795,6 @@ export default function HostRevenuePage() {
             </Card>
 
             {/* Card 4: Occupancy Rate */}
-            <Card className="border border-slate-200/80 dark:border-slate-850 hover:shadow-xs transition-shadow">
-              <CardContent className="p-4 flex flex-col justify-between h-full space-y-2">
-                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-450 block">Tỉ Lệ Lấp Đầy</span>
-                <span className="text-lg font-black block truncate text-slate-800 dark:text-white">{metrics.occupancy}%</span>
-                <span className="text-[9px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
-                  <TrendingUp className="h-3 w-3" /> +3.1% <span className="text-slate-400 font-normal">MoM</span>
-                </span>
-              </CardContent>
-            </Card>
 
             {/* Card 5: Average Booking Value */}
             <Card className="border border-slate-200/80 dark:border-slate-850 hover:shadow-xs transition-shadow">
@@ -987,32 +992,40 @@ export default function HostRevenuePage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                      {propertyPerformance.map((p, idx) => (
-                        <tr
-                          key={idx}
-                          className={cn(
-                            "hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors",
-                            p.isBest ? "border-l-2 border-emerald-500 bg-emerald-50/10" :
-                              p.isWorst ? "border-l-2 border-slate-400 bg-slate-100/10" : ""
-                          )}
-                        >
-                          <td className="py-3 font-semibold text-slate-900 dark:text-slate-100 max-w-[150px] truncate flex items-center gap-1.5">
-                            {p.name}
-                            {p.isBest && <Badge className="bg-emerald-600 text-white text-[8px] px-1 py-0 scale-95 font-bold">Tốt nhất</Badge>}
-                            {p.isWorst && <Badge className="bg-slate-400 text-white text-[8px] px-1 py-0 scale-95 font-bold">Cần tối ưu</Badge>}
-                          </td>
-                          <td className="py-3 text-right font-black text-primary">{formatCurrencyLocal(p.revenue)}</td>
-                          <td className="py-3 text-center font-semibold">{p.bookings} đơn</td>
-                          <td className="py-3 text-center font-bold text-slate-700 dark:text-slate-350">{p.occupancy}%</td>
-                          <td className="py-3 text-right font-medium text-slate-500">{formatCurrencyLocal(p.rate)}</td>
-                          <td className="py-3 text-center font-bold text-emerald-600">{p.conversion}%</td>
-                          <td className="py-3 text-right">
-                            <span className="inline-flex items-center gap-0.5 font-bold text-amber-500">
-                              <Star className="h-3 w-3 fill-current" /> {p.rating}
-                            </span>
+                      {propertyPerformance.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="py-8 text-center text-slate-400 font-medium">
+                            Chưa có dữ liệu hiệu suất khu đất (bạn cần có booking được xác nhận để hiển thị thống kê).
                           </td>
                         </tr>
-                      ))}
+                      ) : (
+                        propertyPerformance.map((p, idx) => (
+                          <tr
+                            key={idx}
+                            className={cn(
+                              "hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors",
+                              p.isBest ? "border-l-2 border-emerald-500 bg-emerald-50/10" :
+                                p.isWorst ? "border-l-2 border-slate-400 bg-slate-100/10" : ""
+                            )}
+                          >
+                            <td className="py-3 font-semibold text-slate-900 dark:text-slate-100 max-w-[150px] truncate flex items-center gap-1.5">
+                              {p.name}
+                              {p.isBest && <Badge className="bg-emerald-600 text-white text-[8px] px-1 py-0 scale-95 font-bold">Tốt nhất</Badge>}
+                              {p.isWorst && <Badge className="bg-slate-400 text-white text-[8px] px-1 py-0 scale-95 font-bold">Cần tối ưu</Badge>}
+                            </td>
+                            <td className="py-3 text-right font-black text-primary">{formatCurrencyLocal(p.revenue)}</td>
+                            <td className="py-3 text-center font-semibold">{p.bookings} đơn</td>
+                            <td className="py-3 text-center font-bold text-slate-700 dark:text-slate-350">{p.occupancy}%</td>
+                            <td className="py-3 text-right font-medium text-slate-500">{formatCurrencyLocal(p.rate)}</td>
+                            <td className="py-3 text-center font-bold text-emerald-600">{p.conversion}%</td>
+                            <td className="py-3 text-right">
+                              <span className="inline-flex items-center gap-0.5 font-bold text-amber-500">
+                                <Star className="h-3 w-3 fill-current" /> {p.rating}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>

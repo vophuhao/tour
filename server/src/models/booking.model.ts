@@ -328,17 +328,7 @@ const bookingSchema = new mongoose.Schema<BookingDocument>(
   }
 );
 
-// Indexes
-bookingSchema.index({ property: 1 });
-bookingSchema.index({ site: 1 });
-bookingSchema.index({ code: 1 }, { unique: true });
-bookingSchema.index({ guest: 1 });
-bookingSchema.index({ host: 1 });
-bookingSchema.index({ checkIn: 1 });
-bookingSchema.index({ checkOut: 1 });
-bookingSchema.index({ status: 1 });
-bookingSchema.index({ paymentStatus: 1 });
-bookingSchema.index({ transactionId: 1 });
+// Indexes (Chỉ giữ lại các Compound Indexes phức tạp)
 bookingSchema.index({ status: 1, checkIn: 1 });
 bookingSchema.index({ status: 1, checkOut: 1 });
 bookingSchema.index({ guest: 1, status: 1, createdAt: -1 });

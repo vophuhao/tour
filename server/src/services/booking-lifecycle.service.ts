@@ -94,7 +94,7 @@ export class BookingLifecycleService {
         await bookingService.cancelBooking(
           booking.code!,
           (booking.guest as any)?._id || booking.guest,
-          { cancellationReason: "Auto-cancelled: Payment timeout after 12 hours" }
+          { cancellationReason: "Tự động hủy: Hết thời gian chờ thanh toán sau 12 giờ" }
         );
 
         console.log(`⛔ Đã tự động hủy booking quá hạn 12h: ${booking.code}`);
@@ -292,7 +292,7 @@ export class BookingLifecycleService {
         }
 
         booking.status = "cancelled";
-        booking.cancellationReason = "Auto-cancelled: Unpaid booking on check-in day";
+        booking.cancellationReason = "Tự động hủy: Đơn đặt chỗ chưa thanh toán vào ngày nhận phòng";
         booking.cancelledAt = new Date();
         await booking.save();
         cancelled++;

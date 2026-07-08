@@ -56,12 +56,12 @@ export class SuperhostService {
     const avgRating =
       activeProperties.length > 0
         ? activeProperties.reduce((sum, p) => sum + p.stats.averageRating, 0) /
-          activeProperties.length
+        activeProperties.length
         : 0;
     const avgResponseRate =
       activeProperties.length > 0
         ? activeProperties.reduce((sum, p) => sum + (p.stats.responseRate || 0), 0) /
-          activeProperties.length
+        activeProperties.length
         : 0;
 
     const criteria = {

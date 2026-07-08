@@ -246,20 +246,22 @@ export default function EditProfilePage() {
             </form>
           </Form>
 
-          {/* Change Password Link */}
-          <div className="border-t pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-medium">Đổi mật khẩu</h3>
-                <p className="text-muted-foreground text-sm">
-                  Cập nhật mật khẩu để bảo mật tài khoản của bạn
-                </p>
+          {/* Change Password Link (Chỉ hiển thị với tài khoản thường, ẩn nếu đăng nhập bằng Google) */}
+          {user?.provider !== 'google' && !user?.googleId && (
+            <div className="border-t pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-medium">Đổi mật khẩu</h3>
+                  <p className="text-muted-foreground text-sm">
+                    Cập nhật mật khẩu để bảo mật tài khoản của bạn
+                  </p>
+                </div>
+                <Button variant="outline" asChild>
+                  <Link href="/u/edit-password">Đổi mật khẩu</Link>
+                </Button>
               </div>
-              <Button variant="outline" asChild>
-                <Link href="/u/edit-password">Đổi mật khẩu</Link>
-              </Button>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -219,8 +219,8 @@ export default function TripsPage() {
         <h2 className="mb-4 text-xl font-semibold">Chuyến đi sắp tới</h2>
         {upcomingTrips.length > 0 ? (
           <div className="grid gap-6 md:grid-cols-3">
-            {upcomingTrips.map(booking => (
-              <TripCard key={booking._id} booking={booking} />
+            {upcomingTrips.map((booking, index) => (
+              <TripCard key={booking._id || `upcoming-${index}`} booking={booking} />
             ))}
           </div>
         ) : (
@@ -248,8 +248,8 @@ export default function TripsPage() {
           <Separator className="mb-6" />
           <h2 className="mb-4 text-xl font-semibold">Chuyến đi đã qua</h2>
           <div className="grid gap-6 md:grid-cols-3">
-            {pastTrips.map(booking => (
-              <TripCard key={booking._id} booking={booking} />
+            {pastTrips.map((booking, index) => (
+              <TripCard key={booking._id || `past-${index}`} booking={booking} />
             ))}
           </div>
         </section>
@@ -261,8 +261,8 @@ export default function TripsPage() {
           <Separator className="mb-6" />
           <h2 className="mb-4 text-xl font-semibold">Chuyến đi đã hủy</h2>
           <div className="grid gap-6 md:grid-cols-3">
-            {cancelledTrips.map(booking => (
-              <TripCard key={booking._id} booking={booking} />
+            {cancelledTrips.map((booking, index) => (
+              <TripCard key={booking._id || `cancelled-${index}`} booking={booking} />
             ))}
           </div>
         </section>

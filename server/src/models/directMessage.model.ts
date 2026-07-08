@@ -88,7 +88,7 @@ const MessageSchema = new Schema<MessageDocument>(
       index: true,
     },
     senderId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    message: { type: String, required: true, trim: true },
+    message: { type: String, trim: true, default: "" },
     messageType: {
       type: String,
       enum: ["text", "image", "file", "booking", "campsite"],

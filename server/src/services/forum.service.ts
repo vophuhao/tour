@@ -24,6 +24,7 @@ export interface CreatePostInput {
   tags: string | string[] | undefined;
   badge: string | undefined;
   images: string[] | undefined;
+  videos: string[] | undefined;
   attachments: string[] | undefined;
   visibility: "public" | "private" | undefined;
   status: string | undefined;
@@ -40,6 +41,7 @@ export interface UpdatePostInput {
   tags: string | string[] | undefined;
   badge: string | undefined;
   images: string[] | undefined;
+  videos: string[] | undefined;
   attachments: string[] | undefined;
   visibility: string | undefined;
   status: string | undefined;
@@ -65,10 +67,10 @@ export class ForumService {
   /**
    * Upload buffer to Cloudinary
    */
-  private uploadBufferToCloudinary = (buffer: Buffer): Promise<any> => {
+  private uploadBufferToCloudinary = (buffer: Buffer, resourceType: "image" | "video" | "raw" = "image"): Promise<any> => {
     return new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
-        { folder: "forum-posts", resource_type: "image" },
+        { folder: "forum-posts", resource_type: resourceType },
         (error: any, result: any) => {
           if (result) resolve(result);
           else reject(error);
@@ -84,26 +86,46 @@ export class ForumService {
   private processContentImages = async (content: string): Promise<string> => {
     if (!content) return "";
 
-    const imgTagRegex =
-      /<img[^>]+src=["'](data:image\/(?:png|jpeg|jpg|gif);base64,[^"'>]+)["'][^>]*>/gi;
-    let match;
     let newContent = content;
     const uploadPromises = [];
     const replacements: any[] = [];
 
+    // 1. Process base64 images
+    const imgTagRegex =
+      /<img[^>]+src=["'](data:image\/(?:png|jpeg|jpg|gif);base64,[^"'>]+)["'][^>]*>/gi;
+    let match;
     while ((match = imgTagRegex.exec(content)) !== null) {
       const base64Data = match[1];
-      if (!base64Data) {
-        continue;
+      if (base64Data) {
+        const uploadPromise = this.uploadBufferToCloudinary(
+          Buffer.from(base64Data.split(",")[1] || "", "base64"),
+          "image"
+        )
+          .then((result: any) => {
+            replacements.push({ old: base64Data, url: result.secure_url });
+          })
+          .catch(() => { });
+        uploadPromises.push(uploadPromise);
       }
-      const uploadPromise = this.uploadBufferToCloudinary(
-        Buffer.from(base64Data.split(",")[1] || "", "base64")
-      )
-        .then((result: any) => {
-          replacements.push({ old: base64Data, url: result.secure_url });
-        })
-        .catch(() => { });
-      uploadPromises.push(uploadPromise);
+    }
+
+    // 2. Process base64 videos
+    const videoTagRegex =
+      /<(?:video|source)[^>]+src=["'](data:video\/(?:mp4|webm|ogg|quicktime);base64,[^"'>]+)["'][^>]*>/gi;
+    let videoMatch;
+    while ((videoMatch = videoTagRegex.exec(content)) !== null) {
+      const base64Data = videoMatch[1];
+      if (base64Data) {
+        const uploadPromise = this.uploadBufferToCloudinary(
+          Buffer.from(base64Data.split(",")[1] || "", "base64"),
+          "video"
+        )
+          .then((result: any) => {
+            replacements.push({ old: base64Data, url: result.secure_url });
+          })
+          .catch(() => { });
+        uploadPromises.push(uploadPromise);
+      }
     }
 
     await Promise.all(uploadPromises);
@@ -146,12 +168,16 @@ export class ForumService {
         "div",
         "span",
         "img",
+        "video",
+        "source",
         "pre",
         "u",
       ],
       allowedAttributes: {
         a: ["href", "name", "target"],
         img: ["src", "alt", "title", "width", "height", "style"],
+        video: ["src", "controls", "width", "height", "autoplay", "loop", "muted", "style", "poster"],
+        source: ["src", "type"],
         "*": ["data-*", "style"],
       },
       allowedSchemes: ["data", "http", "https"],
@@ -177,6 +203,7 @@ export class ForumService {
       tags,
       badge,
       images,
+      videos,
       attachments,
       visibility = "public",
       status = "active",
@@ -205,6 +232,17 @@ export class ForumService {
       }
     } else if (Array.isArray(images)) {
       imagesArr = images;
+    }
+
+    // Upload multiple videos
+    let videosArr: string[] = [];
+    if (files?.videos) {
+      for (const file of files.videos) {
+        const result = await this.uploadBufferToCloudinary(file.buffer, "video");
+        videosArr.push(result.secure_url);
+      }
+    } else if (Array.isArray(videos)) {
+      videosArr = videos;
     }
 
     // Upload attachments
@@ -259,6 +297,7 @@ export class ForumService {
       tags: safeTagsArr,
       imageUrl,
       images: imagesArr,
+      videos: videosArr,
       attachments: attachmentsArr,
       userId,
       visibility,
@@ -425,7 +464,7 @@ export class ForumService {
       throw new Error("Không có quyền sửa bài viết này");
     }
 
-    const { title, content, subject, summary, tags, badge, images, attachments, visibility, status, pinned, isAnonymous } = input;
+    const { title, content, subject, summary, tags, badge, images, videos, attachments, visibility, status, pinned, isAnonymous } = input;
 
     if (title) post.title = validator.escape(title);
     if (content) post.content = await this.sanitizeContent(content);
@@ -458,25 +497,48 @@ export class ForumService {
     }
 
     // Upload multiple images
+    let updatedImages: string[] = [];
+    if (images) {
+      updatedImages = Array.isArray(images) ? images : [images];
+    }
     if (files?.images) {
-      post.images = [];
       for (const file of files.images) {
         const result = await this.uploadBufferToCloudinary(file.buffer);
-        post.images.push(result.secure_url);
+        updatedImages.push(result.secure_url);
       }
-    } else if (images && Array.isArray(images)) {
-      post.images = images;
+      post.images = updatedImages;
+    } else if (images) {
+      post.images = updatedImages;
+    }
+
+    // Upload multiple videos
+    let updatedVideos: string[] = [];
+    if (videos) {
+      updatedVideos = Array.isArray(videos) ? videos : [videos];
+    }
+    if (files?.videos) {
+      for (const file of files.videos) {
+        const result = await this.uploadBufferToCloudinary(file.buffer, "video");
+        updatedVideos.push(result.secure_url);
+      }
+      post.videos = updatedVideos;
+    } else if (videos) {
+      post.videos = updatedVideos;
     }
 
     // Upload attachments
+    let updatedAttachments: string[] = [];
+    if (attachments) {
+      updatedAttachments = Array.isArray(attachments) ? attachments : [attachments];
+    }
     if (files?.attachments) {
-      post.attachments = [];
       for (const file of files.attachments) {
         const result = await this.uploadBufferToCloudinary(file.buffer);
-        post.attachments.push(result.secure_url);
+        updatedAttachments.push(result.secure_url);
       }
-    } else if (attachments && Array.isArray(attachments)) {
-      post.attachments = attachments;
+      post.attachments = updatedAttachments;
+    } else if (attachments) {
+      post.attachments = updatedAttachments;
     }
 
     post.isEdited = true;
@@ -813,7 +875,7 @@ export class ForumService {
       const countStr = await redisClient.hGet("post_views", id).catch(() => null);
       if (countStr) {
         const count = parseInt(countStr);
-        await redisClient.hDel("post_views", id).catch(() => {});
+        await redisClient.hDel("post_views", id).catch(() => { });
         if (count > 0 && mongoose.isValidObjectId(id)) {
           updateOps.push({
             updateOne: {

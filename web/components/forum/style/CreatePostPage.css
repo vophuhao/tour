@@ -25,6 +25,7 @@
   max-width: 1100px;
   margin: 0 auto;
   padding: 2.5rem 2rem 2rem 2rem;
+  position: relative;
 }
 .create-post-modern-header-center {
   text-align: center;
@@ -32,7 +33,7 @@
 .create-post-modern-title {
   font-size: 2.7rem;
   font-weight: 900;
-  background: linear-gradient(90deg, var(--primary), #7c3aed);
+  background: linear-gradient(90deg, var(--primary), var(--primary-dark));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -41,7 +42,7 @@
 }
 .create-post-modern-subtitle {
   font-size: 1.15rem;
-  color: #6366f1;
+  color: var(--primary);
   font-weight: 500;
 }
 .create-post-modern-main {
@@ -508,7 +509,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: linear-gradient(90deg, #a78bfa, #ec4899);
+  background: linear-gradient(90deg, var(--primary), #ec4899);
   color: #fff;
   font-weight: 700;
   border: none;
@@ -516,12 +517,12 @@
   padding: 0.9rem 1.7rem;
   font-size: 1.08rem;
   cursor: pointer;
-  box-shadow: 0 2px 8px #a78bfa33;
+  box-shadow: 0 2px 8px var(--primary-alpha);
   transition: all 0.2s;
 }
 .modern-ai-btn:hover {
-  background: linear-gradient(90deg, #7c3aed, #ec4899);
-  box-shadow: 0 4px 16px #a78bfa33;
+  background: linear-gradient(90deg, var(--primary-dark), #ec4899);
+  box-shadow: 0 4px 16px var(--primary-alpha);
 }
 .modern-ai-icon {
   width: 1.1rem;
@@ -531,8 +532,8 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: #f3f4f6;
-  color: #312e81;
+  background: var(--primary-light);
+  color: var(--primary-dark);
   font-weight: 600;
   border: none;
   border-radius: var(--modern-radius-sm);
@@ -542,7 +543,7 @@
   transition: background 0.2s;
 }
 .modern-preview-btn:hover {
-  background: #e0e7ff;
+  background: var(--primary-alpha);
 }
 .modern-preview-icon {
   width: 1.1rem;
@@ -552,7 +553,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: linear-gradient(90deg, #2563eb, #6366f1);
+  background: linear-gradient(90deg, var(--primary), var(--primary-dark));
   color: #fff;
   font-weight: 700;
   border: none;
@@ -560,12 +561,12 @@
   padding: 0.9rem 2.2rem;
   font-size: 1.13rem;
   cursor: pointer;
-  box-shadow: 0 2px 8px #6366f133;
+  box-shadow: 0 2px 8px var(--primary-alpha);
   transition: all 0.2s;
 }
 .modern-submit-btn:hover {
-  background: linear-gradient(90deg, #6366f1, #2563eb);
-  box-shadow: 0 4px 16px #6366f133;
+  background: linear-gradient(90deg, var(--primary-dark), var(--primary));
+  box-shadow: 0 4px 16px var(--primary-alpha);
 }
 .modern-submit-btn.loading {
   background: #a1a1aa;
@@ -777,14 +778,14 @@
 
 /* Cover image card - nổi bật */
 .modern-cover-card {
-  background: linear-gradient(90deg, #f0f4ff 60%, #e0e7ff 100%);
-  border: 2px solid #a5b4fc;
-  box-shadow: 0 4px 24px #6366f122;
+  background: linear-gradient(90deg, var(--primary-alpha) 60%, var(--primary-light) 100%);
+  border: 2px solid var(--primary-light);
+  box-shadow: 0 4px 24px var(--primary-alpha);
   margin-bottom: 1.2rem;
   padding: 1.2rem 1rem 1rem 1rem;
 }
 .modern-card-icon.cover {
-  color: #6366f1;
+  color: var(--primary);
 }
 .modern-cover-upload-large {
   display: flex;
@@ -802,29 +803,29 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border: 2px dashed #a5b4fc;
+  border: 2px dashed var(--primary-light);
   border-radius: 18px;
   padding: 2.2rem 2.5rem;
-  background: #f8fafc;
-  color: #6366f1;
+  background: var(--bg-tertiary);
+  color: var(--primary);
   cursor: pointer;
   transition: border 0.2s, background 0.2s;
   font-size: 1.1rem;
   font-weight: 600;
 }
 .modern-cover-label.large:hover {
-  border-color: #6366f1;
-  background: #eef2ff;
+  border-color: var(--primary);
+  background: var(--primary-light);
 }
 .modern-cover-upload-icon.large {
   width: 2.5rem;
   height: 2.5rem;
   margin-bottom: 0.7rem;
-  color: #6366f1;
+  color: var(--primary);
 }
 .modern-cover-upload-text.large {
   font-size: 1.1rem;
-  color: #6366f1;
+  color: var(--primary);
 }
 .modern-cover-preview-large {
   position: relative;
@@ -837,9 +838,9 @@
   margin-bottom: 0.4rem;
   border-radius: 18px;
   overflow: hidden;
-  box-shadow: 0 4px 24px #6366f133;
-  border: 2px solid #a5b4fc;
-  background: #fff;
+  box-shadow: 0 4px 24px var(--primary-alpha);
+  border: 2px solid var(--primary-light);
+  background: var(--bg-tertiary);
 }
 .modern-cover-img-large {
   width: 100%;
@@ -854,27 +855,27 @@
   right: 10px;
   background: #fff;
   border-radius: 50%;
-  box-shadow: 0 2px 8px #6366f122;
-  border: 1.5px solid #a5b4fc;
+  box-shadow: 0 2px 8px var(--primary-alpha);
+  border: 1.5px solid var(--primary-light);
   padding: 0.4rem;
   cursor: pointer;
   transition: background 0.2s, border 0.2s;
   z-index: 2;
 }
 .modern-cover-change-btn:hover {
-  background: #eef2ff;
-  border-color: #6366f1;
+  background: var(--primary-light);
+  border-color: var(--primary);
 }
 
 /* Nâng cấp form card */
 .modern-card {
-  box-shadow: 0 2px 16px #6366f111;
+  box-shadow: 0 2px 16px var(--primary-alpha);
   border-radius: 18px;
-  border: 1.5px solid #e0e7ff;
+  border: 1.5px solid var(--primary-light);
 }
 .modern-card-header {
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid #e0e7ff;
+  border-bottom: 1px solid var(--primary-light);
   margin-bottom: 1.2rem;
 }
 .modern-card-title {
@@ -884,21 +885,21 @@
 /* Nâng cấp input */
 .modern-input, .modern-textarea {
   border-radius: 12px;
-  border: 1.5px solid #c7d2fe;
-  background: #f8fafc;
+  border: 1.5px solid var(--primary-light);
+  background: var(--bg-tertiary);
   color: var(--text-primary);
   font-size: 1.08rem;
   transition: border 0.2s, box-shadow 0.2s;
 }
 .modern-input:focus, .modern-textarea:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px #6366f133;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-alpha);
 }
 
 /* Nâng cấp tag badge */
 .modern-tag-badge {
-  background: #e0e7ff;
-  color: #3730a3;
+  background: var(--primary-light);
+  color: var(--primary-dark);
   border-radius: 8px;
   padding: 2px 12px;
   font-size: 15px;
@@ -916,33 +917,33 @@
   margin-bottom: 12px;
   min-height: 40px;
   padding: 8px;
-  border: 1px dashed #c7d2fe;
+  border: 1px dashed var(--primary-light);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--bg-tertiary);
 }
 
 .modern-tag {
   display: inline-flex;
   align-items: center;
-  background: #e0e7ff;
-  color: #3730a3;
+  background: var(--primary-light);
+  color: var(--primary-dark);
   border-radius: 6px;
   padding: 4px 8px;
   font-size: 14px;
   font-weight: 500;
-  border: 1px solid #c7d2fe;
+  border: 1px solid var(--primary-light);
   transition: all 0.2s ease;
 }
 
 .modern-tag:hover {
-  background: #c7d2fe;
-  border-color: #6366f1;
+  background: var(--primary-light);
+  border-color: var(--primary);
 }
 
 .modern-tag-remove {
   background: none;
   border: none;
-  color: #6366f1;
+  color: var(--primary);
   cursor: pointer;
   margin-left: 6px;
   font-size: 16px;
@@ -958,7 +959,7 @@
 }
 
 .modern-tag-remove:hover {
-  background: #6366f1;
+  background: var(--primary);
   color: white;
 }
 
@@ -972,9 +973,9 @@
 
 .modern-subject-btn {
   padding: 8px 12px;
-  border: 1.5px solid #c7d2fe;
-  background: #f8fafc;
-  color: #3730a3;
+  border: 1.5px solid var(--primary-light);
+  background: var(--bg-tertiary);
+  color: var(--primary-dark);
   border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
@@ -983,14 +984,14 @@
 }
 
 .modern-subject-btn:hover {
-  background: #e0e7ff;
-  border-color: #6366f1;
+  background: var(--primary-light);
+  border-color: var(--primary);
 }
 
 .modern-subject-btn.selected {
-  background: #6366f1;
+  background: var(--primary);
   color: white;
-  border-color: #6366f1;
+  border-color: var(--primary);
 }
 
 .modern-custom-subject {
@@ -1074,4 +1075,131 @@
 
 [data-theme="dark"] .modern-ai-image-btn {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+/* Custom Attachments Section Styles */
+.modern-attachments-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+}
+
+.modern-attachment-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+  border: 1.5px dashed var(--primary-light);
+  border-radius: var(--modern-radius-sm);
+  background: var(--bg-tertiary);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  gap: 0.8rem;
+  text-align: center;
+}
+
+.modern-attachment-dropzone:hover {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px var(--primary-alpha);
+}
+
+.modern-attachment-icon {
+  color: var(--primary);
+  opacity: 0.85;
+  transition: transform 0.25s;
+}
+
+.modern-attachment-dropzone:hover .modern-attachment-icon {
+  transform: scale(1.1);
+}
+
+.modern-attachment-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.modern-attachment-desc {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+}
+
+.modern-previews-section {
+  margin-top: 1.8rem;
+}
+
+.modern-previews-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.modern-previews-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 1rem;
+}
+
+.modern-preview-item {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--modern-radius-sm);
+  overflow: hidden;
+  border: 1.5px solid var(--border);
+  box-shadow: 0 2px 8px var(--shadow-color);
+  background: var(--bg-secondary);
+}
+
+.modern-preview-item.video {
+  aspect-ratio: 1.5 / 1;
+}
+
+.modern-preview-media {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.modern-preview-delete {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(0, 0, 0, 0.6);
+  border: none;
+  color: #fff;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.2s;
+  z-index: 5;
+}
+
+.modern-preview-delete:hover {
+  background: rgba(239, 68, 68, 0.9);
+  transform: scale(1.1);
+}
+
+/* ===== Dark theme overrides for attachments ===== */
+[data-theme="dark"] .modern-attachment-dropzone {
+  background: var(--bg-tertiary);
+  border-color: var(--border);
+}
+[data-theme="dark"] .modern-attachment-dropzone:hover {
+  background: var(--bg-hover);
+  border-color: var(--primary);
+}
+[data-theme="dark"] .modern-preview-item {
+  border-color: var(--border);
+  background: var(--bg-tertiary);
 }

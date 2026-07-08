@@ -35,12 +35,12 @@ export default class DirectMessageController {
 
     const { conversationId } = req.params;
 
-    const { message, messageType } = req.body.payload;
+    const { message, messageType, attachments, bookingRef, siteRef } = req.body.payload;
 
     const newMessage = await this.messageService.sendMessage(
       conversationId!,
       userId.toString(),
-      { message, messageType }
+      { message, messageType, attachments, bookingRef, siteRef }
     );
     return ResponseUtil.created(res, newMessage, "Message sent");
   });

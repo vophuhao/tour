@@ -10,13 +10,14 @@ import { toast } from 'sonner';
 import {
   Upload,
   Eye,
-  // EyeOff,
   Sparkles,
-  // Send,
   FileText,
   Type,
   Save,
-  ArrowLeft
+  ArrowLeft,
+  Film,
+  Image as ImageIcon,
+  X
 } from 'lucide-react';
 import RichTextEditor from '../../../../../components/forum/ui/RichTextEditor';
 import PreviewModal from '../../../../../components/forum/ui/PreviewModal';
@@ -42,7 +43,10 @@ const EditPostPage = () => {
   const [summary, setSummary] = useState('');
   const [coverImage, setCoverImage] = useState<File | null>(null);
   const [currentCoverUrl, setCurrentCoverUrl] = useState('');
-  const [images] = useState<File[]>([]);
+  const [images, setImages] = useState<File[]>([]);
+  const [videos, setVideos] = useState<File[]>([]);
+  const [currentImages, setCurrentImages] = useState<string[]>([]);
+  const [currentVideos, setCurrentVideos] = useState<string[]>([]);
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   // const [customTopic] = useState('');
   const [content, setContent] = useState('');
@@ -53,6 +57,36 @@ const EditPostPage = () => {
   const [tags, setTags] = useState<string[]>([]);
   const [customSubject, setCustomSubject] = useState('');
   const [tagInput, setTagInput] = useState('');
+
+  const handleImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const selectedFiles = Array.from(e.target.files);
+      setImages(prev => [...prev, ...selectedFiles]);
+    }
+  };
+
+  const handleVideosChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const selectedFiles = Array.from(e.target.files);
+      setVideos(prev => [...prev, ...selectedFiles]);
+    }
+  };
+
+  const removeImageAttachment = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeVideoAttachment = (index: number) => {
+    setVideos(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeCurrentUploadedImage = (urlToRemove: string) => {
+    setCurrentImages(prev => prev.filter(url => url !== urlToRemove));
+  };
+
+  const removeCurrentUploadedVideo = (urlToRemove: string) => {
+    setCurrentVideos(prev => prev.filter(url => url !== urlToRemove));
+  };
 
   // Load bài viết hiện tại
   useEffect(() => {
@@ -70,7 +104,9 @@ const EditPostPage = () => {
           setSlug(post.slug || '');
           setSummary(post.summary || '');
           setContent(post.content || '');
-          setCurrentCoverUrl(post.imageUrl || '');
+          setCurrentCoverUrl(post.imageUrl || post.coverImage || '');
+          setCurrentImages(post.images || []);
+          setCurrentVideos(post.videos || []);
           
           // Xử lý subject
           if (post.subject) {
@@ -168,6 +204,11 @@ const EditPostPage = () => {
       }
       
       images.forEach(img => formData.append('images', img));
+      videos.forEach(vid => formData.append('videos', vid));
+      
+      // Gửi danh sách các file hiện tại được giữ lại
+      currentImages.forEach(url => formData.append('images', url));
+      currentVideos.forEach(url => formData.append('videos', url));
       
       await forumApi.updatePost(postId!, formData);
       toast.success('Cập nhật bài viết thành công!');
@@ -198,28 +239,30 @@ const EditPostPage = () => {
       {/* Header */}
       <div className="create-post-modern-header">
         <div className="create-post-modern-header-inner">
+          <button 
+            type="button"
+            onClick={() => router.back()}
+            className="back-button"
+            style={{
+              position: 'absolute',
+              left: '2rem',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              background: 'none',
+              border: 'none',
+              color: 'var(--primary)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '1.05rem',
+              fontWeight: 600
+            }}
+          >
+            <ArrowLeft size={20} />
+            Quay lại diễn đàn
+          </button>
           <div className="create-post-modern-header-center">
-            <button 
-              onClick={() => router.back()}
-              className="back-button"
-              style={{
-                position: 'absolute',
-                left: '20px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                background: 'none',
-                border: 'none',
-                color: '#fff',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                fontSize: '16px'
-              }}
-            >
-              <ArrowLeft size={20} />
-              Quay lại
-            </button>
             <h1 className="create-post-modern-title">
               Chỉnh sửa bài viết
             </h1>
@@ -327,6 +370,141 @@ const EditPostPage = () => {
                       <small style={{marginTop: 6, color: 'var(--text-secondary)'}}>Chưa có ảnh chủ đề, vui lòng chọn ảnh</small>
                     )}
                   </div>
+                </div>
+              </div>
+
+              {/* Hình ảnh & video đính kèm */}
+              <div className="modern-card">
+                <div className="modern-card-header">
+                  <ImageIcon className="modern-card-icon image" />
+                  <h2 className="modern-card-title">Hình ảnh & video đính kèm</h2>
+                </div>
+                <div className="modern-card-body">
+                  <div className="modern-attachments-grid">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImagesChange}
+                      id="attachment-images"
+                      className="modern-cover-input"
+                    />
+                    <label htmlFor="attachment-images" className="modern-attachment-dropzone">
+                      <ImageIcon className="modern-attachment-icon" size={32} />
+                      <span className="modern-attachment-title">Đính kèm hình ảnh</span>
+                      <span className="modern-attachment-desc">Click hoặc kéo thả nhiều ảnh mới</span>
+                    </label>
+
+                    <input
+                      type="file"
+                      accept="video/*"
+                      multiple
+                      onChange={handleVideosChange}
+                      id="attachment-videos"
+                      className="modern-cover-input"
+                    />
+                    <label htmlFor="attachment-videos" className="modern-attachment-dropzone">
+                      <Film className="modern-attachment-icon" size={32} />
+                      <span className="modern-attachment-title">Đính kèm video</span>
+                      <span className="modern-attachment-desc">Click hoặc kéo thả video mới</span>
+                    </label>
+                  </div>
+
+                  {/* Previews of existing uploaded images */}
+                  {currentImages.length > 0 && (
+                    <div className="modern-previews-section">
+                      <h4 className="modern-previews-title" style={{ color: 'var(--text-secondary)' }}>
+                        <ImageIcon size={16} /> Hình ảnh hiện tại ({currentImages.length})
+                      </h4>
+                      <div className="modern-previews-grid">
+                        {currentImages.map((url, idx) => (
+                          <div key={idx} className="modern-preview-item">
+                            <img src={url} alt="Uploaded attachment" className="modern-preview-media" />
+                            <button
+                              type="button"
+                              onClick={() => removeCurrentUploadedImage(url)}
+                              className="modern-preview-delete"
+                              title="Xóa ảnh"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Previews of newly selected images */}
+                  {images.length > 0 && (
+                    <div className="modern-previews-section">
+                      <h4 className="modern-previews-title" style={{ color: 'var(--primary)' }}>
+                        <ImageIcon size={16} /> Hình ảnh mới chọn ({images.length})
+                      </h4>
+                      <div className="modern-previews-grid">
+                        {images.map((file, idx) => (
+                          <div key={idx} className="modern-preview-item">
+                            <img src={URL.createObjectURL(file)} alt="New attachment" className="modern-preview-media" />
+                            <button
+                              type="button"
+                              onClick={() => removeImageAttachment(idx)}
+                              className="modern-preview-delete"
+                              title="Xóa ảnh"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Previews of existing uploaded videos */}
+                  {currentVideos.length > 0 && (
+                    <div className="modern-previews-section">
+                      <h4 className="modern-previews-title" style={{ color: 'var(--text-secondary)' }}>
+                        <Film size={16} /> Videos hiện tại ({currentVideos.length})
+                      </h4>
+                      <div className="modern-previews-grid">
+                        {currentVideos.map((url, idx) => (
+                          <div key={idx} className="modern-preview-item video">
+                            <video src={url} className="modern-preview-media" muted controls />
+                            <button
+                              type="button"
+                              onClick={() => removeCurrentUploadedVideo(url)}
+                              className="modern-preview-delete"
+                              title="Xóa video"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Previews of newly selected videos */}
+                  {videos.length > 0 && (
+                    <div className="modern-previews-section">
+                      <h4 className="modern-previews-title" style={{ color: 'var(--primary)' }}>
+                        <Film size={16} /> Videos mới chọn ({videos.length})
+                      </h4>
+                      <div className="modern-previews-grid">
+                        {videos.map((file, idx) => (
+                          <div key={idx} className="modern-preview-item video">
+                            <video src={URL.createObjectURL(file)} className="modern-preview-media" muted />
+                            <button
+                              type="button"
+                              onClick={() => removeVideoAttachment(idx)}
+                              className="modern-preview-delete"
+                              title="Xóa video"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

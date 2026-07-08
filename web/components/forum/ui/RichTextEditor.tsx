@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import {
-  Bold, Italic, Underline, Strikethrough, Type, List, ListOrdered, Quote, Image as ImageIcon, Link as LinkIcon, Code, Undo2, Redo2, AlignLeft, AlignCenter, AlignRight, AlignJustify, Highlighter, PaintBucket, Upload
+  Bold, Italic, Underline, Strikethrough, Type, List, ListOrdered, Quote, Image as ImageIcon, Link as LinkIcon, Code, Undo2, Redo2, AlignLeft, AlignCenter, AlignRight, AlignJustify, Highlighter, PaintBucket, Upload, Video
 } from 'lucide-react';
 
 interface RichTextEditorProps {
@@ -28,16 +28,13 @@ const FONT_FAMILIES = [
   { label: 'Verdana', value: 'Verdana, Geneva, sans-serif' },
 ];
 
-// const COLORS = [
-//   '#23272f', '#e11d48', '#2563eb', '#059669', '#f59e42', '#fbbf24', '#a21caf', '#fff', '#000'
-// ];
-
 const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeholder, style }) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const colorRef = useRef<HTMLInputElement>(null);
   const highlightRef = useRef<HTMLInputElement>(null);
   const fontRef = useRef<HTMLSelectElement>(null);
   const imageUploadRef = useRef<HTMLInputElement>(null);
+  const videoUploadRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (editorRef.current && editorRef.current.innerHTML !== value) {
@@ -60,7 +57,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeh
   };
 
   const handleFontFamily = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    // fontName chỉ nhận tên font, không nhận chuỗi nhiều font, nên lấy tên đầu tiên
     const font = e.target.value.split(',')[0];
     execCommand('fontName', font);
   };
@@ -76,7 +72,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeh
   const handleInsertImage = () => {
     const url = prompt('Nhập URL ảnh:');
     if (url) {
-      // Chèn ảnh với kích thước mặc định
       const imgElement = document.createElement('img');
       imgElement.src = url;
       imgElement.style.maxWidth = '100%';
@@ -84,7 +79,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeh
       imgElement.style.maxHeight = '400px';
       imgElement.style.objectFit = 'contain';
       
-      // Chèn vào editor
       const selection = window.getSelection();
       if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
@@ -93,7 +87,32 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeh
         range.collapse(false);
       }
       
-      // Trigger onChange
+      if (editorRef.current) {
+        onChange(editorRef.current.innerHTML);
+      }
+    }
+  };
+
+  const handleInsertVideo = () => {
+    const url = prompt('Nhập URL video:');
+    if (url) {
+      const videoElement = document.createElement('video');
+      videoElement.src = url;
+      videoElement.controls = true;
+      videoElement.style.maxWidth = '100%';
+      videoElement.style.height = 'auto';
+      videoElement.style.maxHeight = '400px';
+      videoElement.style.display = 'block';
+      videoElement.style.margin = '8px 0';
+      
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        range.deleteContents();
+        range.insertNode(videoElement);
+        range.collapse(false);
+      }
+      
       if (editorRef.current) {
         onChange(editorRef.current.innerHTML);
       }
@@ -104,12 +123,27 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeh
     imageUploadRef.current?.click();
   };
 
+  const handleUploadVideo = () => {
+    videoUploadRef.current?.click();
+  };
+
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && file.type.startsWith('image/')) {
-      insertImageFromFile(file);
+    const files = e.target.files;
+    if (files) {
+      Array.from(files).forEach(file => {
+        if (file.type.startsWith('image/')) {
+          insertImageFromFile(file);
+        }
+      });
     }
-    // Reset input để có thể chọn lại file cùng tên
+    e.target.value = '';
+  };
+
+  const handleVideoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type.startsWith('video/')) {
+      insertVideoFromFile(file);
+    }
     e.target.value = '';
   };
 
@@ -118,7 +152,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeh
     reader.onload = (event) => {
       const imageUrl = event.target?.result as string;
       if (imageUrl) {
-        // Chèn ảnh với kích thước mặc định
         const imgElement = document.createElement('img');
         imgElement.src = imageUrl;
         imgElement.style.maxWidth = '100%';
@@ -126,7 +159,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeh
         imgElement.style.maxHeight = '400px';
         imgElement.style.objectFit = 'contain';
         
-        // Chèn vào editor
         const selection = window.getSelection();
         if (selection && selection.rangeCount > 0) {
           const range = selection.getRangeAt(0);
@@ -135,7 +167,36 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeh
           range.collapse(false);
         }
         
-        // Trigger onChange
+        if (editorRef.current) {
+          onChange(editorRef.current.innerHTML);
+        }
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const insertVideoFromFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const videoUrl = event.target?.result as string;
+      if (videoUrl) {
+        const videoElement = document.createElement('video');
+        videoElement.src = videoUrl;
+        videoElement.controls = true;
+        videoElement.style.maxWidth = '100%';
+        videoElement.style.height = 'auto';
+        videoElement.style.maxHeight = '400px';
+        videoElement.style.display = 'block';
+        videoElement.style.margin = '8px 0';
+        
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+          range.deleteContents();
+          range.insertNode(videoElement);
+          range.collapse(false);
+        }
+        
         if (editorRef.current) {
           onChange(editorRef.current.innerHTML);
         }
@@ -154,12 +215,13 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeh
     e.stopPropagation();
     
     const files = Array.from(e.dataTransfer.files);
-    const imageFiles = files.filter(file => file.type.startsWith('image/'));
-    
-    if (imageFiles.length > 0) {
-      // Chỉ chèn ảnh đầu tiên nếu có nhiều ảnh
-      insertImageFromFile(imageFiles[0]);
-    }
+    files.forEach(file => {
+      if (file.type.startsWith('image/')) {
+        insertImageFromFile(file);
+      } else if (file.type.startsWith('video/')) {
+        insertVideoFromFile(file);
+      }
+    });
   };
 
   const handleInsertLink = () => {
@@ -194,14 +256,24 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeh
         {/* Highlight */}
         <button type="button" title="Highlight" onClick={() => highlightRef.current?.click()}><Highlighter size={18} /></button>
         <input ref={highlightRef} type="color" style={{ display: 'none' }} onChange={e => handleHighlight(e.target.value)} />
-        {/* Hidden file input for image upload */}
+        
+        {/* Hidden inputs */}
         <input 
           ref={imageUploadRef} 
           type="file" 
           accept="image/*" 
+          multiple
           style={{ display: 'none' }} 
           onChange={handleImageFileChange} 
         />
+        <input 
+          ref={videoUploadRef} 
+          type="file" 
+          accept="video/*" 
+          style={{ display: 'none' }} 
+          onChange={handleVideoFileChange} 
+        />
+        
         {/* Heading */}
         <button type="button" title="Tiêu đề 1" onClick={() => insertHeading(1)}><Type size={18} /><span style={{fontSize:12,marginLeft:2}}>H1</span></button>
         <button type="button" title="Tiêu đề 2" onClick={() => insertHeading(2)}><Type size={18} /><span style={{fontSize:12,marginLeft:2}}>H2</span></button>
@@ -217,6 +289,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeh
         {/* Chèn */}
         <button type="button" title="Chèn ảnh từ URL" onClick={handleInsertImage}><ImageIcon size={18} /></button>
         <button type="button" title="Upload ảnh từ máy tính" onClick={handleUploadImage}><Upload size={18} /></button>
+        <button type="button" title="Chèn video từ URL" onClick={handleInsertVideo}><Video size={18} /></button>
+        <button type="button" title="Upload video từ máy tính" onClick={handleUploadVideo}><Video size={18} style={{marginRight: -4}} /><Upload size={12} /></button>
         <button type="button" title="Chèn liên kết" onClick={handleInsertLink}><LinkIcon size={18} /></button>
         <button type="button" title="Trích dẫn" onClick={() => execCommand('formatBlock', 'BLOCKQUOTE')}><Quote size={18} /></button>
         <button type="button" title="Code" onClick={() => execCommand('formatBlock', 'PRE')}><Code size={18} /></button>

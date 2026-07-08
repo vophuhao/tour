@@ -3,9 +3,11 @@ import React, { useState } from 'react';
 import './style/CreatePostPage.css';
 import { forumApi } from '../../lib/forumApi';
 
-import { generatePostContent, generatePostSummary, 
-    getImageSuggestions, generateImage, 
-    UnsplashImage } from '../../lib/ai';
+import {
+  generatePostContent, generatePostSummary,
+  getImageSuggestions, generateImage,
+  UnsplashImage
+} from '../../lib/ai';
 
 import { toast } from 'react-toastify';
 import {
@@ -40,6 +42,29 @@ const CreatePostPage = () => {
   const [summary, setSummary] = useState('');
   const [coverImage, setCoverImage] = useState<File | null>(null);
   const [images, setImages] = useState<File[]>([]);
+  const [videos, setVideos] = useState<File[]>([]);
+
+  const handleImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const selectedFiles = Array.from(e.target.files);
+      setImages(prev => [...prev, ...selectedFiles]);
+    }
+  };
+
+  const handleVideosChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const selectedFiles = Array.from(e.target.files);
+      setVideos(prev => [...prev, ...selectedFiles]);
+    }
+  };
+
+  const removeImageAttachment = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeVideoAttachment = (index: number) => {
+    setVideos(prev => prev.filter((_, i) => i !== index));
+  };
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [customTopic, setCustomTopic] = useState('');
   const [content, setContent] = useState('');
@@ -49,7 +74,7 @@ const CreatePostPage = () => {
   const [tags, setTags] = useState<string[]>([]);
   const [customSubject, setCustomSubject] = useState('');
   const [tagInput, setTagInput] = useState('');
-  
+
   // AI states
   const [aiGeneratingContent, setAiGeneratingContent] = useState(false);
   const [aiGeneratingSummary, setAiGeneratingSummary] = useState(false);
@@ -181,7 +206,7 @@ const CreatePostPage = () => {
       } else {
         // Nếu Unsplash không tìm thấy, thử tạo ảnh bằng DALL-E
         toast.info('Không tìm thấy ảnh từ Unsplash. Đang thử tạo ảnh bằng AI...');
-        
+
         try {
           const dalleResult = await generateImage({
             title: title.trim(),
@@ -208,7 +233,7 @@ const CreatePostPage = () => {
               width: 1792,
               height: 1024
             };
-            
+
             setSuggestedImages([aiGeneratedImage]);
             setShowImageModal(true);
             toast.success('✨ Đã tạo ảnh bằng AI (DALL-E 3)!');
@@ -244,7 +269,7 @@ const CreatePostPage = () => {
       const response = await fetch(image.url);
       const blob = await response.blob();
       const file = new File([blob], `unsplash-${image.id}.jpg`, { type: 'image/jpeg' });
-      
+
       setCoverImage(file);
       setShowImageModal(false);
       if (image.id === 'dalle-generated') {
@@ -260,7 +285,7 @@ const CreatePostPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Kiểm tra subject
     const subjectValue = selectedTopics[0] === 'Khác' ? customSubject : selectedTopics[0];
     if (!title.trim() || !content.trim() || !coverImage || !subjectValue?.trim()) {
@@ -279,17 +304,18 @@ const CreatePostPage = () => {
       formData.append('tags', tags.join(','));
       formData.append('coverImage', coverImage);
       images.forEach(img => formData.append('images', img));
+      videos.forEach(vid => formData.append('videos', vid));
       // Đánh dấu bài viết được tạo bằng AI
       if (isAIGenerated) {
         formData.append('aiGenerated', 'true');
       }
-      
-      
-      
+
+
+
       await forumApi.createPost(formData);
       toast.success('Đăng bài viết thành công!');
       // Reset all fields including AI flag
-      setTitle(''); setSlug(''); setSummary(''); setCoverImage(null); setImages([]); setContent(''); setSelectedTopics([]); setCustomTopic(''); setTags([]); setCustomSubject(''); setTagInput(''); setIsAIGenerated(false);
+      setTitle(''); setSlug(''); setSummary(''); setCoverImage(null); setImages([]); setVideos([]); setContent(''); setSelectedTopics([]); setCustomTopic(''); setTags([]); setCustomSubject(''); setTagInput(''); setIsAIGenerated(false);
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Đăng bài viết thất bại!');
     } finally {
@@ -334,10 +360,10 @@ const CreatePostPage = () => {
                     <span className="modern-sidebar-info-label">Chủ đề:</span>
                     <span className="modern-sidebar-info-value">{allTopics.length}</span>
                   </div>
-                                     <div className="modern-sidebar-info-row">
-                     <span className="modern-sidebar-info-label">Nội dung:</span>
-                     <span className="modern-sidebar-info-value">{content.replace(/<[^>]*>/g, '').length} ký tự</span>
-                   </div>
+                  <div className="modern-sidebar-info-row">
+                    <span className="modern-sidebar-info-label">Nội dung:</span>
+                    <span className="modern-sidebar-info-value">{content.replace(/<[^>]*>/g, '').length} ký tự</span>
+                  </div>
                   <div className="modern-sidebar-info-row">
                     <span className="modern-sidebar-info-label">Ảnh trong bài:</span>
                     <span className="modern-sidebar-info-value">{images.length}</span>
@@ -352,8 +378,8 @@ const CreatePostPage = () => {
                   <li>• Mô tả ngắn gọn, súc tích</li>
                   <li>• Nội dung có cấu trúc</li>
                   <li>• Sử dụng thanh công cụ để format</li>
-                                     <li>• Kéo thả ảnh trực tiếp vào bài</li>
-                   <li>• Upload ảnh từ máy tính</li>
+                  <li>• Kéo thả ảnh trực tiếp vào bài</li>
+                  <li>• Upload ảnh từ máy tính</li>
                   <li>• Dùng heading để cấu trúc</li>
                   <li>• Chọn ảnh chủ đề phù hợp</li>
                 </ul>
@@ -387,7 +413,7 @@ const CreatePostPage = () => {
                           className="modern-cover-img-large"
                         />
                         <label htmlFor="cover-image" className="modern-cover-change-btn" title="Đổi ảnh">
-                          <svg width="22" height="22" viewBox="0 0 20 20" fill="none"><path d="M13.586 3.586a2 2 0 0 1 2.828 2.828l-7.5 7.5a2 2 0 0 1-.878.513l-3 1a1 1 0 0 1-1.263-1.263l1-3a2 2 0 0 1 .513-.878l7.5-7.5ZM12 5l3 3M5 19h10a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2Z" stroke="#6366f1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          <svg width="22" height="22" viewBox="0 0 20 20" fill="none"><path d="M13.586 3.586a2 2 0 0 1 2.828 2.828l-7.5 7.5a2 2 0 0 1-.878.513l-3 1a1 1 0 0 1-1.263-1.263l1-3a2 2 0 0 1 .513-.878l7.5-7.5ZM12 5l3 3M5 19h10a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2Z" stroke="#6366f1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                         </label>
                       </div>
                     ) : (
@@ -398,7 +424,7 @@ const CreatePostPage = () => {
                         </span>
                       </label>
                     )}
-                    {!coverImage && (
+                    {/* {!coverImage && (
                       <div style={{marginTop: 8, display: 'flex', flexDirection: 'column', gap: '8px'}}>
                         <small style={{color: 'var(--text-secondary)'}}>Chưa chọn ảnh, bạn có thể tải ảnh ngay bây giờ</small>
                         <button
@@ -436,8 +462,87 @@ const CreatePostPage = () => {
                           )}
                         </button>
                       </div>
-                    )}
+                    )} */}
                   </div>
+                </div>
+              </div>
+
+              {/* Hình ảnh & video đính kèm */}
+              <div className="modern-card">
+                <div className="modern-card-header">
+                  <ImageIcon className="modern-card-icon" />
+                  <h2 className="modern-card-title">Hình ảnh & video đính kèm</h2>
+                </div>
+                <div className="modern-card-body">
+                  <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                    <div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleImagesChange}
+                        id="attachment-images"
+                        style={{ display: 'none' }}
+                      />
+                      <label htmlFor="attachment-images" className="modern-preview-btn" style={{ cursor: 'pointer', padding: '8px 16px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                        <Upload size={16} /> Thêm hình ảnh
+                      </label>
+                    </div>
+                    <div>
+                      <input
+                        type="file"
+                        accept="video/*"
+                        multiple
+                        onChange={handleVideosChange}
+                        id="attachment-videos"
+                        style={{ display: 'none' }}
+                      />
+                      <label htmlFor="attachment-videos" className="modern-preview-btn" style={{ cursor: 'pointer', padding: '8px 16px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                        <Upload size={16} /> Thêm video
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Previews */}
+                  {images.length > 0 && (
+                    <div style={{ marginBottom: '16px' }}>
+                      <h4 style={{ fontSize: '14px', fontWeight: 500, marginBottom: '8px' }}>Hình ảnh ({images.length})</h4>
+                      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                        {images.map((file, idx) => (
+                          <div key={idx} style={{ position: 'relative', width: '100px', height: '100px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e5e7eb' }}>
+                            <img src={URL.createObjectURL(file)} alt="Attachment image" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <button
+                              type="button"
+                              onClick={() => removeImageAttachment(idx)}
+                              style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '12px' }}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {videos.length > 0 && (
+                    <div>
+                      <h4 style={{ fontSize: '14px', fontWeight: 500, marginBottom: '8px' }}>Videos ({videos.length})</h4>
+                      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                        {videos.map((file, idx) => (
+                          <div key={idx} style={{ position: 'relative', width: '150px', height: '100px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e5e7eb', background: '#000' }}>
+                            <video src={URL.createObjectURL(file)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted />
+                            <button
+                              type="button"
+                              onClick={() => removeVideoAttachment(idx)}
+                              style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '12px' }}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
               {/* Thông tin cơ bản + Chủ đề + Tags (đồng bộ UI với Edit) */}
@@ -477,11 +582,11 @@ const CreatePostPage = () => {
                         onClick={handleAIGenerateSummary}
                         disabled={aiGeneratingSummary || !title.trim()}
                         className="modern-ai-small-btn"
-                        style={{ 
-                          padding: '4px 12px', 
-                          fontSize: '12px', 
-                          display: 'flex', 
-                          alignItems: 'center', 
+                        style={{
+                          padding: '4px 12px',
+                          fontSize: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
                           gap: '4px',
                           background: 'var(--primary-color)',
                           color: 'white',
@@ -512,11 +617,11 @@ const CreatePostPage = () => {
                       className="modern-textarea modern-input"
                     />
                   </div>
-                  <div className="modern-card-header" style={{marginTop: 4}}>
+                  <div className="modern-card-header" style={{ marginTop: 4 }}>
                     <Sparkles className="modern-card-icon" />
                     <h3 className="modern-card-title">Chủ đề *</h3>
                   </div>
-                  <div className="modern-card-body" style={{paddingTop: 0}}>
+                  <div className="modern-card-body" style={{ paddingTop: 0 }}>
                     <div className="modern-subject-grid">
                       {SUBJECTS.map((subject) => (
                         <button
@@ -549,11 +654,11 @@ const CreatePostPage = () => {
                       </div>
                     )}
                   </div>
-                  <div className="modern-card-header" style={{marginTop: 8}}>
+                  <div className="modern-card-header" style={{ marginTop: 8 }}>
                     <Sparkles className="modern-card-icon" />
                     <h3 className="modern-card-title">Tags</h3>
                   </div>
-                  <div className="modern-card-body" style={{paddingTop: 0}}>
+                  <div className="modern-card-body" style={{ paddingTop: 0 }}>
                     <div className="modern-tags-container">
                       {tags.map((tag, index) => (
                         <span key={index} className="modern-tag">
@@ -608,9 +713,9 @@ const CreatePostPage = () => {
                   placeholder="Nhập nội dung bài viết..."
                   style={{ minHeight: 200, maxHeight: 500, overflowY: 'auto', lineHeight: '1.6', position: 'relative' }}
                 />
-                                 <div className="modern-editor-tip">
-                   💡 Mẹo: Bạn có thể kéo thả ảnh trực tiếp vào vùng soạn thảo, upload ảnh từ máy tính, hoặc sử dụng thanh công cụ để format text
-                 </div>
+                <div className="modern-editor-tip">
+                  💡 Mẹo: Bạn có thể kéo thả ảnh trực tiếp vào vùng soạn thảo, upload ảnh từ máy tính, hoặc sử dụng thanh công cụ để format text
+                </div>
               </div>
               {/* Action Buttons */}
               <div className="modern-action-btns">
@@ -662,8 +767,8 @@ const CreatePostPage = () => {
 
             {/* Image Selection Modal */}
             {showImageModal && (
-              <div 
-                className="modal-overlay" 
+              <div
+                className="modal-overlay"
                 onClick={() => setShowImageModal(false)}
                 style={{
                   position: 'fixed',
@@ -679,7 +784,7 @@ const CreatePostPage = () => {
                   padding: '20px'
                 }}
               >
-                <div 
+                <div
                   className="modal-content"
                   onClick={(e) => e.stopPropagation()}
                   style={{
@@ -695,8 +800,8 @@ const CreatePostPage = () => {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 600 }}>
-                      {suggestedImages.length > 0 && suggestedImages[0].id === 'dalle-generated' 
-                        ? '✨ Ảnh được tạo bằng AI' 
+                      {suggestedImages.length > 0 && suggestedImages[0].id === 'dalle-generated'
+                        ? '✨ Ảnh được tạo bằng AI'
                         : 'Chọn ảnh từ Unsplash'}
                     </h2>
                     <button
@@ -714,7 +819,7 @@ const CreatePostPage = () => {
                       <X size={24} />
                     </button>
                   </div>
-                  
+
                   {suggestedImages.length > 0 ? (
                     <div style={{
                       display: 'grid',
@@ -772,13 +877,13 @@ const CreatePostPage = () => {
                                   Photo by {image.author.name}
                                 </div>
                                 {image.unsplashUrl && (
-                                  <a 
+                                  <a
                                     href={image.unsplashUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     onClick={(e) => e.stopPropagation()}
-                                    style={{ 
-                                      color: '#93c5fd', 
+                                    style={{
+                                      color: '#93c5fd',
                                       textDecoration: 'none',
                                       fontSize: '10px'
                                     }}
@@ -814,14 +919,14 @@ const CreatePostPage = () => {
                       <p>Không tìm thấy ảnh phù hợp</p>
                     </div>
                   )}
-                  
+
                   <div style={{ marginTop: '20px', padding: '12px', background: '#f3f4f6', borderRadius: '8px', fontSize: '12px', color: '#6b7280' }}>
-                    <strong>Lưu ý:</strong> Ảnh từ Unsplash được cung cấp miễn phí theo giấy phép Unsplash License. 
+                    <strong>Lưu ý:</strong> Ảnh từ Unsplash được cung cấp miễn phí theo giấy phép Unsplash License.
                     Khi sử dụng, vui lòng ghi công tác giả và link về Unsplash nếu có thể.
                     <br />
-                    <a 
-                      href="https://unsplash.com/license" 
-                      target="_blank" 
+                    <a
+                      href="https://unsplash.com/license"
+                      target="_blank"
                       rel="noopener noreferrer"
                       style={{ color: '#6366f1', textDecoration: 'underline' }}
                     >

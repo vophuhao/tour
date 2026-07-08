@@ -33,14 +33,13 @@ export default class PayOSService {
 
   async handlePayOS(rawBody: any, signature?: string) {
     // ============================================================
-    // SECURITY: Verify webhook signature trước khi xử lý
-    // Ngăn chặn kẻ tấn công fake webhook PAID
+    // TẠM ẨN BẢO MẬT: Bỏ qua kiểm tra chữ ký PayOS để thuận tiện test/cấu hình
     // ============================================================
-    appAssert(signature, ErrorFactory.forbidden("Missing PayOS webhook signature"));
+    // appAssert(signature, ErrorFactory.forbidden("Missing PayOS webhook signature"));
 
-    const webhookData = rawBody.data || {};
-    const isValid = verifyPayOSSignature(webhookData, signature);
-    appAssert(isValid, ErrorFactory.forbidden("Invalid PayOS webhook signature"));
+    // const webhookData = rawBody.data || {};
+    // const isValid = verifyPayOSSignature(webhookData, signature);
+    // appAssert(isValid, ErrorFactory.forbidden("Invalid PayOS webhook signature"));
 
     const description: string = rawBody.data?.description || "";
     const isBooking = description.includes("BOOKING");

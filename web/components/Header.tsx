@@ -22,7 +22,7 @@ import GoogleTranslator from '@/components/GoogleTranslator';
 const navItems = [
   { name: 'Trang chủ', href: '/' },
   { name: 'Tìm kiếm', href: '/search' },
-  { name: 'Lập lộ trình', href: '/roadtrip' },
+  { name: 'Chuyến đi', href: '/roadtrip' },
   { name: 'Điểm cắm trại', href: '/free-spots' },
   { name: 'Diễn đàn', href: '/forum' },
   // { name: 'Giới thiệu', href: '/about' },
@@ -57,7 +57,7 @@ export default function Header() {
               alt="HDCamp Logo"
               width={130}
               height={48}
-              className="h-5 w-auto object-contain"
+              className="h-5 w-auto object-contain dark:brightness-0 dark:invert"
               priority
             />
           </Link>
@@ -70,7 +70,7 @@ export default function Header() {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`relative py-2 text-sm font-bold transition-colors hover:text-primary ${isActive ? 'text-primary' : 'text-foreground'
+                  className={`relative py-2 text-sm font-bold transition-colors hover:text-primary ${isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
                     }`}
                 >
                   {item.name}
@@ -161,7 +161,7 @@ export default function Header() {
 
                 <div
                   onClick={() => router.push(`/u/${user.username}`)}
-                  className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2"
+                  className="flex cursor-pointer items-center gap-2 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 px-3 py-2"
                 >
                   <User className="h-4 w-4" />
                   {/* <span className="text-sm font-medium">{user.username}</span> */}
