@@ -312,7 +312,7 @@ export function BookingDetailSheet({
                 </span>
               </div>
 
-              {Number(booking.pricing.cleaningFee) > 0 && (
+              {typeof booking.pricing.cleaningFee === 'number' && booking.pricing.cleaningFee > 0 && (
                 <div className="flex justify-between text-sm">
                   <span>Phí vệ sinh</span>
                   <span className="font-medium">
@@ -321,7 +321,7 @@ export function BookingDetailSheet({
                 </div>
               )}
 
-              {Number(booking.pricing.petFee) > 0 && (
+              {typeof booking.pricing.petFee === 'number' && booking.pricing.petFee > 0 && (
                 <div className="flex justify-between text-sm">
                   <span>Phí thú cưng</span>
                   <span className="font-medium">
@@ -330,7 +330,7 @@ export function BookingDetailSheet({
                 </div>
               )}
 
-              {Number(booking.pricing.extraGuestFee) > 0 && (
+              {typeof booking.pricing.extraGuestFee === 'number' && booking.pricing.extraGuestFee > 0 && (
                 <div className="flex justify-between text-sm">
                   <span>Phí khách thêm</span>
                   <span className="font-medium">
