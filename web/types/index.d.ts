@@ -408,6 +408,16 @@ declare interface SystemSetting {
     hostRateBelowThreshold: number;
     rejectedRequestHostRate: number;
   };
+  popupBanner?: {
+    imageUrl: string;
+    linkUrl?: string;
+    isActive: boolean;
+  };
+  popupBanners?: Array<{
+    imageUrl: string;
+    linkUrl?: string;
+    isActive: boolean;
+  }>;
   createdAt?: string | Date;
   updatedAt?: string | Date;
 }

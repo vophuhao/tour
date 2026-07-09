@@ -17,6 +17,9 @@ export const createPromoCodeSchema = z.object({
   endDate: z.coerce.date({ invalid_type_error: "Ngày kết thúc không hợp lệ" }),
   usageLimit: z.number().min(1).optional(),
   isActive: z.boolean().optional().default(true),
+  minGuests: z.number().min(1).optional(),
+  minBookingQuantity: z.number().min(1).optional(),
+  minNights: z.number().min(1).optional(),
 });
 
 export const updatePromoCodeSchema = createPromoCodeSchema.partial().omit({ code: true });

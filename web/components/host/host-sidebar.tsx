@@ -19,6 +19,7 @@ import {
   Tent,
   User,
   DollarSign,
+  Tag,
   Wallet,
   Package,
 } from 'lucide-react';
@@ -78,6 +79,7 @@ export default function HostSidebar({ collapsed, setCollapsed }: SidebarProps) {
     { name: 'Khu đất', href: '/host/properties', icon: Tent, group: 'main' },
     { name: 'Gói dịch vụ', href: '/host/services', icon: Package, group: 'main' },
     { name: 'Thông báo', href: '/host/notifications', icon: Bell, group: 'main' },
+    { name: 'Khuyến mãi', href: '/host/promotions', icon: Tag },
     { name: 'Đánh giá', href: '/host/reviews', icon: Star, group: 'main' },
     { name: 'Doanh thu', href: '/host/revenue', icon: DollarSign, group: 'main' },
     { name: 'Ví của tôi', href: '/host/wallet', icon: Wallet, group: 'main' },

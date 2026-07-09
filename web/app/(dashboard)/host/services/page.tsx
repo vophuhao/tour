@@ -57,6 +57,10 @@ export default function HostServicesPage() {
   });
   const myProperties = propertiesResponse?.properties || propertiesResponse?.data?.properties || [];
 
+  const propertiesWithServices = useMemo(() => {
+    return myProperties.filter((p: any) => p.services && p.services.length > 0);
+  }, [myProperties]);
+
   const [isBlockOpen, setIsBlockOpen] = useState(false);
   const [blockPropertyId, setBlockPropertyId] = useState("");
   const [blockServiceName, setBlockServiceName] = useState("");
@@ -535,7 +539,7 @@ export default function HostServicesPage() {
                         <SelectValue placeholder="Chọn khu đất..." />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl">
-                        {myProperties.map((p: any) => (
+                        {propertiesWithServices.map((p: any) => (
                           <SelectItem key={p._id} value={p._id} className="rounded-lg text-xs">
                             {p.name}
                           </SelectItem>
@@ -704,10 +708,10 @@ export default function HostServicesPage() {
                 setBlockServiceName("");
               }}>
                 <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-800 focus:ring-primary">
-                  <SelectValue placeholder="Chọn khu đất..." />
+                  <SelectValue placeholder={propertiesWithServices.length === 0 ? "Không có khu đất nào có dịch vụ..." : "Chọn khu đất..."} />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
-                  {myProperties.map((p: any) => (
+                  {propertiesWithServices.map((p: any) => (
                     <SelectItem key={p._id} value={p._id} className="rounded-lg">
                       {p.name}
                     </SelectItem>

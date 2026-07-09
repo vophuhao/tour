@@ -85,6 +85,7 @@ propertyRoutes.get("/:id/superhost-status", authenticate, async (req, res) => {
 
 // Property with sites (must be before /:idOrSlug)
 propertyRoutes.get("/:idOrSlug/with-sites", propertyController.getPropertyWithSites);
+propertyRoutes.get("/:idOrSlug/promotions", propertyController.getPropertyPromotions);
 
 // Property details (MUST BE LAST among GET routes)
 propertyRoutes.get("/:idOrSlug", propertyController.getProperty);

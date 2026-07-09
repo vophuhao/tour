@@ -46,6 +46,22 @@ export class SettingService {
       };
     }
 
+    if (data.popupBanner) {
+      settings.popupBanner = {
+        imageUrl: data.popupBanner.imageUrl,
+        linkUrl: data.popupBanner.linkUrl || "",
+        isActive: data.popupBanner.isActive,
+      };
+    }
+
+    if (data.popupBanners) {
+      settings.popupBanners = data.popupBanners.map((banner: any) => ({
+        imageUrl: banner.imageUrl,
+        linkUrl: banner.linkUrl || "",
+        isActive: banner.isActive,
+      }));
+    }
+
     await settings.save();
     this.cachedSettings = settings.toObject();
     return this.cachedSettings;

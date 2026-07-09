@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { 
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
+      color: white; 
+      padding: 30px; 
+      text-align: center; 
+      border-radius: 10px 10px 0 0; 
+    }
+    .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+    .button { 
+      display: inline-block; 
+      background: #10b981; 
+      color: white !important; 
+      padding: 15px 40px; 
+      text-decoration: none; 
+      border-radius: 8px; 
+      margin: 20px 0;
+      font-weight: bold;
+    }
+    .info-box { 
+      background: white; 
+      padding: 20px; 
+      border-left: 4px solid #10b981; 
+      margin: 20px 0; 
+      border-radius: 5px; 
+    }
+    .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 30px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>✅ Đã hoàn tiền thành công</h1>
+      <p style="font-size: 16px; margin: 10px 0;">Yêu cầu hoàn tiền của bạn đã được xử lý</p>
+    </div>
+    
+    <div class="content">
+      <p>Xin chào <strong><%= guestName %></strong>,</p>
+      
+      <p>Chúng tôi đã thực hiện hoàn tiền cho đơn đặt chỗ <strong>#<%= code %></strong> của bạn tại <strong><%= propertyName %></strong>. Tiền đã được chuyển khoản thành công vào tài khoản ngân hàng bạn cung cấp.</p>
+      
+      <div class="info-box">
+        <h3 style="margin-top: 0; color: #059669;">💰 Thông tin hoàn tiền</h3>
+        <p><strong>Mã booking:</strong> <%= code %></p>
+        <p><strong>Số tiền hoàn trả:</strong> <span style="color: #059669; font-size: 18px; font-weight: bold;"><%= refundAmountStr %></span></p>
+        <p><strong>Ngân hàng nhận:</strong> <%= bankName %></p>
+        <p><strong>Số tài khoản:</strong> <%= bankAccountNumber %></p>
+        <p><strong>Chủ tài khoản:</strong> <%= bankAccountName %></p>
+        <p><strong>Thời gian hoàn tất:</strong> <%= processedAtStr %></p>
+      </div>
+      
+      <p style="margin-top: 30px;">
+        Nếu bạn chưa nhận được tiền trong vòng 24 giờ tới hoặc có bất kỳ thắc mắc nào, vui lòng liên hệ với đội ngũ hỗ trợ của chúng tôi để được hỗ trợ kịp thời.
+      </p>
+      
+      <p style="margin-top: 20px;">
+        Trân trọng,<br>
+        <strong>Đội ngũ HipCamp</strong>
+      </p>
+    </div>
+    
+    <div class="footer">
+      <p>© <%= currentYear %> HipCamp. All rights reserved.</p>
+      <p>Liên hệ hỗ trợ: support@hipcamp.vn | Hotline: 1900-xxxx</p>
+    </div>
+  </div>
+</body>
+</html>

@@ -46,6 +46,11 @@ export async function validatePromoCode(data: {
   code: string;
   propertyId: string;
   subtotal: number;
+  guests?: number;
+  bookingQuantity?: number;
+  nights?: number;
+  checkIn?: string;
+  checkOut?: string;
 }): Promise<ApiResponse> {
   return apiClient.post('/bookings/validate-promo', data);
 }

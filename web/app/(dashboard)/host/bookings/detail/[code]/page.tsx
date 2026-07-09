@@ -1408,27 +1408,49 @@ export default function BookingDetailPage() {
 
                 {booking.status !== 'cancelled' &&
                   booking.status !== 'completed' &&
-                  booking.status !== 'refunded' &&
-                  booking.paymentStatus !== 'paid' && (
-                    <div className="space-y-2">
-                      {timeLeft > 0 && (
-                        <div className="text-xs text-amber-700 bg-amber-50 p-3 rounded-lg border border-amber-200 space-y-1">
-                          <p className="font-semibold">⚠️ Chờ thanh toán</p>
-                          <p>Bạn chỉ có thể hủy booking chưa thanh toán này sau 30 phút kể từ lúc đặt.</p>
-                          <p className="font-mono font-semibold">
-                            Có thể hủy sau: {Math.floor(timeLeft / 60)} phút {timeLeft % 60} giây
-                          </p>
+                  booking.status !== 'refunded' && (
+                    <div className="space-y-2 pt-2 border-t border-gray-100">
+                      {/* Case 1: Booking not paid yet */}
+                      {booking.paymentStatus !== 'paid' && (
+                        <div className="space-y-2">
+                          {timeLeft > 0 && (
+                            <div className="text-xs text-amber-700 bg-amber-50 p-3 rounded-lg border border-amber-200 space-y-1">
+                              <p className="font-semibold">⚠️ Chờ thanh toán</p>
+                              <p>Bạn chỉ có thể hủy booking chưa thanh toán này sau 30 phút kể từ lúc đặt.</p>
+                              <p className="font-mono font-semibold">
+                                Có thể hủy sau: {Math.floor(timeLeft / 60)} phút {timeLeft % 60} giây
+                              </p>
+                            </div>
+                          )}
+                          <Button
+                            variant="destructive"
+                            className="w-full"
+                            onClick={() => {
+                              setCancelReason('');
+                              setCancelDialogOpen(true);
+                            }}
+                            disabled={timeLeft > 0}
+                          >
+                            <XCircle className="mr-2 h-4 w-4" />
+                            Hủy booking
+                          </Button>
                         </div>
                       )}
-                      <Button
-                        variant="destructive"
-                        className="w-full"
-                        onClick={() => setCancelDialogOpen(true)}
-                        disabled={timeLeft > 0}
-                      >
-                        <XCircle className="mr-2 h-4 w-4" />
-                        Hủy booking
-                      </Button>
+
+                      {/* Case 2: Booking already paid */}
+                      {booking.paymentStatus === 'paid' && (
+                        <Button
+                          variant="destructive"
+                          className="w-full bg-red-600 hover:bg-red-700 text-white"
+                          onClick={() => {
+                            setCancelReason('');
+                            setCancelDialogOpen(true);
+                          }}
+                        >
+                          <XCircle className="mr-2 h-4 w-4" />
+                          Hủy và hoàn tiền
+                        </Button>
+                      )}
                     </div>
                   )}
               </CardContent>
@@ -1441,9 +1463,13 @@ export default function BookingDetailPage() {
       <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Hủy booking</DialogTitle>
+            <DialogTitle>
+              {booking?.paymentStatus === 'paid' ? 'Hủy và hoàn tiền' : 'Hủy booking'}
+            </DialogTitle>
             <DialogDescription>
-              Bạn có chắc chắn muốn hủy booking này? Vui lòng cho biết lý do hủy.
+              {booking?.paymentStatus === 'paid'
+                ? 'Bạn có chắc chắn muốn hủy booking đã thanh toán này? Hệ thống sẽ ghi nhận yêu cầu hoàn tiền 100% cho khách hàng sau khi khách cung cấp thông tin tài khoản ngân hàng.'
+                : 'Bạn có chắc chắn muốn hủy booking này? Vui lòng cho biết lý do hủy.'}
             </DialogDescription>
           </DialogHeader>
 

@@ -173,6 +173,13 @@ export async function getPropertyWithSites(
 }
 
 /**
+ * Get active promotions for a property
+ */
+export async function getPropertyPromotions(idOrSlug: string): Promise<ApiResponse<any[]>> {
+  return apiClient.get(`/properties/${idOrSlug}/promotions`);
+}
+
+/**
  * Get property reviews
  */
 export async function getPropertyReviews(
@@ -683,23 +690,23 @@ export async function createServiceBlock(data: {
   checkOut: string;
   quantity: number;
   note?: string;
-}) {
+}): Promise<ApiResponse<any>> {
   const response = await apiClient.post('/properties/service-blocks', data);
-  return response.data;
+  return response as any;
 }
 
 /**
  * Get host's service blocks (host only)
  */
-export async function getMyServiceBlocks() {
+export async function getMyServiceBlocks(): Promise<ApiResponse<any>> {
   const response = await apiClient.get('/properties/service-blocks/my');
-  return response.data;
+  return response as any;
 }
 
 /**
  * Delete service block (host only)
  */
-export async function deleteServiceBlock(blockId: string) {
+export async function deleteServiceBlock(blockId: string): Promise<ApiResponse<any>> {
   const response = await apiClient.delete(`/properties/service-blocks/${blockId}`);
-  return response.data;
+  return response as any;
 }

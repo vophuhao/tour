@@ -22,10 +22,22 @@ export default class WalletService {
     bookingId: string,
     grossAmount: number
   ) {
+    let finalGrossAmount = grossAmount;
+    
+    // Kiểm tra nếu booking áp dụng mã giảm giá Global của sàn, sàn sẽ bù tiền cho Host
+    const booking = await BookingModel.findById(bookingId).lean();
+    if (booking && booking.pricing?.promoCode && booking.pricing?.promoDiscount) {
+      const { PromoCodeModel } = await import("@/models/promo-code.model");
+      const promo = await PromoCodeModel.findOne({ code: booking.pricing.promoCode });
+      if (promo && promo.scope === "global") {
+        finalGrossAmount += booking.pricing.promoDiscount;
+      }
+    }
+
     const settings = await SettingService.getSettings();
     const platformFeeRate = settings.platformFeeRate;
-    const platformFee = Math.round(grossAmount * platformFeeRate);
-    const netAmount = grossAmount - platformFee;
+    const platformFee = Math.round(finalGrossAmount * platformFeeRate);
+    const netAmount = finalGrossAmount - platformFee;
 
     // Tìm host record theo user id (booking.host = User._id)
     let hostRecord = await HostModel.findOne({ user: hostUserId });

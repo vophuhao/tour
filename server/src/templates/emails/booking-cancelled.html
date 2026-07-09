@@ -43,13 +43,13 @@
   <div class="container">
     <div class="header">
       <h1>❌ Booking đã bị hủy</h1>
-      <p style="font-size: 16px; margin: 10px 0;">Hết thời gian thanh toán</p>
+      <p style="font-size: 16px; margin: 10px 0;"><%= cancelSubtitle %></p>
     </div>
     
     <div class="content">
       <p>Xin chào <strong><%= guestName %></strong>,</p>
       
-      <p>Rất tiếc, booking <strong><%= code %></strong> của bạn đã bị hủy tự động do không được thanh toán trong vòng 12 giờ.</p>
+      <p><%= cancelMessage %></p>
       
       <div class="info-box">
         <h3 style="margin-top: 0; color: #ef4444;">📋 Thông tin booking đã hủy</h3>
@@ -57,7 +57,7 @@
         <p><strong>Địa điểm:</strong> <%= siteName %> - <%= propertyName %></p>
         <p><strong>Check-in:</strong> <%= checkInStr %></p>
         <p><strong>Check-out:</strong> <%= checkOutStr %></p>
-        <p><strong>Lý do hủy:</strong> <span style="color: #ef4444;">Quá thời gian thanh toán (12 giờ)</span></p>
+        <p><strong>Lý do hủy:</strong> <span style="color: #ef4444;"><%= cancellationReason %></span></p>
       </div>
       
       <div class="tips-box">

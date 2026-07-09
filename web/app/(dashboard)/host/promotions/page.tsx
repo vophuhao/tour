@@ -18,6 +18,7 @@ import {
   MinusCircle,
   Tag,
   Building,
+  Sliders,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -59,7 +60,7 @@ export default function HostPromotionsPage() {
   }
 
   const [activeTab, setActiveTab] = useState<"promo" | "combo">("promo");
-  
+
   // Dialog States
   const [promoDialogOpen, setPromoDialogOpen] = useState(false);
   const [editingPromo, setEditingPromo] = useState<any | null>(null);
@@ -78,6 +79,9 @@ export default function HostPromotionsPage() {
   const [endDate, setEndDate] = useState("");
   const [usageLimit, setUsageLimit] = useState<number | undefined>(undefined);
   const [promoActive, setPromoActive] = useState(true);
+  const [minGuests, setMinGuests] = useState<number | undefined>(undefined);
+  const [minBookingQuantity, setMinBookingQuantity] = useState<number | undefined>(undefined);
+  const [minNights, setMinNights] = useState<number | undefined>(undefined);
 
   // Form states - Combo
   const [comboName, setComboName] = useState("");
@@ -215,6 +219,9 @@ export default function HostPromotionsPage() {
     setEndDate("");
     setUsageLimit(undefined);
     setPromoActive(true);
+    setMinGuests(undefined);
+    setMinBookingQuantity(undefined);
+    setMinNights(undefined);
     setPromoDialogOpen(true);
   };
 
@@ -231,6 +238,9 @@ export default function HostPromotionsPage() {
     setEndDate(new Date(promo.endDate).toISOString().slice(0, 16));
     setUsageLimit(promo.usageLimit);
     setPromoActive(promo.isActive);
+    setMinGuests(promo.minGuests);
+    setMinBookingQuantity(promo.minBookingQuantity);
+    setMinNights(promo.minNights);
     setPromoDialogOpen(true);
   };
 
@@ -253,6 +263,9 @@ export default function HostPromotionsPage() {
       endDate: new Date(endDate).toISOString(),
       usageLimit: usageLimit || undefined,
       isActive: promoActive,
+      minGuests: minGuests || undefined,
+      minBookingQuantity: minBookingQuantity || undefined,
+      minNights: minNights || undefined,
     };
 
     if (editingPromo) {
@@ -342,12 +355,10 @@ export default function HostPromotionsPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-            <Sparkles className="h-8 w-8 text-primary" />
-            Ưu đãi & Combo dịch vụ
+
+            Ưu đãi
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm max-w-2xl">
-            Tạo các chương trình khuyến mãi (coupon) hoặc các gói combo phòng kèm dịch vụ ăn uống, chèo SUP để tăng doanh thu cắm trại.
-          </p>
+
         </div>
 
         <Button
@@ -363,15 +374,14 @@ export default function HostPromotionsPage() {
       <div className="flex gap-2 p-1 bg-slate-100 dark:bg-slate-900 rounded-xl max-w-md mb-8 border border-slate-200/55 dark:border-slate-800">
         <button
           onClick={() => setActiveTab("promo")}
-          className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${
-            activeTab === "promo"
-              ? "bg-white dark:bg-slate-800 text-primary shadow-sm"
-              : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-250"
-          }`}
+          className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === "promo"
+            ? "bg-white dark:bg-slate-800 text-primary shadow-sm"
+            : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-250"
+            }`}
         >
           Mã giảm giá (Coupons)
         </button>
-        <button
+        {/* <button
           onClick={() => setActiveTab("combo")}
           className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${
             activeTab === "combo"
@@ -380,7 +390,7 @@ export default function HostPromotionsPage() {
           }`}
         >
           Gói Combo dịch vụ
-        </button>
+        </button> */}
       </div>
 
       {/* Promotions Codes Tab Content */}
@@ -472,6 +482,30 @@ export default function HostPromotionsPage() {
                         {promo.minSubtotal ? `${promo.minSubtotal.toLocaleString()} đ` : "Không có"}
                       </span>
                     </div>
+                    {promo.minGuests && (
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-slate-500">Số khách tối thiểu:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                          {promo.minGuests} người
+                        </span>
+                      </div>
+                    )}
+                    {promo.minNights && (
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-slate-500">Số đêm tối thiểu:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                          {promo.minNights} đêm
+                        </span>
+                      </div>
+                    )}
+                    {promo.minBookingQuantity && (
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-slate-500">Số lều tối thiểu:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                          {promo.minBookingQuantity} lều
+                        </span>
+                      </div>
+                    )}
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-slate-500">Lượt sử dụng:</span>
                       <span className="font-semibold text-slate-700 dark:text-slate-300">
@@ -599,14 +633,12 @@ export default function HostPromotionsPage() {
 
       {/* Promo Code Dialog */}
       <Dialog open={promoDialogOpen} onOpenChange={setPromoDialogOpen}>
-        <DialogContent className="max-w-xl rounded-2xl border border-slate-200 dark:border-slate-800">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-800">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">
               {editingPromo ? "Chỉnh sửa mã giảm giá" : "Tạo mã giảm giá mới"}
             </DialogTitle>
-            <DialogDescription>
-              Tạo mã coupon giảm giá cho các dịch vụ cắm trại của bạn. Các mã này sẽ được khách hàng nhập tại khung thanh toán.
-            </DialogDescription>
+
           </DialogHeader>
 
           <form onSubmit={handlePromoSubmit} className="space-y-4">
@@ -739,6 +771,54 @@ export default function HostPromotionsPage() {
                   checked={promoActive}
                   onCheckedChange={setPromoActive}
                 />
+              </div>
+            </div>
+
+            {/* Advanced Application Conditions Section */}
+            <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30 space-y-3">
+              <div className="flex items-center gap-2 pb-1 border-b border-slate-100 dark:border-slate-800">
+
+                <h4 className="text-sm font-semibold text-slate-850 dark:text-slate-200">
+                  Điều kiện áp dụng nâng cao
+                </h4>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="minGuests" className="text-xs font-semibold text-slate-600 dark:text-slate-300">Số khách tối thiểu</Label>
+                  <Input
+                    id="minGuests"
+                    type="number"
+                    min="1"
+                    placeholder="Ví dụ: 30"
+                    value={minGuests || ""}
+                    onChange={(e) => setMinGuests(e.target.value ? Number(e.target.value) : undefined)}
+                    className="rounded-xl border-slate-200 focus-visible:ring-primary h-9 text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="minNights" className="text-xs font-semibold text-slate-600 dark:text-slate-300">Số đêm tối thiểu</Label>
+                  <Input
+                    id="minNights"
+                    type="number"
+                    min="1"
+                    placeholder="Ví dụ: 4"
+                    value={minNights || ""}
+                    onChange={(e) => setMinNights(e.target.value ? Number(e.target.value) : undefined)}
+                    className="rounded-xl border-slate-200 focus-visible:ring-primary h-9 text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="minBookingQty" className="text-xs font-semibold text-slate-600 dark:text-slate-300">Số lều tối thiểu</Label>
+                  <Input
+                    id="minBookingQty"
+                    type="number"
+                    min="1"
+                    placeholder="Ví dụ: 2"
+                    value={minBookingQuantity || ""}
+                    onChange={(e) => setMinBookingQuantity(e.target.value ? Number(e.target.value) : undefined)}
+                    className="rounded-xl border-slate-200 focus-visible:ring-primary h-9 text-sm"
+                  />
+                </div>
               </div>
             </div>
 

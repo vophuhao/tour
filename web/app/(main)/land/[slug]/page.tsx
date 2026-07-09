@@ -8,6 +8,7 @@ import { PropertyRulesSection } from '@/components/property/property-rules-secti
 import { SimilarProperties } from '@/components/property/similar-properties';
 import { SiteAmenitiesSection } from '@/components/property/site-amenities-section';
 import { SitesListSection } from '@/components/property/sites-list-section';
+import { PropertyPromotions } from '@/components/property/property-promotions';
 import { Separator } from '@/components/ui/separator';
 import type { Property, Site } from '@/types/property-site';
 import { notFound } from 'next/navigation';
@@ -55,6 +56,29 @@ async function fetchProperty(
   } catch (error) {
     console.error('Failed to fetch property:', error);
     return null;
+  }
+}
+
+async function fetchPropertyPromotions(
+  propertyId: string,
+): Promise<any[]> {
+  try {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/properties/${propertyId}/promotions`,
+      {
+        cache: 'no-store',
+      },
+    );
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const result = await response.json();
+    return result.data || [];
+  } catch (error) {
+    console.error('Failed to fetch promotions:', error);
+    return [];
   }
 }
 
@@ -112,6 +136,9 @@ export default async function PropertyPage({
   const similarProperties = property.location?.city
     ? await fetchSimilarProperties(property._id, property.location.city)
     : [];
+
+  // Fetch promotions
+  const promotions = await fetchPropertyPromotions(property._id);
 
   // Parse search params for booking
   const guests = parseInt(search.guests || '0');
@@ -180,6 +207,7 @@ export default async function PropertyPage({
                 initialCheckIn={search.checkIn}
                 initialCheckOut={search.checkOut}
               />
+              <PropertyPromotions promotions={promotions} />
             </div>
           </div>
         </div>

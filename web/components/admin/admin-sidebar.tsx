@@ -23,6 +23,7 @@ import {
   DollarSign,
   Sun,
   Moon,
+  Tag,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -91,6 +92,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
     { name: 'Booking', href: '/admin/bookings', icon: CalendarCheck },
     { name: 'Doanh thu', href: '/admin/revenue', icon: BarChart3 },
     { name: 'Thanh toán', href: '/admin/payouts', icon: DollarSign },
+    { name: 'Khuyến mãi', href: '/admin/promotions', icon: Tag },
     { name: 'Thông báo', href: '/admin/notifications', icon: Bell },
     { name: 'Cài đặt', href: '/admin/settings', icon: Settings },
   ];

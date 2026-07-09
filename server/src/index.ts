@@ -7,7 +7,7 @@ import cron from "node-cron";
 import mongoose from "mongoose";
 import { connectRedis, connectToDatabase } from "./config";
 import { APP_ORIGIN, NODE_ENV, OK, PORT } from "./constants";
-import { authenticate, errorHandler, globalRateLimit, authRateLimit } from "./middleware";
+import { authenticate, errorHandler, globalRateLimit, authRateLimit, requireAdmin } from "./middleware";
 import {
   amenityRoutes,
   authRoutes,
@@ -37,6 +37,7 @@ import freeSpotRoutes from "./routes/free-spot.route";
 import reportRoutes from "./routes/report.route";
 import walletRoutes from "./routes/wallet.route";
 import mobileSelfieRoutes from "./routes/mobile-selfie.route";
+import adminPromoCodeRoutes from "./routes/admin-promo-code.route";
 import { BookingLifecycleService, PropertyService, ForumService } from "./services";
 import PayoutService from "./services/payout.service";
 import { initializeSocket } from "./socket";
@@ -149,6 +150,21 @@ cron.schedule("*/1 * * * *", async () => {
   }
 });
 
+// Cron: Giả lập tự động hoàn tiền và gửi mail sau 10 phút khi khách điền thông tin hoặc tự hủy (mỗi 1 phút)
+cron.schedule("*/1 * * * *", async () => {
+  console.log("🔄 Running simulated refunds auto-processing job...");
+  try {
+    const result = await bookingLifecycleService.processPendingSimulatedRefunds();
+    if (result.hostRefundsProcessed > 0 || result.guestRefundsProcessed > 0) {
+      console.log(
+        `✅ Simulated refunds processed: ${result.hostRefundsProcessed} host-cancelled, ${result.guestRefundsProcessed} guest-cancelled`
+      );
+    }
+  } catch (err) {
+    console.error("❌ Simulated refunds job failed:", err);
+  }
+});
+
 // Cron: Tự động xóa các booking chưa thanh toán có check-in bằng ngày hiện tại (mỗi ngày lúc 1:00 AM)
 // cron.schedule("0 1 * * *", async () => {
 //   console.log("🔄 Running cleanup unpaid bookings job...");
@@ -218,6 +234,26 @@ app.get("/", (_, res) => {
   });
 });
 
+app.get("/settings/public", async (req, res, next) => {
+  try {
+    const { SettingService } = await import("./services/setting.service");
+    const settings = await SettingService.getSettings();
+    return res.status(200).json({
+      success: true,
+      data: {
+        platformFeeRate: settings.platformFeeRate,
+        popupBanner: settings.popupBanner,
+        popupBanners: (settings.popupBanners && settings.popupBanners.length > 0)
+          ? settings.popupBanners
+          : (settings.popupBanner && settings.popupBanner.imageUrl ? [settings.popupBanner] : []),
+        cancellationPolicy: settings.cancellationPolicy,
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // ============================================================
 // Routes — Auth (với strict rate limit chống brute-force)
 // ============================================================
@@ -249,6 +285,7 @@ app.use("/wallet", walletRoutes);
 app.use("/mobile-selfie", mobileSelfieRoutes);
 app.use("/ai", aiRoutes);
 app.use("/admin/settings", authenticate, settingRoutes);
+app.use("/admin/promotions", authenticate, adminPromoCodeRoutes);
 app.use("/host/service-packages", authenticate, servicePackageRoutes);
 app.use("/host/promotions", authenticate, promoCodeRoutes);
 app.use("/host/combos", authenticate, comboRoutes);

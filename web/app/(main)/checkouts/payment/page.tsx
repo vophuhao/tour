@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { createBooking, getSiteById, getAvailableUnits, getPropertyServicesAvailability } from '@/lib/client-actions';
+import { createBooking, getSiteById, getAvailableUnits, getPropertyServicesAvailability, getPropertyPromotions } from '@/lib/client-actions';
+import { validatePromoCode } from '@/services/promo-code.service';
 import {
   Select,
   SelectContent,
@@ -33,6 +34,7 @@ import {
   Ticket,
   Check,
   AlertTriangle,
+  X,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -368,6 +370,93 @@ export default function PaymentPage() {
   const weekendPrice = siteDetails?.data?.pricing?.weekendPrice ?? bookingData.basePrice;
   const hasDetailedPricing = weekendNights > 0 || seasonalNights > 0;
 
+  // Promo code states & handlers
+  const [promoCodeInput, setPromoCodeInput] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<any | null>(null);
+  const [isValidatingPromo, setIsValidatingPromo] = useState(false);
+
+  const handleApplyPromo = async () => {
+    if (!promoCodeInput.trim() || !bookingData.propertyId) return;
+    try {
+      setIsValidatingPromo(true);
+      const res = await validatePromoCode({
+        code: promoCodeInput.trim().toUpperCase(),
+        propertyId: bookingData.propertyId,
+        subtotal: subtotal,
+        guests: bookingData.guests,
+        bookingQuantity: numberOfUnits,
+        nights: nights,
+        checkIn: bookingData.checkIn,
+        checkOut: bookingData.checkOut,
+      });
+      if (res.success && res.data) {
+        setAppliedPromo(res.data);
+        toast.success('Áp dụng mã giảm giá thành công!');
+      } else {
+        toast.error(res.message || 'Mã giảm giá không hợp lệ');
+        setAppliedPromo(null);
+      }
+    } catch (err: any) {
+      console.warn('Validate promo error:', err);
+      const errMsg = err?.message || err?.response?.data?.message || 'Mã giảm giá không hợp lệ hoặc đã hết hạn';
+      toast.error(errMsg);
+      setAppliedPromo(null);
+    } finally {
+      setIsValidatingPromo(false);
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setAppliedPromo(null);
+    setPromoCodeInput('');
+    toast.info('Đã hủy áp dụng mã giảm giá');
+  };
+
+  // Fetch promotions for this property
+  const { data: promotionsResponse } = useQuery<any[]>({
+    queryKey: ['property-promotions', bookingData.propertyId],
+    queryFn: async () => {
+      if (!bookingData.propertyId) return [];
+      const res = await getPropertyPromotions(bookingData.propertyId);
+      return res.data || [];
+    },
+    enabled: !!bookingData.propertyId,
+  });
+
+  const promotions = promotionsResponse || [];
+
+  const handleQuickApplyPromo = async (code: string) => {
+    if (!bookingData.propertyId) return;
+    try {
+      setIsValidatingPromo(true);
+      setPromoCodeInput(code);
+      const res = await validatePromoCode({
+        code: code.trim().toUpperCase(),
+        propertyId: bookingData.propertyId,
+        subtotal: subtotal,
+        guests: bookingData.guests,
+        bookingQuantity: numberOfUnits,
+        nights: nights,
+        checkIn: bookingData.checkIn,
+        checkOut: bookingData.checkOut,
+      });
+      if (res.success && res.data) {
+        setAppliedPromo(res.data);
+        toast.success('Áp dụng mã giảm giá thành công!');
+      } else {
+        toast.error(res.message || 'Mã giảm giá không hợp lệ');
+        setAppliedPromo(null);
+      }
+    } catch (err: any) {
+      console.warn('Validate promo error:', err);
+      const errMsg = err?.message || err?.response?.data?.message || 'Mã giảm giá không hợp lệ hoặc đã hết hạn';
+      toast.error(errMsg);
+      setAppliedPromo(null);
+    } finally {
+      setIsValidatingPromo(false);
+    }
+  };
+
   // Calculate fees based on site pricing
   const totalCleaningFee = (bookingData.cleaningFee || 0) * numberOfUnits;
   const totalPetFee = (bookingData.petFee || 0) * bookingData.pets;
@@ -380,15 +469,19 @@ export default function PaymentPage() {
     (bookingData.additionalGuestFee || 0) * additionalGuests;
 
   const netSubtotal = subtotal;
+  const promoDiscount = appliedPromo ? appliedPromo.discountAmount : 0;
 
   // Calculate total
-  const total =
-    netSubtotal +
+  const total = Math.max(
+    0,
+    netSubtotal -
+    promoDiscount +
     totalCleaningFee +
     totalPetFee +
     totalVehicleFee +
     totalAdditionalGuestFee +
-    servicesFee;
+    servicesFee
+  );
 
   // FIX: Deposit calculation - calculate percentage from total
   const siteDepositAmount = bookingData.depositAmount || 0;
@@ -408,6 +501,17 @@ export default function PaymentPage() {
       style: 'currency',
       currency: bookingData.currency,
     }).format(price);
+
+  const formatDate = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      return `${day}/${month}`;
+    } catch (err) {
+      return '';
+    }
+  };
 
   // Form validation
   const hasEnoughUnits = maxConcurrent > 1
@@ -443,6 +547,7 @@ export default function PaymentPage() {
         fullnameGuest: fullName,
         phone,
         email,
+        promoCodeId: appliedPromo?.id || undefined,
         unitNumber: undefined,
         services: selectedServices.map(svc => {
           const getUnitFriendlyName = (u: string) => {
@@ -941,6 +1046,112 @@ export default function PaymentPage() {
 
                 <Separator />
 
+                {/* Promo Code Input Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Ticket className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                      Mã giảm giá
+                    </span>
+                  </div>
+                  {!appliedPromo ? (
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <Input
+                          type="text"
+                          placeholder="Nhập mã giảm giá..."
+                          value={promoCodeInput}
+                          onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
+                          className="h-9 text-xs"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleApplyPromo}
+                          disabled={isValidatingPromo || !promoCodeInput.trim()}
+                          className="h-9 px-3 text-xs shrink-0"
+                        >
+                          {isValidatingPromo ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            'Áp dụng'
+                          )}
+                        </Button>
+                      </div>
+
+                      {/* Hiển thị danh sách mã giảm giá khả dụng */}
+                      {promotions.length > 0 && (
+                        <div className="space-y-1.5 pt-1">
+                          <p className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                            Mã giảm giá từ Host & Hệ thống:
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {promotions.map((promo) => {
+                              const isEligible = subtotal >= (promo.minSubtotal || 0);
+                              const discountLabel =
+                                promo.discountType === 'percentage'
+                                  ? `-${promo.discountValue}%`
+                                  : `-${formatPrice(promo.discountValue)}`;
+
+                              return (
+                                <button
+                                  key={promo._id}
+                                  type="button"
+                                  disabled={!isEligible || isValidatingPromo}
+                                  onClick={() => handleQuickApplyPromo(promo.code)}
+                                  className={`group relative text-[10px] font-semibold px-2.5 py-1 rounded-md border flex items-center gap-1.5 transition-all duration-150 ${isEligible
+                                    ? 'border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 dark:border-primary/40 dark:bg-primary/20 dark:text-primary-foreground cursor-pointer shadow-sm hover:scale-[1.02]'
+                                    : 'border-slate-200 bg-slate-50/50 text-slate-400 dark:border-slate-800 dark:bg-slate-950/20 dark:text-slate-500 cursor-not-allowed opacity-75'
+                                    }`}
+                                  title={promo.description || ''}
+                                >
+                                  <Ticket className={`h-3.5 w-3.5 shrink-0 ${isEligible ? 'text-primary animate-pulse' : 'text-slate-400 dark:text-slate-600'}`} />
+                                  <span>{promo.code}</span>
+                                  <span className={isEligible ? 'text-primary font-bold' : ''}>
+                                    ({discountLabel})
+                                  </span>
+                                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium ml-1 border-l pl-1 border-slate-350 dark:border-slate-700">
+                                    Áp dụng: {formatDate(promo.startDate)} - {formatDate(promo.endDate)}
+                                  </span>
+                                  {!isEligible && (
+                                    <span className="text-[10px] text-rose-500 font-normal ml-1">
+                                      (Đơn tối thiểu {formatPrice(promo.minSubtotal || 0)})
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-900/30 p-2.5 text-xs">
+                      <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-medium">
+                        <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                        <span>
+                          Đã áp dụng:{' '}
+                          <strong className="font-bold text-emerald-700 dark:text-emerald-400">
+                            {appliedPromo.code}
+                          </strong>
+                        </span>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleRemovePromo}
+                        className="h-6 w-6 p-0 text-slate-500 hover:text-rose-500 hover:bg-transparent"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
                 {/* Price Breakdown */}
                 <div className="space-y-2">
                   {/* Show pricing breakdown if applicable */}
@@ -1041,6 +1252,16 @@ export default function PaymentPage() {
                         ))}
                       </div>
                     </>
+                  )}
+
+                  {promoDiscount > 0 && (
+                    <div className="flex justify-between text-sm text-emerald-600 dark:text-emerald-400 font-medium">
+                      <span className="flex items-center gap-1">
+                        <Sparkles className="h-3.5 w-3.5" />
+                        Khuyến mãi ({appliedPromo?.code})
+                      </span>
+                      <span>-{formatPrice(promoDiscount)}</span>
+                    </div>
                   )}
 
                   <Separator />

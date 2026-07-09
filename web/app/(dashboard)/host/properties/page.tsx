@@ -150,7 +150,7 @@ export default function PropertiesPage() {
       <div className="sticky top-0 z-40  backdrop-blur-md  border-stone-200/80">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl  font-bold text-stone-900 tracking-tight">Khu đất</h1>
+            <h1 className="text-3xl  font-bold text-stone-900 dark:text-stone-100 tracking-tight">Khu đất</h1>
           </div>
           <Button
             className="bg-primary hover:bg-primary/90 text-white shadow-md hover:shadow-lg transition-all rounded-xl px-5 py-5 text-sm font-medium gap-2"
@@ -166,14 +166,14 @@ export default function PropertiesPage() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col lg:flex-row gap-8">
         {/* Sidebar Filters */}
         <div className="w-full lg:w-64 flex-shrink-0">
-          <div className="bg-white rounded-2xl shadow-sm border border-stone-200/80 p-5 sticky top-28 space-y-6">
+          <div className="bg-white dark:bg-card rounded-2xl shadow-sm border border-stone-200/80 dark:border-stone-800 p-5 sticky top-28 space-y-6">
             <div>
-              <h3 className="text-sm font-bold text-stone-900 mb-4 tracking-wider uppercase">Bộ lọc</h3>
+              <h3 className="text-sm font-bold text-stone-900 dark:text-stone-200 mb-4 tracking-wider uppercase">Bộ lọc</h3>
               {/* Status Filter */}
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-stone-500 block">Trạng thái</label>
+                <label className="text-xs font-semibold text-stone-500 dark:text-stone-400 block">Trạng thái</label>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="bg-stone-50 border-stone-200 h-10 text-sm rounded-xl focus:ring-primary/20 focus:border-primary">
+                  <SelectTrigger className="bg-stone-50 dark:bg-stone-900 border-stone-200 dark:border-stone-800 h-10 text-sm rounded-xl focus:ring-primary/20 focus:border-primary text-stone-900 dark:text-stone-200">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl">
@@ -187,19 +187,19 @@ export default function PropertiesPage() {
             </div>
 
             {/* Quick Stats list */}
-            <div className="pt-5 border-t border-stone-100 space-y-2.5">
-              <label className="text-xs font-semibold text-stone-500 block mb-2">Thống kê nhanh</label>
+            <div className="pt-5 border-t border-stone-100 dark:border-stone-800 space-y-2.5">
+              <label className="text-xs font-semibold text-stone-500 dark:text-stone-400 block mb-2">Thống kê nhanh</label>
               {[
-                { label: 'Tổng khu đất', count: stats.total, color: 'bg-stone-100 text-stone-700' },
-                { label: 'Khu đất đang hoạt động', count: stats.active, color: 'bg-emerald-100 text-emerald-800' },
-                { label: 'Tổng số bãi cắm', count: stats.totalSites, color: 'bg-blue-100 text-blue-800' },
-                { label: 'Tổng bookings', count: stats.totalBookings, color: 'bg-purple-100 text-purple-800' },
+                { label: 'Tổng khu đất', count: stats.total, color: 'bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300' },
+                { label: 'Khu đất đang hoạt động', count: stats.active, color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-350' },
+                { label: 'Tổng số bãi cắm', count: stats.totalSites, color: 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-350' },
+                { label: 'Tổng bookings', count: stats.totalBookings, color: 'bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-350' },
               ].map((item, idx) => (
                 <div
                   key={idx}
                   className="flex items-center justify-between text-sm py-1.5 px-1.5 rounded-lg"
                 >
-                  <span className="text-stone-600">{item.label}</span>
+                  <span className="text-stone-600 dark:text-stone-300">{item.label}</span>
                   <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${item.color}`}>
                     {item.count}
                   </span>
@@ -219,22 +219,22 @@ export default function PropertiesPage() {
                 placeholder="Tìm kiếm khu đất..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-11 bg-white border-stone-200/80 h-11 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
+                className="pl-11 bg-white dark:bg-card border-stone-200/80 dark:border-stone-800 h-11 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm text-stone-900 dark:text-stone-100"
               />
             </div>
 
             {/* View Mode Toggle */}
-            <div className="flex bg-white border border-stone-200/80 rounded-xl p-1 shadow-sm">
+            <div className="flex bg-white dark:bg-card border border-stone-200/80 dark:border-stone-800 rounded-xl p-1 shadow-sm">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-2.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-primary/10 text-primary' : 'text-stone-500 hover:text-stone-850'}`}
+                className={`p-2.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-primary/10 text-primary' : 'text-stone-500 hover:text-stone-850 dark:text-stone-400 dark:hover:text-stone-200'}`}
                 title="Bố cục thẻ ngang"
               >
                 <Grid3x3 className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`p-2.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-primary/10 text-primary' : 'text-stone-500 hover:text-stone-850'}`}
+                className={`p-2.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-primary/10 text-primary' : 'text-stone-500 hover:text-stone-850 dark:text-stone-400 dark:hover:text-stone-200'}`}
                 title="Bố cục bảng danh sách"
               >
                 <List className="h-4 w-4" />
@@ -285,21 +285,21 @@ export default function PropertiesPage() {
             </div>
           ) : (
             /* List View */
-            <div className="bg-white rounded-2xl shadow-sm border border-stone-200/85 overflow-hidden">
+            <div className="bg-white dark:bg-card rounded-2xl shadow-sm border border-stone-200/85 dark:border-stone-800 overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-stone-900">
-                  <thead className="bg-stone-50 border-b border-stone-200">
+                <table className="w-full text-stone-900 dark:text-stone-100">
+                  <thead className="bg-stone-50 dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800">
                     <tr>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-stone-500 uppercase tracking-wider">Khu đất</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-stone-500 uppercase tracking-wider">Địa điểm</th>
-                      <th className="px-6 py-4 text-center text-xs font-bold text-stone-500 uppercase tracking-wider">Bãi cắm</th>
-                      <th className="px-6 py-4 text-center text-xs font-bold text-stone-500 uppercase tracking-wider">Bookings</th>
-                      <th className="px-6 py-4 text-center text-xs font-bold text-stone-500 uppercase tracking-wider">Đánh giá</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-stone-500 uppercase tracking-wider">Trạng thái</th>
-                      <th className="px-6 py-4 text-right text-xs font-bold text-stone-500 uppercase tracking-wider">Hành động</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider">Khu đất</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider">Địa điểm</th>
+                      <th className="px-6 py-4 text-center text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider">Bãi cắm</th>
+                      <th className="px-6 py-4 text-center text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider">Bookings</th>
+                      <th className="px-6 py-4 text-center text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider">Đánh giá</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider">Trạng thái</th>
+                      <th className="px-6 py-4 text-right text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider">Hành động</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-stone-100">
+                  <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
                     {filteredProperties.map((property: any) => (
                       <PropertyListRow
                         key={property._id}
@@ -352,9 +352,9 @@ function PropertyGridCard({ property, statusConfig, onEdit, onViewSites, onAddSi
   const config = statusConfig[property.status] || statusConfig.inactive;
 
   return (
-    <div className="group bg-white rounded-2xl shadow-sm hover:shadow-md border border-stone-200/80 hover:border-stone-300 transition-all duration-300 overflow-hidden flex flex-col md:flex-row">
+    <div className="group bg-white dark:bg-card rounded-2xl shadow-sm hover:shadow-md border border-stone-200/80 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700 transition-all duration-300 overflow-hidden flex flex-col md:flex-row">
       {/* Left side: Image */}
-      <div className="relative w-full md:w-80 h-48 md:h-auto min-h-[220px] bg-gradient-to-br from-stone-100 to-stone-200 overflow-hidden flex-shrink-0">
+      <div className="relative w-full md:w-80 h-48 md:h-auto min-h-[220px] bg-gradient-to-br from-stone-100 to-stone-200 dark:from-stone-800 dark:to-stone-900 overflow-hidden flex-shrink-0">
         <Image
           src={property.photos?.[0]?.url || '/placeholder.jpg'}
           alt={property.name}
@@ -372,10 +372,10 @@ function PropertyGridCard({ property, statusConfig, onEdit, onViewSites, onAddSi
       {/* Middle side: Main content details */}
       <div className="flex-1 p-6 flex flex-col justify-between">
         <div>
-          <p className=" text-xl md:text-1xl text-stone-900 group-hover:text-emerald-800 transition-colors font-semibold leading-snug line-clamp-2 mb-2">
+          <p className=" text-xl md:text-1xl text-stone-900 dark:text-stone-100 group-hover:text-emerald-800 dark:group-hover:text-primary transition-colors font-semibold leading-snug line-clamp-2 mb-2">
             {property.name}
           </p>
-          <div className="flex items-center gap-1.5 text-stone-500 mb-4">
+          <div className="flex items-center gap-1.5 text-stone-500 dark:text-stone-400 mb-4">
             <MapPin className="h-4 w-4 text-emerald-750 flex-shrink-0" />
             <span className="text-sm font-medium">{property.location?.city || 'N/A'}, {property.location?.state || 'N/A'}</span>
           </div>
@@ -383,26 +383,26 @@ function PropertyGridCard({ property, statusConfig, onEdit, onViewSites, onAddSi
 
         {/* Quick Stats: Rounded pills/capsules with elegant styling */}
         <div className="flex flex-wrap gap-3 mt-auto">
-          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-stone-50 border border-stone-250/30">
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-stone-50 dark:bg-stone-800/40 border border-stone-250/30 dark:border-stone-700/50">
             <Home className="h-3.5 w-3.5 text-emerald-700" />
-            <span className="text-xs text-stone-500">Bãi cắm</span>
-            <span className="text-sm font-bold text-stone-800">{property.stats?.totalSites || 0}</span>
+            <span className="text-xs text-stone-500 dark:text-stone-400">Bãi cắm</span>
+            <span className="text-sm font-bold text-stone-800 dark:text-stone-200">{property.stats?.totalSites || 0}</span>
           </div>
-          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-stone-50 border border-stone-250/30">
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-stone-50 dark:bg-stone-800/40 border border-stone-250/30 dark:border-stone-700/50">
             <Calendar className="h-3.5 w-3.5 text-blue-600" />
-            <span className="text-xs text-stone-500">Bookings:</span>
-            <span className="text-sm font-bold text-stone-800">{property.stats?.totalBookings || 0}</span>
+            <span className="text-xs text-stone-500 dark:text-stone-400">Bookings:</span>
+            <span className="text-sm font-bold text-stone-800 dark:text-stone-200">{property.stats?.totalBookings || 0}</span>
           </div>
-          <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-stone-50 border border-stone-250/30">
+          <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-stone-50 dark:bg-stone-800/40 border border-stone-250/30 dark:border-stone-700/50">
             <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
-            <span className="text-xs text-stone-500">Đánh giá:</span>
-            <span className="text-sm font-bold text-stone-800">{property.stats?.averageRating?.toFixed(1) || '0'}</span>
+            <span className="text-xs text-stone-500 dark:text-stone-400">Đánh giá:</span>
+            <span className="text-sm font-bold text-stone-800 dark:text-stone-200">{property.stats?.averageRating?.toFixed(1) || '0'}</span>
           </div>
         </div>
       </div>
 
       {/* Right side: Direct Action Buttons (No dropdown!) */}
-      <div className="flex flex-row md:flex-col justify-center items-stretch gap-3 p-6 border-t md:border-t-0 md:border-l border-stone-200/80 bg-stone-50/50 md:min-w-[220px]">
+      <div className="flex flex-row md:flex-col justify-center items-stretch gap-3 p-6 border-t md:border-t-0 md:border-l border-stone-200/80 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-950/20 md:min-w-[220px]">
         <Button
           onClick={() => onViewSites(property._id)}
           className="flex-1 md:flex-initial bg-primary hover:bg-primary/90 text-white font-medium py-5 shadow-sm hover:shadow transition-all rounded-xl gap-2 text-sm"
@@ -413,7 +413,7 @@ function PropertyGridCard({ property, statusConfig, onEdit, onViewSites, onAddSi
         <Button
           variant="outline"
           onClick={() => onEdit(property._id)}
-          className="flex-1 md:flex-initial border-stone-200 hover:bg-stone-50 text-stone-700 hover:text-stone-900 font-medium py-5 rounded-xl gap-2 text-sm"
+          className="flex-1 md:flex-initial border-stone-200 dark:border-stone-850 hover:bg-stone-50 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white font-medium py-5 rounded-xl gap-2 text-sm"
         >
           <Settings className="h-4 w-4 text-stone-500" />
           Chỉnh sửa khu đất
@@ -421,7 +421,7 @@ function PropertyGridCard({ property, statusConfig, onEdit, onViewSites, onAddSi
         <Button
           variant="ghost"
           onClick={() => onAddSite(property._id)}
-          className="flex-1 md:flex-initial text-emerald-800 hover:bg-emerald-50 font-medium py-5 rounded-xl gap-2 text-sm"
+          className="flex-1 md:flex-initial text-emerald-800 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 font-medium py-5 rounded-xl gap-2 text-sm"
         >
           <Plus className="h-4 w-4" />
           Thêm bãi cắm mới
@@ -430,7 +430,7 @@ function PropertyGridCard({ property, statusConfig, onEdit, onViewSites, onAddSi
           <Button
             variant="ghost"
             onClick={() => onDelete(property._id)}
-            className="flex-1 md:flex-initial text-rose-600 hover:bg-rose-50 hover:text-rose-750 font-medium py-5 rounded-xl gap-2 text-sm"
+            className="flex-1 md:flex-initial text-rose-600 dark:text-rose-450 hover:bg-rose-50 dark:hover:bg-rose-950/20 hover:text-rose-750 dark:hover:text-rose-350 font-medium py-5 rounded-xl gap-2 text-sm"
           >
             <Power className="h-4 w-4" />
             Tắt hoạt động
@@ -439,7 +439,7 @@ function PropertyGridCard({ property, statusConfig, onEdit, onViewSites, onAddSi
           <Button
             variant="ghost"
             onClick={() => onActivate(property._id)}
-            className="flex-1 md:flex-initial text-emerald-600 hover:bg-emerald-50 hover:text-emerald-750 font-medium py-5 rounded-xl gap-2 text-sm"
+            className="flex-1 md:flex-initial text-emerald-600 dark:text-emerald-450 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 hover:text-emerald-750 dark:hover:text-emerald-350 font-medium py-5 rounded-xl gap-2 text-sm"
           >
             <Play className="h-4 w-4" />
             Bật hoạt động
@@ -448,7 +448,7 @@ function PropertyGridCard({ property, statusConfig, onEdit, onViewSites, onAddSi
           <Button
             variant="ghost"
             onClick={() => onDelete(property._id)}
-            className="flex-1 md:flex-initial text-rose-600 hover:bg-rose-50 hover:text-rose-750 font-medium py-5 rounded-xl gap-2 text-sm"
+            className="flex-1 md:flex-initial text-rose-600 dark:text-rose-450 hover:bg-rose-50 dark:hover:bg-rose-950/20 hover:text-rose-750 dark:hover:text-rose-350 font-medium py-5 rounded-xl gap-2 text-sm"
           >
             <Trash2 className="h-4 w-4" />
             Xóa khu đất
@@ -464,10 +464,10 @@ function PropertyListRow({ property, statusConfig, onEdit, onViewSites, onAddSit
   const config = statusConfig[property.status] || statusConfig.inactive;
 
   return (
-    <tr className="hover:bg-stone-50/60 transition-colors">
+    <tr className="hover:bg-stone-50/60 dark:hover:bg-stone-850/40 transition-colors">
       <td className="px-6 py-4">
         <div className="flex items-center gap-3">
-          <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-stone-100 flex-shrink-0">
+          <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-stone-100 dark:bg-stone-800 flex-shrink-0">
             <Image
               src={property.photos?.[0]?.url || '/placeholder.jpg'}
               alt={property.name}
@@ -477,11 +477,11 @@ function PropertyListRow({ property, statusConfig, onEdit, onViewSites, onAddSit
             />
           </div>
           <div>
-            <p className=" font-bold text-stone-900 text-sm md:text-base leading-tight">{property.name}</p>
+            <p className=" font-bold text-stone-900 dark:text-stone-100 text-sm md:text-base leading-tight">{property.name}</p>
           </div>
         </div>
       </td>
-      <td className="px-6 py-4 text-sm text-stone-650">
+      <td className="px-6 py-4 text-sm text-stone-650 dark:text-stone-400">
         <div className="flex items-center gap-1.5">
           <MapPin className="h-3.5 w-3.5 text-emerald-700" />
           {property.location?.city || 'N/A'}
@@ -493,14 +493,14 @@ function PropertyListRow({ property, statusConfig, onEdit, onViewSites, onAddSit
         </span>
       </td>
       <td className="px-6 py-4 text-center">
-        <span className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-blue-50 border border-blue-100 text-blue-700 font-bold text-sm">
+        <span className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-800 text-blue-750 dark:text-blue-400 font-bold text-sm">
           {property.stats?.totalBookings || 0}
         </span>
       </td>
       <td className="px-6 py-4 text-center">
         <div className="flex items-center justify-center gap-1">
           <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
-          <span className="font-bold text-stone-900 text-sm">
+          <span className="font-bold text-stone-900 dark:text-stone-100 text-sm">
             {property.stats?.averageRating?.toFixed(1) || '0'}
           </span>
         </div>
@@ -515,7 +515,7 @@ function PropertyListRow({ property, statusConfig, onEdit, onViewSites, onAddSit
           <Button
             size="sm"
             variant="outline"
-            className="border-stone-200 text-stone-700 hover:bg-stone-50 h-9 rounded-xl px-3.5 gap-1.5"
+            className="border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800 h-9 rounded-xl px-3.5 gap-1.5"
             onClick={() => onViewSites(property._id)}
           >
             <Eye className="h-3.5 w-3.5" />

@@ -9,6 +9,9 @@ export interface PromoCodeDocument extends mongoose.Document {
   discountValue: number;
   maxDiscountAmount?: number;
   minSubtotal?: number;
+  minGuests?: number;
+  minBookingQuantity?: number;
+  minNights?: number;
   applicableProperties: mongoose.Types.ObjectId[];
   startDate: Date;
   endDate: Date;
@@ -62,6 +65,18 @@ const promoCodeSchema = new mongoose.Schema<PromoCodeDocument>(
       type: Number,
       min: 0,
       default: 0,
+    },
+    minGuests: {
+      type: Number,
+      min: 1,
+    },
+    minBookingQuantity: {
+      type: Number,
+      min: 1,
+    },
+    minNights: {
+      type: Number,
+      min: 1,
     },
     applicableProperties: [
       {

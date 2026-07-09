@@ -10,6 +10,16 @@ export interface ISystemSetting extends mongoose.Document {
     hostRateBelowThreshold: number; // e.g. 0.3
     rejectedRequestHostRate: number; // e.g. 0.8
   };
+  popupBanner?: {
+    imageUrl: string;
+    linkUrl?: string;
+    isActive: boolean;
+  };
+  popupBanners?: Array<{
+    imageUrl: string;
+    linkUrl?: string;
+    isActive: boolean;
+  }>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,6 +35,18 @@ const systemSettingSchema = new mongoose.Schema<ISystemSetting>(
       hostRateBelowThreshold: { type: Number, required: true, default: 0.3, min: 0, max: 1 },
       rejectedRequestHostRate: { type: Number, required: true, default: 0.8, min: 0, max: 1 },
     },
+    popupBanner: {
+      imageUrl: { type: String, default: "" },
+      linkUrl: { type: String, default: "" },
+      isActive: { type: Boolean, default: false },
+    },
+    popupBanners: [
+      {
+        imageUrl: { type: String, required: true },
+        linkUrl: { type: String, default: "" },
+        isActive: { type: Boolean, default: true },
+      },
+    ],
   },
   {
     timestamps: true,

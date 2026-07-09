@@ -57,12 +57,15 @@ export default class PayoutService {
         accountHolderName: "Chưa cung cấp",
       };
 
-      // Tính tổng
+      // Tính tổng từ số liệu thực tế đã lưu trong Booking (đảm bảo khớp với ví Host)
+      const grossAmount = hostBookings.reduce(
+        (sum, b) => sum + ((b.hostNetAmount || 0) + (b.platformFee || 0)),
+        0
+      );
+      const platformFee = hostBookings.reduce((sum, b) => sum + (b.platformFee || 0), 0);
+      const netAmount = hostBookings.reduce((sum, b) => sum + (b.hostNetAmount || 0), 0);
       const settings = await SettingService.getSettings();
       const platformFeeRate = settings.platformFeeRate;
-      const grossAmount = hostBookings.reduce((sum, b) => sum + (b.pricing?.total || 0), 0);
-      const platformFee = Math.round(grossAmount * platformFeeRate);
-      const netAmount = grossAmount - platformFee;
 
       // Tạo payout
       const payout = await PayoutModel.create({

@@ -13,6 +13,16 @@ const updateSettingsSchema = z.object({
     hostRateBelowThreshold: z.number().min(0).max(1).optional(),
     rejectedRequestHostRate: z.number().min(0).max(1).optional(),
   }).optional(),
+  popupBanner: z.object({
+    imageUrl: z.string().trim(),
+    linkUrl: z.string().trim().optional().nullable(),
+    isActive: z.boolean(),
+  }).optional(),
+  popupBanners: z.array(z.object({
+    imageUrl: z.string().trim(),
+    linkUrl: z.string().trim().optional().nullable(),
+    isActive: z.boolean(),
+  })).optional(),
 });
 
 export default class SettingController {

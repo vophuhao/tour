@@ -15,6 +15,7 @@ import type { BookingQueryService } from "./booking-query.service";
 import type { BookingNotificationService } from "./booking-notification.service";
 import type { CancelBookingInput, CreateBookingInput, RequestDissatisfactionInput, ProcessDissatisfactionInput } from "@/validators/booking.validator";
 import { sendMail } from "../utils/send-mail";
+import { sendBookingCancelledEmail } from "../utils/send-booking-email";
 import WalletService from "./wallet.service";
 import { SettingService } from "./setting.service";
 import { notifyPropertyChange } from "../socket";
@@ -338,17 +339,14 @@ export class BookingService {
     appAssert(isGuest || isHost, ErrorFactory.forbidden("Bạn không có quyền hủy booking này"));
 
     if (isHost) {
-      const isUnpaid = booking.paymentStatus !== "paid";
-      const createdTime = new Date(booking.createdAt).getTime();
-      const thirtyMinsAgo = Date.now() - 30 * 60 * 1000;
-      appAssert(
-        isUnpaid,
-        ErrorFactory.badRequest("Host chỉ được phép hủy booking chưa thanh toán")
-      );
-      appAssert(
-        createdTime <= thirtyMinsAgo,
-        ErrorFactory.badRequest("Host chỉ được phép hủy booking chưa thanh toán sau 30 phút tính từ lúc đặt")
-      );
+      if (booking.paymentStatus !== "paid") {
+        const createdTime = new Date(booking.createdAt).getTime();
+        const thirtyMinsAgo = Date.now() - 30 * 60 * 1000;
+        appAssert(
+          createdTime <= thirtyMinsAgo,
+          ErrorFactory.badRequest("Host chỉ được phép hủy booking chưa thanh toán sau 30 phút tính từ lúc đặt")
+        );
+      }
     }
 
     appAssert(
@@ -395,7 +393,15 @@ export class BookingService {
     const session = await mongoose.startSession();
     try {
       await session.withTransaction(async () => {
-        await booking.cancel(userId, input.cancellationReason, session);
+        if (isHost && booking.paymentStatus === "paid") {
+          booking.status = "cancelled";
+          booking.cancelledBy = userId;
+          booking.cancelledAt = new Date();
+          booking.cancellationReason = input.cancellationReason || "Chủ nhà hủy đặt chỗ";
+          await booking.save({ session });
+        } else {
+          await booking.cancel(userId, input.cancellationReason, session);
+        }
         await this.unblockDatesForBooking(booking.site.toString(), booking.checkIn, booking.checkOut, session);
       });
     } finally {
@@ -412,6 +418,20 @@ export class BookingService {
       userId.toString(),
       input.cancellationReason
     );
+
+    // Send email notification to guest on booking cancellation
+    const populatedBooking = await BookingModel.findById(booking._id)
+      .populate("guest")
+      .populate("property")
+      .populate("site");
+    if (populatedBooking) {
+      try {
+        await sendBookingCancelledEmail(populatedBooking, input.cancellationReason);
+        console.log(`📧 Sent cancellation email for booking ${booking.code}`);
+      } catch (err: any) {
+        console.error("Failed to send cancellation email:", err.message);
+      }
+    }
 
     notifyPropertyChange(booking.property.toString());
 
@@ -1212,5 +1232,54 @@ export class BookingService {
     }
 
     return { isAvailable: true };
+  }
+
+  /**
+   * Guest submits bank details for refund of cancelled booking
+   */
+  async submitRefundBankDetails(
+    bookingId: string,
+    userId: string,
+    cancellInformation: {
+      fullnameGuest: string;
+      bankCode: string;
+      bankType: string;
+    }
+  ): Promise<BookingDocument> {
+    const query = mongoose.Types.ObjectId.isValid(bookingId)
+      ? { $or: [{ _id: bookingId }, { code: bookingId }] }
+      : { code: bookingId };
+    const booking = await BookingModel.findOne(query);
+    appAssert(booking, ErrorFactory.resourceNotFound("Booking"));
+
+    appAssert(
+      booking.guest.toString() === userId,
+      ErrorFactory.forbidden("Bạn không có quyền gửi thông tin hoàn tiền cho booking này")
+    );
+
+    appAssert(
+      booking.status === "cancelled",
+      ErrorFactory.badRequest("Booking không ở trạng thái đã hủy")
+    );
+
+    appAssert(
+      booking.paymentStatus === "paid",
+      ErrorFactory.badRequest("Booking chưa được thanh toán hoặc đã được hoàn tiền")
+    );
+
+    booking.cancellInformation = cancellInformation;
+
+    // Record the pending refund request in the booking for auditing and async simulation
+    booking.refundRequest = {
+      requestedAt: new Date(),
+      reason: booking.cancellationReason || "Đối tác hủy đặt chỗ - Hoàn tiền 100%",
+      requestedBy: new mongoose.Types.ObjectId(userId),
+      status: "pending",
+    };
+
+    await booking.save();
+    notifyPropertyChange(booking.property.toString());
+
+    return booking;
   }
 }

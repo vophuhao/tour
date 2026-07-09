@@ -23,7 +23,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { getMyBookings } from '@/lib/client-actions';
-import { getMyProperties } from '@/lib/property-site-api';
+import { getMyProperties, getSitesByProperty } from '@/lib/property-site-api';
 import API from '@/lib/api-client';
 import QRCode from 'qrcode';
 import * as XLSX from 'xlsx';
@@ -47,6 +47,9 @@ export default function BookingsPage() {
   const [bookings, setBookings] = useState<any[]>([]);
   const [filteredBookings, setFilteredBookings] = useState<any[]>([]);
   const [properties, setProperties] = useState<Array<{ _id: string; name: string }>>([]);
+  const [selectedPropertyId, setSelectedPropertyId] = useState('all');
+  const [selectedSiteId, setSelectedSiteId] = useState('all');
+  const [sites, setSites] = useState<Array<{ _id: string; name: string }>>([]);
   const [activeTab, setActiveTab] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [searchTerm, setSearchTerm] = useState('');
@@ -55,6 +58,32 @@ export default function BookingsPage() {
   const [selectedBooking, setSelectedBooking] = useState<any | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    async function fetchSites() {
+      if (selectedPropertyId === 'all') {
+        setSites([]);
+        setSelectedSiteId('all');
+        return;
+      }
+      try {
+        const res = await getSitesByProperty(selectedPropertyId, { limit: 100 });
+        let list: Array<{ _id: string; name: string }> = [];
+        if (res.data?.sites && Array.isArray(res.data.sites)) {
+          list = res.data.sites.map((s: any) => ({ _id: s._id, name: s.name }));
+        } else if (res.sites && Array.isArray(res.sites)) {
+          list = res.sites.map((s: any) => ({ _id: s._id, name: s.name }));
+        } else if (Array.isArray(res)) {
+          list = res.map((s: any) => ({ _id: s._id, name: s.name }));
+        }
+        setSites(list);
+        setSelectedSiteId('all');
+      } catch {
+        toast.error('Không thể tải danh sách vị trí cắm trại (site)');
+      }
+    }
+    fetchSites();
+  }, [selectedPropertyId]);
 
   const [actionDialog, setActionDialog] = useState<{ open: boolean; type: 'confirm' | 'cancel' | 'complete' | 'attendance' | null; booking: any }>
     ({ open: false, type: null, booking: null });
@@ -103,6 +132,26 @@ export default function BookingsPage() {
         filtered = filtered.filter(b => b.status === activeTab);
       }
     }
+
+    const getValId = (val: any) => {
+      if (!val) return '';
+      if (typeof val === 'string') return val;
+      if (typeof val === 'object') {
+        if (val.id) return val.id.toString();
+        if (val._id) return val._id.toString();
+        return val.toString();
+      }
+      return String(val);
+    };
+
+    if (selectedPropertyId !== 'all') {
+      filtered = filtered.filter(b => getValId(b.property) === selectedPropertyId);
+    }
+
+    if (selectedSiteId !== 'all') {
+      filtered = filtered.filter(b => getValId(b.site) === selectedSiteId);
+    }
+
     if (searchTerm) {
       const t = searchTerm.toLowerCase();
       filtered = filtered.filter(b =>
@@ -122,7 +171,7 @@ export default function BookingsPage() {
       }
     });
     setFilteredBookings(filtered);
-  }, [bookings, activeTab, sortBy, searchTerm]);
+  }, [bookings, activeTab, sortBy, searchTerm, selectedPropertyId, selectedSiteId]);
 
   function handleAction(type: 'confirm' | 'cancel' | 'complete' | 'attendance', booking: any) {
     if (type === 'attendance') {
@@ -312,6 +361,48 @@ export default function BookingsPage() {
             </div>
           </div>
 
+          <div className="flex flex-wrap items-center gap-4 pt-3 ">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Lọc theo:</span>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Khu cắm trại:</span>
+              <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
+                <SelectTrigger className="w-48 h-8 text-xs bg-background border-border">
+                  <SelectValue placeholder="Tất cả các khu" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả các khu</SelectItem>
+                  {properties.map(p => (
+                    <SelectItem key={p._id} value={p._id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Vị trí (site):</span>
+              <Select
+                value={selectedSiteId}
+                onValueChange={setSelectedSiteId}
+                disabled={selectedPropertyId === 'all'}
+              >
+                <SelectTrigger className="w-48 h-8 text-xs bg-background border-border">
+                  <SelectValue placeholder="Tất cả vị trí" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả vị trí</SelectItem>
+                  {sites.map(s => (
+                    <SelectItem key={s._id} value={s._id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           {/* Stats row - always visible */}
           {/* <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {statCards.map(s => {
@@ -385,14 +476,14 @@ export default function BookingsPage() {
         {/* Gantt */}
         {viewMode === 'gantt' && (
           loading ? <LoadingSpinner /> : (
-            <BookingGanttView bookings={bookings} properties={properties} onBookingClick={handleBookingClick} />
+            <BookingGanttView bookings={filteredBookings} properties={properties} onBookingClick={handleBookingClick} />
           )
         )}
 
         {/* Calendar */}
         {viewMode === 'calendar' && (
           loading ? <LoadingSpinner /> : (
-            <BookingCalendar bookings={bookings} onBookingClick={handleBookingClick} />
+            <BookingCalendar bookings={filteredBookings} onBookingClick={handleBookingClick} />
           )
         )}
 

@@ -47,6 +47,7 @@ bookingRoutes.post("/:id/refund", authenticate, bookingController.refundBooking)
 bookingRoutes.post("/:id/request-refund", authenticate, bookingController.requestRefund);
 bookingRoutes.post("/:id/dissatisfaction", authenticate, bookingController.requestDissatisfaction);
 bookingRoutes.post("/:id/dissatisfaction/process", requireAdmin, bookingController.processDissatisfaction);
+bookingRoutes.post("/:id/refund-bank-details", authenticate, bookingController.submitRefundBankDetails);
 bookingRoutes.post("/:code/code", authenticate, bookingController.getBookingByCode);
 bookingRoutes.patch("/:id/payment", authenticate, requireAdmin, bookingController.updatePayment);
 

@@ -670,7 +670,7 @@ export default function AdminBookingsPage() {
             </div>
 
             {/* Cannot-attend admin panel */}
-            {detail.cannotAttendRequest && (
+            {detail.cannotAttendRequest && detail.cannotAttendRequest.status && (
               <div className="mt-6 p-5 rounded-2xl bg-rose-50/30 dark:bg-rose-950/5 border border-rose-100 dark:border-rose-900/20 shadow-inner">
                 <h4 className="text-xs font-black text-rose-700 dark:text-rose-450 uppercase tracking-wider mb-4 flex items-center gap-2">
                   <Ban className="h-4.5 w-4.5 text-rose-500" /> Yêu cầu hoàn tiền (Khách báo không thể đến / Hủy đặt)
@@ -784,12 +784,13 @@ export default function AdminBookingsPage() {
                     </button>
                     <button
                       onClick={() => setModal({ type: 'cannot-attend-approve', booking: detail })}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-emerald-250 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 hover:bg-emerald-100 transition-colors cursor-pointer text-xs font-extrabold"
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 hover:bg-emerald-100 transition-colors cursor-pointer text-xs font-extrabold"
                     >
-                      <CheckCircle2 className="h-4 w-4" /> Xác nhận đã hoàn tiền
+                      <CheckCircle2 className="h-4 w-4" /> Phê duyệt hoàn tiền
                     </button>
                   </div>
                 )}
+
                 {detail.cannotAttendRequest.adminNote && (
                   <div className="text-xs text-slate-500 mt-3 bg-slate-550/10 p-2.5 rounded-lg border border-slate-200/40 dark:border-slate-800/40">
                     <span className="font-bold text-slate-600 dark:text-slate-350 block">Phản hồi của Admin:</span>
@@ -798,6 +799,142 @@ export default function AdminBookingsPage() {
                 )}
               </div>
             )}
+
+            {/* Host Cancellation Refund Panel */}
+            {((detail.status === 'cancelled' || detail.status === 'refunded') && 
+              !(detail.cannotAttendRequest && detail.cannotAttendRequest.status)) && (() => {
+                const isCancelledByHost = !detail.cancelledBy 
+                  ? (detail.cancellationReason?.toLowerCase().includes('chủ nhà') || detail.cancellationReason?.toLowerCase().includes('host'))
+                  : (typeof detail.cancelledBy === 'object' ? detail.cancelledBy._id : detail.cancelledBy) === (typeof detail.host === 'object' ? detail.host._id : detail.host);
+
+                const isPaid = detail.paymentStatus === 'paid' || detail.paymentStatus === 'refunded' || detail.status === 'refunded';
+
+                if (!isPaid) {
+                  return (
+                    <div className="mt-6 p-5 rounded-2xl bg-slate-50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800/80 shadow-inner">
+                      <h4 className="text-xs font-black text-slate-700 dark:text-slate-350 uppercase tracking-wider mb-4 flex items-center gap-2">
+                        <Ban className="h-4.5 w-4.5 text-slate-500" /> Thông tin hủy đặt (Đơn chưa thanh toán)
+                      </h4>
+
+                      <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-150 dark:border-slate-800 space-y-2.5 text-xs">
+                        <div className="font-bold text-slate-800 dark:text-slate-200 mb-1 border-b border-slate-100 dark:border-slate-800 pb-1 flex justify-between items-center">
+                          <span>Chi tiết hủy đặt chỗ</span>
+                          <span className="font-extrabold px-2.5 py-0.5 rounded-full text-[9px] uppercase tracking-wider border bg-slate-50 border-slate-200 text-slate-500">
+                            Không hoàn tiền
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Bên thực hiện hủy:</span>
+                          <span className="font-bold text-slate-700 dark:text-slate-200">
+                            {isCancelledByHost ? 'Chủ vườn (Host)' : 'Khách hàng (Guest) / Khác'}
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-1 pt-1.5 border-t border-slate-100 dark:border-slate-850/40">
+                          <span className="text-slate-400 font-medium">Lý do hủy chỗ:</span>
+                          <span className="font-semibold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 p-2.5 rounded-lg italic">
+                            "{detail.cancellationReason || 'Không cung cấp lý do'}"
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="mt-6 p-5 rounded-2xl bg-amber-50/30 dark:bg-amber-950/5 border border-amber-100 dark:border-amber-900/20 shadow-inner">
+                    <h4 className="text-xs font-black text-amber-700 dark:text-orange-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                      <Ban className="h-4.5 w-4.5 text-amber-500" /> Thông tin hủy đặt & Hoàn tiền (Do Host hủy - Hoàn 100%)
+                    </h4>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      {/* Left Box: Request details */}
+                      <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-150 dark:border-slate-800 space-y-2 text-xs">
+                        <div className="font-bold text-slate-800 dark:text-slate-200 mb-1 border-b border-slate-100 dark:border-slate-800 pb-1 flex justify-between items-center">
+                          <span>Chi tiết yêu cầu</span>
+                          <span className={cn('font-extrabold px-2.5 py-0.5 rounded-full text-[9px] uppercase tracking-wider border',
+                            detail.status === 'refunded' || detail.paymentStatus === 'refunded' || detail.refundRequest?.status === 'approved' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' :
+                              detail.refundRequest?.status === 'rejected' ? 'bg-rose-50 border-rose-200 text-rose-700' :
+                                'bg-amber-50 border-amber-200 text-amber-700'
+                          )}>
+                            {detail.status === 'refunded' || detail.paymentStatus === 'refunded' || detail.refundRequest?.status === 'approved' ? 'Đã hoàn tiền' :
+                              detail.refundRequest?.status === 'rejected' ? 'Đã từ chối' : 'Đang xử lý'}
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-slate-400 font-medium">Bên thực hiện hủy:</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">
+                            {isCancelledByHost ? 'Chủ vườn (Host)' : 'Khách hàng (Guest) / Khác'}
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-slate-400 font-medium">Lý do hủy chỗ:</span>
+                          <span className="font-semibold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 p-2.5 rounded-lg italic">
+                            "{detail.cancellationReason || detail.refundRequest?.reason || 'Chủ vườn hủy đặt chỗ'}"
+                          </span>
+                        </div>
+                        {detail.refundRequest?.requestedAt && (
+                          <div className="flex justify-between pt-1">
+                            <span className="text-slate-400">Thời điểm gửi tài khoản:</span>
+                            <span className="font-semibold text-slate-700 dark:text-slate-350">{fmtDateTime(detail.refundRequest.requestedAt)}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right Box: Bank Details */}
+                      <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-150 dark:border-slate-800 space-y-2.5 text-xs">
+                        <div className="font-bold text-slate-800 dark:text-slate-200 mb-1 border-b border-slate-100 dark:border-slate-800 pb-1">
+                          Tài khoản nhận tiền hoàn (Guest cung cấp)
+                        </div>
+                        {detail.cancellInformation ? (
+                          <>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Chủ tài khoản:</span>
+                              <span className="font-bold text-slate-700 dark:text-slate-200 uppercase">{detail.cancellInformation.fullnameGuest || '—'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Số tài khoản:</span>
+                              <span className="font-mono font-bold text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-950 px-1.5 py-0.5 rounded">{detail.cancellInformation.bankType || '—'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Ngân hàng:</span>
+                              <span className="font-semibold text-slate-700 dark:text-slate-350">{detail.cancellInformation.bankCode || '—'}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-slate-400 text-center py-6 italic">
+                            Khách hàng chưa điền thông tin tài khoản nhận tiền hoàn.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Refund calculation breakdown */}
+                    <div className="bg-gradient-to-br from-emerald-50/50 via-slate-50/50 to-primary/5 dark:from-emerald-950/10 dark:via-slate-900/10 dark:to-primary/5 border border-slate-200 dark:border-slate-850 rounded-xl p-4 mb-4">
+                      <div className="text-xs font-black text-emerald-600 dark:text-emerald-450 mb-3 flex items-center justify-between">
+                        <span>TÍNH TOÁN PHÂN CHIA HỦY BOOKING</span>
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-full">
+                          Hoàn trả 100%
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2 text-center">
+                        <div className="bg-white/80 dark:bg-slate-950/40 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
+                          <div className="text-[10px] text-slate-400 font-bold mb-1">TỔNG SỐ TIỀN HOÀN CHO GUEST</div>
+                          <div className="font-extrabold text-lg text-emerald-600 dark:text-emerald-450">{fmt(detail.pricing?.total || 0)}₫</div>
+                          <div className="text-[9px] text-slate-450 mt-1 font-semibold">Do Host chủ động hủy đặt chỗ</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {detail.refundRequest?.adminNote && (
+                      <div className="text-xs text-slate-500 mt-3 bg-slate-550/10 p-2.5 rounded-lg border border-slate-200/40 dark:border-slate-800/40">
+                        <span className="font-bold text-slate-600 dark:text-slate-350 block">Phản hồi của Admin:</span>
+                        <p className="mt-0.5">{detail.refundRequest.adminNote}</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
             {/* Refund request administrative panel */}
             {detail.status === 'refund_requested' && (

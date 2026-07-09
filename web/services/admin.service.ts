@@ -133,3 +133,24 @@ export async function updateSystemSettings(data: any): Promise<ApiResponse<Syste
   return apiClient.put('/admin/settings', data);
 }
 
+export async function getPublicSettings(): Promise<ApiResponse<SystemSetting>> {
+  return apiClient.get('/settings/public');
+}
+
+// ================== ADMIN PROMOTIONS ==================
+export async function createAdminPromo(data: any): Promise<ApiResponse> {
+  return apiClient.post('/admin/promotions', data);
+}
+
+export async function getAdminPromos(): Promise<ApiResponse> {
+  return apiClient.get('/admin/promotions');
+}
+
+export async function updateAdminPromo(id: string, data: any): Promise<ApiResponse> {
+  return apiClient.patch(`/admin/promotions/${id}`, data);
+}
+
+export async function deleteAdminPromo(id: string): Promise<ApiResponse> {
+  return apiClient.delete(`/admin/promotions/${id}`);
+}
+

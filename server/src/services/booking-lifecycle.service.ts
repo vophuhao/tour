@@ -1,10 +1,14 @@
-import { BookingModel, AvailabilityModel, SiteModel } from "@/models";
+import { BookingModel, AvailabilityModel, SiteModel, PropertyModel } from "@/models";
 import { sendMail } from "../utils/send-mail";
 import { CLIENT_URL } from "../constants";
 import { container, TOKENS } from "@/di";
 import type { BookingService } from "./booking.service";
 import type { EmailTemplateService } from "./email-template.service";
 import mongoose from "mongoose";
+import { SettingService } from "./setting.service";
+import WalletService from "./wallet.service";
+import { sendBookingRefundedEmail } from "../utils/send-booking-email";
+import { notifyPropertyChange } from "../socket";
 
 export class BookingLifecycleService {
   private get emailTemplateService(): EmailTemplateService {
@@ -118,6 +122,9 @@ export class BookingLifecycleService {
             checkOutStr: new Date(booking.checkOut).toLocaleDateString("vi-VN"),
             clientUrl: CLIENT_URL,
             currentYear: new Date().getFullYear(),
+            cancelSubtitle: "Quá hạn thanh toán",
+            cancelMessage: `Rất tiếc, booking của bạn đã bị hủy tự động do không được thanh toán trong vòng 12 giờ.`,
+            cancellationReason: "Quá thời gian thanh toán (12 giờ)",
           });
 
           await sendMail({
@@ -290,7 +297,6 @@ export class BookingLifecycleService {
             blockType: "booked",
           });
         }
-
         booking.status = "cancelled";
         booking.cancellationReason = "Tự động hủy: Đơn đặt chỗ chưa thanh toán vào ngày nhận phòng";
         booking.cancelledAt = new Date();
@@ -302,5 +308,113 @@ export class BookingLifecycleService {
     }
 
     return { cancelled, total: unpaidBookings.length };
+  }
+
+  /**
+   * Automatically process pending simulated refunds after a 10-minute delay
+   */
+  async processPendingSimulatedRefunds() {
+    const REFUND_DELAY_MS = 10 * 60 * 1000; // 10 minutes
+    const now = new Date();
+    const cutoffTime = new Date(now.getTime() - REFUND_DELAY_MS);
+
+    // 1) Host cancellations where guest submitted bank details
+    const hostRefunds = await BookingModel.find({
+      status: "cancelled",
+      paymentStatus: "paid",
+      "refundRequest.status": "pending",
+      "refundRequest.requestedAt": { $lte: cutoffTime },
+    })
+      .populate("guest", "username email fullName")
+      .populate("property", "name");
+
+    let hostRefundsProcessed = 0;
+    for (const booking of hostRefunds) {
+      try {
+        booking.status = "refunded";
+        booking.paymentStatus = "refunded";
+        booking.refundAmount = booking.pricing.total;
+
+        if (booking.refundRequest) {
+          booking.refundRequest.status = "approved";
+          booking.refundRequest.processedAt = now;
+          booking.refundRequest.processedBy = booking.refundRequest.requestedBy;
+          booking.refundRequest.adminNote = "Giả lập tự động hoàn tiền 100% sau 10 phút";
+        }
+
+        await booking.save();
+        notifyPropertyChange(booking.property.toString());
+
+        // Send email
+        await sendBookingRefundedEmail(booking);
+        hostRefundsProcessed++;
+      } catch (err: any) {
+        console.error(`❌ [Refund Simulator] Lỗi xử lý hoàn tiền booking ${booking._id}:`, err.message);
+      }
+    }
+
+    // 2) Guest cancellations where cannotAttendRequest is pending
+    const guestRefunds = await BookingModel.find({
+      status: "cancelled",
+      paymentStatus: "paid",
+      "cannotAttendRequest.status": "pending",
+      "cannotAttendRequest.requestedAt": { $lte: cutoffTime },
+    })
+      .populate("guest", "username email fullName")
+      .populate("property", "name");
+
+    let guestRefundsProcessed = 0;
+    for (const booking of guestRefunds) {
+      try {
+        const requestedAt = new Date(booking.cannotAttendRequest!.requestedAt);
+        const checkIn = new Date(booking.checkIn);
+        const diffMs = checkIn.getTime() - requestedAt.getTime();
+        const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+        const settings = await SettingService.getSettings();
+        const policy = settings.cancellationPolicy;
+
+        let refundRate = policy.refundRateBelowThreshold;
+        let hostRate = policy.hostRateBelowThreshold;
+        if (diffDays >= policy.diffDaysThreshold) {
+          refundRate = policy.refundRateAboveThreshold;
+          hostRate = policy.hostRateAboveThreshold;
+        }
+
+        const refundAmount = Math.round(booking.pricing.total * refundRate);
+
+        const walletService = new WalletService();
+        await walletService.creditHostWalletCannotAttend(
+          booking.host.toString(),
+          booking._id.toString(),
+          booking.pricing.total,
+          hostRate
+        );
+
+        booking.cannotAttendRequest!.status = "approved";
+        booking.cannotAttendRequest!.refundAmount = refundAmount;
+        booking.cannotAttendRequest!.processedAt = now;
+        booking.cannotAttendRequest!.processedBy = booking.guest;
+        booking.cannotAttendRequest!.adminNote = "Giả lập tự động duyệt hoàn tiền sau 10 phút";
+
+        booking.refundAmount = refundAmount;
+        booking.status = "refunded";
+        booking.paymentStatus = "refunded";
+
+        await booking.save();
+        notifyPropertyChange(booking.property.toString());
+
+        // Send email
+        await sendBookingRefundedEmail(booking);
+        guestRefundsProcessed++;
+      } catch (err: any) {
+        console.error(`❌ [Refund Simulator] Lỗi xử lý hoàn tiền khách hủy booking ${booking._id}:`, err.message);
+      }
+    }
+
+    return {
+      hostRefundsProcessed,
+      guestRefundsProcessed,
+    };
   }
 }

@@ -364,4 +364,29 @@ export default class BookingController {
       deletedDetails,
     });
   });
+
+  submitRefundBankDetails = catchErrors(async (req, res) => {
+    const { id } = req.params;
+    const userId = req.userId.toString();
+    const { cancellInformation } = req.body;
+
+    if (!cancellInformation || !cancellInformation.fullnameGuest || !cancellInformation.bankCode || !cancellInformation.bankType) {
+      return res.status(400).json({
+        success: false,
+        message: "Thiếu thông tin nhận hoàn tiền (Tên, mã ngân hàng hoặc số tài khoản)",
+      });
+    }
+
+    const booking = await this.bookingService.submitRefundBankDetails(
+      id || "",
+      userId,
+      cancellInformation
+    );
+
+    return ResponseUtil.success(
+      res,
+      BookingDTO.toResponse(booking),
+      "Gửi thông tin hoàn tiền thành công"
+    );
+  });
 }

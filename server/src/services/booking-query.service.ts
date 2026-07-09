@@ -516,17 +516,43 @@ export class BookingQueryService {
       const { PromoCodeModel } = await import("@/models/promo-code.model");
       const promo = await PromoCodeModel.findOne({ _id: promoCodeId, isActive: true });
       if (promo) {
-        promoCodeStr = promo.code;
-        const netSubtotal = Math.max(0, subtotal - comboDiscount);
-        if (promo.discountType === "percentage") {
-          promoDiscount = Math.round((netSubtotal * promo.discountValue) / 100);
-          if (promo.maxDiscountAmount && promoDiscount > promo.maxDiscountAmount) {
-            promoDiscount = promo.maxDiscountAmount;
+        const meetsGuests = !promo.minGuests || numberOfGuests >= promo.minGuests;
+        const meetsBookingQuantity = !promo.minBookingQuantity || numberOfUnits >= promo.minBookingQuantity;
+        const meetsNights = !promo.minNights || nights >= promo.minNights;
+
+        const checkInDate = new Date(checkIn);
+        checkInDate.setHours(0, 0, 0, 0);
+        const checkOutDate = new Date(checkOut);
+        checkOutDate.setHours(0, 0, 0, 0);
+        const promoStart = new Date(promo.startDate);
+        promoStart.setHours(0, 0, 0, 0);
+        const promoEnd = new Date(promo.endDate);
+        promoEnd.setHours(0, 0, 0, 0);
+
+        const meetsDates = checkInDate >= promoStart && checkOutDate <= promoEnd;
+
+        console.log("CALCULATE PRICING [Promo Dates Check]:", {
+          code: promo.code,
+          checkInDate: checkInDate.toISOString(),
+          checkOutDate: checkOutDate.toISOString(),
+          promoStart: promoStart.toISOString(),
+          promoEnd: promoEnd.toISOString(),
+          meetsDates
+        });
+
+        if (meetsGuests && meetsBookingQuantity && meetsNights && meetsDates) {
+          promoCodeStr = promo.code;
+          const netSubtotal = Math.max(0, subtotal - comboDiscount);
+          if (promo.discountType === "percentage") {
+            promoDiscount = Math.round((netSubtotal * promo.discountValue) / 100);
+            if (promo.maxDiscountAmount && promoDiscount > promo.maxDiscountAmount) {
+              promoDiscount = promo.maxDiscountAmount;
+            }
+          } else {
+            promoDiscount = promo.discountValue;
           }
-        } else {
-          promoDiscount = promo.discountValue;
+          promoDiscount = Math.min(promoDiscount, netSubtotal);
         }
-        promoDiscount = Math.min(promoDiscount, netSubtotal);
       }
     }
 

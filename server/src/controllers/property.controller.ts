@@ -549,4 +549,53 @@ export default class PropertyController {
 
     return ResponseUtil.success(res, null, "Xóa đợt khóa kho thành công");
   });
+
+  /**
+   * Get active promotions for a property (public endpoint)
+   * @route GET /api/properties/:idOrSlug/promotions
+   */
+  getPropertyPromotions = catchErrors(async (req, res) => {
+    const { idOrSlug } = req.params;
+    const { PromoCodeModel } = await import("@/models");
+
+    // Get property details (handles ID or slug)
+    const property = await this.propertyService.getProperty(idOrSlug || "");
+    const propertyId = property._id;
+    
+    // In case property.host is populated or is just an ObjectId
+    const hostId = (property.host && typeof property.host === "object" && "_id" in property.host) 
+      ? property.host._id 
+      : property.host;
+
+    const now = new Date();
+
+    // Query active promotions
+    const promotions = await PromoCodeModel.find({
+      isActive: true,
+      startDate: { $lte: now },
+      endDate: { $gte: now },
+      $or: [
+        { scope: "global" },
+        {
+          scope: "host",
+          $or: [
+            { applicableProperties: propertyId },
+            {
+              $and: [
+                {
+                  $or: [
+                    { applicableProperties: { $exists: false } },
+                    { applicableProperties: { $size: 0 } }
+                  ]
+                },
+                { host: hostId }
+              ]
+            }
+          ]
+        }
+      ]
+    }).sort({ createdAt: -1 });
+
+    return ResponseUtil.success(res, promotions, "Lấy danh sách mã giảm giá thành công");
+  });
 }

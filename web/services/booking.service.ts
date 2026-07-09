@@ -161,3 +161,14 @@ export async function updateBooking(
 ): Promise<ApiResponse<Booking>> {
   return apiClient.put(`/bookings/${bookingId}`, data);
 }
+
+export async function submitRefundBankDetails(
+  bookingId: string,
+  cancellInformation: {
+    fullnameGuest: string;
+    bankCode: string;
+    bankType: string;
+  },
+): Promise<ApiResponse<Booking>> {
+  return apiClient.post(`/bookings/${bookingId}/refund-bank-details`, { cancellInformation });
+}

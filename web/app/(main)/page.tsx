@@ -5,6 +5,7 @@ import MarketingFeatures from '@/components/home/marketing-features';
 import PopularProperties from '@/components/home/popular-properties';
 import RecentReviews from '@/components/home/recent-reviews';
 import TopDestinations from '@/components/home/top-destinations';
+import PromoPopupBanner from '@/components/modals/promo-popup';
 import {
   getFeaturedProperties,
   getRecentReviews,
@@ -48,6 +49,9 @@ export default async function HomePage() {
 
       {/* Recent Reviews - Real customer testimonials */}
       <RecentReviews reviews={recentReviews} />
+
+      {/* Banner Popup Quảng Cáo */}
+      <PromoPopupBanner />
     </div>
   );
 }
