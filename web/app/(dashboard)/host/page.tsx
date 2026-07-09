@@ -152,11 +152,13 @@ export default function HostDashboard() {
     try {
       const token = localStorage.getItem('accessToken');
       const response = await fetch(`${API}/properties/my/list`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
         const data = await response.json();
-        setMyProperties(data.data || []);
+        const list = Array.isArray(data.data) ? data.data : (data.data?.properties || []);
+        setMyProperties(list);
       }
     } catch (err) {
       console.error('Load properties list error:', err);
@@ -390,7 +392,6 @@ export default function HostDashboard() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* KPI 1: Revenue */}
         <Card className="relative overflow-hidden border border-slate-200/80 dark:border-slate-850 hover:shadow-md transition-all duration-300 group">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-primary" />
           <CardContent className="p-5 flex items-center justify-between">
             <div className="space-y-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Doanh Thu Tháng Này</span>
@@ -407,7 +408,6 @@ export default function HostDashboard() {
 
         {/* KPI 2: Total Bookings */}
         <Card className="relative overflow-hidden border border-slate-200/80 dark:border-slate-850 hover:shadow-md transition-all duration-300 group">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-amber-500" />
           <CardContent className="p-5 flex items-center justify-between">
             <div className="space-y-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Booking Tháng Này</span>
@@ -424,7 +424,6 @@ export default function HostDashboard() {
 
         {/* KPI 3: Occupancy Rate */}
         <Card className="relative overflow-hidden border border-slate-200/80 dark:border-slate-850 hover:shadow-md transition-all duration-300 group">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-indigo-500" />
           <CardContent className="p-5 flex items-center justify-between">
             <div className="space-y-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Tỷ Lệ Lấp Đầy</span>
@@ -441,7 +440,6 @@ export default function HostDashboard() {
 
         {/* KPI 4: Rating */}
         <Card className="relative overflow-hidden border border-slate-200/80 dark:border-slate-850 hover:shadow-md transition-all duration-300 group">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-purple-500" />
           <CardContent className="p-5 flex items-center justify-between">
             <div className="space-y-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Đánh Giá Trung Bình</span>

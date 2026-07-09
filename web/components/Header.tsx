@@ -70,7 +70,7 @@ export default function Header() {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`relative py-2 text-sm font-bold transition-colors hover:text-primary ${isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                  className={`relative py-2 text-sm font-bold transition-colors hover:text-primary ${isActive ? 'text-primary' : 'text-black dark:text-white hover:text-primary'
                     }`}
                 >
                   {item.name}

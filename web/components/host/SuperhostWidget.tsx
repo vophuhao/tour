@@ -28,13 +28,16 @@ export function SuperhostWidget({ stats }: SuperhostWidgetProps) {
         // Let's list host properties first to find one property ID, or call property superhost-status.
         // For simplicity and effectiveness, we will fetch properties of this host.
         const resProperties = await fetch(`${API}/properties/my/list`, {
+          credentials: 'include',
           headers: { Authorization: `Bearer ${token}` },
         });
         if (resProperties.ok) {
           const propsData = await resProperties.json();
-          const firstProperty = propsData.data?.[0];
+          const list = Array.isArray(propsData.data) ? propsData.data : (propsData.data?.properties || []);
+          const firstProperty = list[0];
           if (firstProperty) {
             const resStatus = await fetch(`${API}/properties/${firstProperty._id}/superhost-status`, {
+              credentials: 'include',
               headers: { Authorization: `Bearer ${token}` },
             });
             if (resStatus.ok) {
