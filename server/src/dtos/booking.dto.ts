@@ -24,6 +24,8 @@ export class BookingDTO {
         serviceFee: booking.pricing.serviceFee,
         tax: booking.pricing.tax,
         total: booking.pricing.total,
+        promoCode: booking.pricing.promoCode,
+        promoDiscount: booking.pricing.promoDiscount,
       } : null,
       status: booking.status,
       paymentStatus: booking.paymentStatus,

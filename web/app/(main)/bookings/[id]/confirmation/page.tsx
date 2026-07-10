@@ -145,6 +145,8 @@ interface BookingData {
     depositAmount?: number;
     depositPercentage?: number;
     servicesFee?: number;
+    promoCode?: string;
+    promoDiscount?: number;
   };
 
   services?: Array<{
@@ -1218,6 +1220,15 @@ export default function ConfirmationPage() {
                       <span className="text-gray-600">Thuế VAT</span>
                       <span className="font-medium">
                         {formatPrice(booking.pricing.tax)}
+                      </span>
+                    </div>
+                  )}
+
+                  {booking.pricing?.promoCode && booking.pricing.promoDiscount !== undefined && booking.pricing.promoDiscount > 0 && (
+                    <div className="flex justify-between text-sm text-red-600">
+                      <span className="flex items-center gap-1.5 font-medium">🏷️ Mã giảm giá ({booking.pricing.promoCode})</span>
+                      <span className="font-medium">
+                        -{formatPrice(booking.pricing.promoDiscount)}
                       </span>
                     </div>
                   )}
