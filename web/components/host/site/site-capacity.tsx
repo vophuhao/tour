@@ -201,40 +201,6 @@ export function SiteCapacity({
         )}
       </div>
 
-      {showUnitNaming && unitNames && unitNames.length > 0 && (
-        <div className="space-y-4 border-t border-slate-100 dark:border-slate-800 pt-6 mt-6">
-          <div>
-            <h4 className="text-lg font-bold text-gray-900 dark:text-white">Cấu hình tên chi tiết từng vị trí/lều</h4>
-            <p className="text-xs text-slate-500 mt-1">
-              Hệ thống tự động sinh tên mặc định từ 01 đến {unitNames.length < 10 ? `0${unitNames.length}` : unitNames.length}. Bạn có thể thay đổi tên của từng vị trí bên dưới để khách hàng chọn khi đặt phòng.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {unitNames.map((name, index) => (
-              <div key={index} className="space-y-1.5 p-3 border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/30 rounded-xl">
-                <Label htmlFor={`unit-${index}`} className="text-xs font-semibold text-slate-500">
-                  Vị trí {index + 1}
-                </Label>
-                <Input
-                  id={`unit-${index}`}
-                  type="text"
-                  value={name}
-                  onChange={(e) => {
-                    const updated = [...unitNames];
-                    updated[index] = e.target.value;
-                    if (onUnitNamesChange) {
-                      onUnitNamesChange(updated);
-                    }
-                  }}
-                  className="h-9 rounded-lg text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
-                  required
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

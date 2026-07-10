@@ -1187,7 +1187,12 @@ export default function BookingDetailPage() {
               <CardContent className="space-y-3">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">
-                    {formatPrice(booking.pricing.basePrice)} × {booking.pricing.totalNights} đêm
+                    {formatPrice(booking.pricing.basePrice)} × {booking.pricing.totalNights || booking.nights} đêm{' '}
+                    {booking.site?.pricing?.rateType === 'person'
+                      ? `× ${booking.numberOfGuests} khách`
+                      : booking.numberOfUnits && booking.numberOfUnits > 1
+                        ? `× ${booking.numberOfUnits} vị trí`
+                        : ''}
                   </span>
                   <span className="font-medium">
                     {formatPrice(booking.pricing.subtotal)}

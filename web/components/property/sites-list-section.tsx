@@ -130,7 +130,7 @@ function SiteImageSlider({ photos, name }: SiteImageSliderProps) {
   );
 }
 
-function calculateSiteSubtotal(site: Site, checkIn: Date, checkOut: Date) {
+function calculateSiteSubtotal(site: Site, checkIn: Date, checkOut: Date, guests: number = 1) {
   const basePrice = site.pricing.basePrice;
   const weekendPrice = site.pricing.weekendPrice ?? null;
   let subtotal = 0;
@@ -150,15 +150,15 @@ function calculateSiteSubtotal(site: Site, checkIn: Date, checkOut: Date) {
     // Seasonal price has highest priority
     if (site.pricing.seasonalPricing && site.pricing.seasonalPricing.length > 0) {
       const seasonalRate = site.pricing.seasonalPricing.find((season: any) => {
-        const seasonStart = new Date(season.startDate);
-        const seasonEnd = new Date(season.endDate);
+        const seasonalStart = new Date(season.startDate);
+        const seasonalEnd = new Date(season.endDate);
 
         // Compare dates without time
         const currentZero = new Date(currentDate);
         currentZero.setHours(0, 0, 0, 0);
-        const startZero = new Date(seasonStart);
+        const startZero = new Date(seasonalStart);
         startZero.setHours(0, 0, 0, 0);
-        const endZero = new Date(seasonEnd);
+        const endZero = new Date(seasonalEnd);
         endZero.setHours(0, 0, 0, 0);
 
         return currentZero >= startZero && currentZero <= endZero;
@@ -180,6 +180,12 @@ function calculateSiteSubtotal(site: Site, checkIn: Date, checkOut: Date) {
     subtotal += nightPrice;
     currentDate.setDate(currentDate.getDate() + 1);
   }
+
+  // Apply rate type scaling (per person or per site)
+  const isPerPerson = site.pricing.rateType === 'person';
+  const requiredUnits = Math.ceil(guests / (site.capacity.maxGuests || 1)) || 1;
+  const multiplier = isPerPerson ? guests : requiredUnits;
+  subtotal = subtotal * multiplier;
 
   // Apply discounts
   const nights = Math.round(
@@ -838,6 +844,16 @@ export function SitesListSection({
     staleTime: 5 * 60 * 1000,
   });
 
+  // Check if the selected site is sold out for the current booking parameters
+  const isSoldOut = useMemo(() => {
+    if (!selectedSite || !hasSelectedDates || !sitesAvailableUnits) return false;
+    const requiredUnits = Math.ceil(booking.guests / (selectedSite.capacity.maxGuests || 1)) || 1;
+    return (
+      sitesAvailableUnits[selectedSite._id] !== undefined &&
+      sitesAvailableUnits[selectedSite._id] < requiredUnits
+    );
+  }, [selectedSite, hasSelectedDates, sitesAvailableUnits, booking.guests]);
+
   // Create a map of site ID to blocked status (for filtering)
   const siteBlockedMap = useMemo(() => {
     const map = new Map<string, boolean>();
@@ -869,6 +885,44 @@ export function SitesListSection({
     siteUnavailableReason,
   ]);
 
+  // Check if the selected site is unavailable due to capacity, pets or block restrictions
+  const isSelectedSiteUnavailable = useMemo(() => {
+    if (!selectedSite) return false;
+    const isBlocked = siteBlockedMap.get(selectedSite._id);
+    const combinedCapacity = (selectedSite.capacity.maxGuests || 0) * (selectedSite.capacity.maxConcurrentBookings || 1);
+    const isCapacityExceeded = booking.guests > combinedCapacity;
+
+    const maxPets = selectedSite.capacity.maxPets || 0;
+    const combinedPetsCapacity = maxPets * (selectedSite.capacity.maxConcurrentBookings || 1);
+    const isPetsNotAllowed = booking.pets > 0 && maxPets === 0;
+    const isPetsCapacityExceeded = booking.pets > 0 && booking.pets > combinedPetsCapacity;
+
+    return isCapacityExceeded || isPetsNotAllowed || isPetsCapacityExceeded || (isBlocked && hasSelectedDates);
+  }, [selectedSite, siteBlockedMap, booking.guests, booking.pets, hasSelectedDates]);
+
+  const selectedSiteUnavailableReasonText = useMemo(() => {
+    if (!selectedSite) return '';
+    const isBlocked = siteBlockedMap.get(selectedSite._id);
+    const combinedCapacity = (selectedSite.capacity.maxGuests || 0) * (selectedSite.capacity.maxConcurrentBookings || 1);
+    
+    if (booking.guests > combinedCapacity) {
+      return 'Không đáp ứng đủ số người';
+    }
+    
+    const maxPets = selectedSite.capacity.maxPets || 0;
+    const combinedPetsCapacity = maxPets * (selectedSite.capacity.maxConcurrentBookings || 1);
+    if (booking.pets > 0 && maxPets === 0) {
+      return 'Không cho phép thú cưng';
+    }
+    if (booking.pets > 0 && booking.pets > combinedPetsCapacity) {
+      return 'Vượt quá số lượng thú cưng';
+    }
+    if (isBlocked && hasSelectedDates) {
+      return siteUnavailableReason.get(selectedSite._id) || 'Không khả dụng vào ngày đã chọn';
+    }
+    return '';
+  }, [selectedSite, siteBlockedMap, booking.guests, booking.pets, hasSelectedDates, siteUnavailableReason]);
+
   // Filter sites
   const filteredSites = useMemo(() => {
     let result = sites.filter(site => site.isActive);
@@ -887,10 +941,11 @@ export function SitesListSection({
     }
 
     // Filter by pets (supporting group booking via concurrent units)
-    if (petsAllowed && booking.pets > 0) {
+    if (petsAllowed || booking.pets > 0) {
       result = result.filter(s => {
         const combinedPetsCapacity = (s.capacity.maxPets || 0) * (s.capacity.maxConcurrentBookings || 1);
-        return combinedPetsCapacity >= booking.pets;
+        const requiredPets = booking.pets > 0 ? booking.pets : 1;
+        return combinedPetsCapacity >= requiredPets;
       });
     }
 
@@ -1110,12 +1165,16 @@ export function SitesListSection({
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
                           <span className="text-gray-650 dark:text-gray-400">Giá ngày thường:</span>
-                          <span className="font-semibold">{selectedSite.pricing.basePrice.toLocaleString()} ₫ / đêm</span>
+                          <span className="font-semibold">
+                            {selectedSite.pricing.basePrice.toLocaleString()} ₫ {selectedSite.pricing.rateType === 'person' ? '/ khách / đêm' : '/ đêm'}
+                          </span>
                         </div>
                         {selectedSite.pricing.weekendPrice && selectedSite.pricing.weekendPrice > 0 && (
                           <div className="flex justify-between">
                             <span className="text-gray-650 dark:text-gray-400">Giá cuối tuần:</span>
-                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">{selectedSite.pricing.weekendPrice.toLocaleString()} ₫ / đêm</span>
+                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                              {selectedSite.pricing.weekendPrice.toLocaleString()} ₫ {selectedSite.pricing.rateType === 'person' ? '/ khách / đêm' : '/ đêm'}
+                            </span>
                           </div>
                         )}
                         {selectedSite.pricing.cleaningFee && selectedSite.pricing.cleaningFee > 0 && (
@@ -1208,7 +1267,7 @@ export function SitesListSection({
                       (() => {
                         const dateRange = booking.dateRange;
                         const calculated = hasSelectedDates
-                          ? calculateSiteSubtotal(selectedSite, dateRange!.from!, dateRange!.to!)
+                          ? calculateSiteSubtotal(selectedSite, dateRange!.from!, dateRange!.to!, booking.guests)
                           : null;
 
                         const today = new Date();
@@ -1227,8 +1286,12 @@ export function SitesListSection({
                         const hasWeekendPrice = selectedSite.pricing.weekendPrice && selectedSite.pricing.weekendPrice !== selectedSite.pricing.basePrice;
                         const defaultPrice = activeSeason ? activeSeason.price : (isTodayWeekendDay && hasWeekendPrice) ? selectedSite.pricing.weekendPrice! : selectedSite.pricing.basePrice;
 
-                        const totalPrice = calculated ? calculated.subtotal : defaultPrice * nights;
-                        const averagePricePerNight = hasSelectedDates ? totalPrice / nights : defaultPrice;
+                        const isPerPerson = selectedSite.pricing.rateType === 'person';
+                        const requiredUnits = Math.ceil(booking.guests / (selectedSite.capacity.maxGuests || 1)) || 1;
+                        const multiplier = isPerPerson ? booking.guests : requiredUnits;
+
+                        const totalPrice = calculated ? calculated.subtotal : defaultPrice * nights * multiplier;
+                        const averagePricePerNight = hasSelectedDates ? totalPrice / nights : defaultPrice * multiplier;
 
                         const cleaningFee = selectedSite.pricing.cleaningFee || 0;
                         const petFee = selectedSite.pricing.petFee && booking.pets
@@ -1245,7 +1308,9 @@ export function SitesListSection({
                               <span className="text-sm font-semibold text-gray-500">Giá dự tính:</span>
                               <div className="text-right">
                                 <span className="text-xl font-extrabold text-primary">{averagePricePerNight.toLocaleString()}₫</span>
-                                <span className="text-xs text-gray-500"> / đêm</span>
+                                <span className="text-xs text-gray-500">
+                                  {isPerPerson ? ' / khách / đêm' : ' / đêm'}
+                                </span>
                               </div>
                             </div>
 
@@ -1278,57 +1343,71 @@ export function SitesListSection({
                               </div>
                             </div>
 
-                            <Button
-                              className="w-full py-6 font-bold text-base rounded-xl mt-2"
-                              asChild
-                            >
-                              <Link
-                                href={
-                                  `/checkouts/payment?` +
-                                  new URLSearchParams({
-                                    siteId: selectedSite._id,
-                                    propertyId:
-                                      typeof selectedSite.property === 'string'
-                                        ? selectedSite.property
-                                        : selectedSite.property._id,
-                                    name: selectedSite.name,
-                                    location: `${property.location.city}, ${property.location.state}`,
-                                    image:
-                                      selectedSite.photos?.find((p: any) => p.isCover)
-                                        ?.url ||
-                                      selectedSite.photos?.[0]?.url ||
-                                      '',
-                                    checkIn:
-                                      booking.dateRange!.from!.toISOString(),
-                                    checkOut:
-                                      booking.dateRange!.to!.toISOString(),
-                                    basePrice:
-                                      selectedSite.pricing.basePrice.toString(),
-                                    nights: nights.toString(),
-                                    cleaningFee: cleaningFee.toString(),
-                                    petFee: petFee.toString(),
-                                    additionalGuestFee: additionalGuestFee.toString(),
-                                    total: finalTotal.toString(),
-                                    currency:
-                                      selectedSite.pricing.currency || 'VND',
-                                    guests: booking.guests.toString(),
-                                    pets: booking.pets.toString(),
-                                    vehicles: '1',
-                                  }).toString()
-                                }
-                                onClick={e => {
-                                  const isAuthenticated =
-                                    useAuthStore.getState()
-                                      .isAuthenticated;
-                                  if (!isAuthenticated) {
-                                    e.preventDefault();
-                                    setShowLoginPrompt(true);
-                                  }
-                                }}
-                              >
-                                ⚡ Đặt ngay
-                              </Link>
-                            </Button>
+                             {isSelectedSiteUnavailable ? (
+                               <Button
+                                 className="w-full py-6 font-bold text-base rounded-xl mt-2 bg-slate-300 text-slate-500 dark:bg-slate-700 dark:text-slate-400 cursor-not-allowed border-0"
+                                 disabled
+                               >
+                                 <span>{selectedSiteUnavailableReasonText || 'Không khả dụng'}</span>
+                               </Button>
+                             ) : (
+                               <Button
+                                 className={isSoldOut ? "w-full py-6 font-bold text-base rounded-xl mt-2 bg-slate-300 text-slate-500 dark:bg-slate-700 dark:text-slate-400 cursor-not-allowed" : "w-full py-6 font-bold text-base rounded-xl mt-2"}
+                                 disabled={isSoldOut}
+                                 asChild={!isSoldOut}
+                               >
+                                 {!isSoldOut ? (
+                                   <Link
+                                     href={
+                                       `/checkouts/payment?` +
+                                       new URLSearchParams({
+                                         siteId: selectedSite._id,
+                                         propertyId:
+                                           typeof selectedSite.property === 'string'
+                                             ? selectedSite.property
+                                             : selectedSite.property._id,
+                                         name: selectedSite.name,
+                                         location: `${property.location.city}, ${property.location.state}`,
+                                         image:
+                                           selectedSite.photos?.find((p: any) => p.isCover)
+                                             ?.url ||
+                                           selectedSite.photos?.[0]?.url ||
+                                           '',
+                                         checkIn:
+                                           booking.dateRange!.from!.toISOString(),
+                                         checkOut:
+                                           booking.dateRange!.to!.toISOString(),
+                                         basePrice:
+                                           selectedSite.pricing.basePrice.toString(),
+                                         nights: nights.toString(),
+                                         cleaningFee: cleaningFee.toString(),
+                                         petFee: petFee.toString(),
+                                         additionalGuestFee: additionalGuestFee.toString(),
+                                         total: finalTotal.toString(),
+                                         currency:
+                                           selectedSite.pricing.currency || 'VND',
+                                         guests: booking.guests.toString(),
+                                         pets: booking.pets.toString(),
+                                         vehicles: '1',
+                                       }).toString()
+                                     }
+                                     onClick={e => {
+                                       const isAuthenticated =
+                                         useAuthStore.getState()
+                                           .isAuthenticated;
+                                       if (!isAuthenticated) {
+                                         e.preventDefault();
+                                         setShowLoginPrompt(true);
+                                       }
+                                     }}
+                                   >
+                                     ⚡ Đặt ngay
+                                   </Link>
+                                 ) : (
+                                   <span>Hết chỗ</span>
+                                 )}
+                               </Button>
+                             )}
                           </div>
                         );
                       })()
@@ -1489,16 +1568,19 @@ export function SitesListSection({
                     {sitesInGroup.map(site => {
                       const dateRange = booking.dateRange;
                       const hasSelectedDates = !!(dateRange?.from && dateRange?.to);
+                      const requiredUnits = Math.ceil(booking.guests / (site.capacity.maxGuests || 1)) || 1;
+                      const isPerPerson = site.pricing.rateType === 'person';
+                      const multiplier = isPerPerson ? booking.guests : requiredUnits;
                       const isSoldOut = hasSelectedDates &&
                         sitesAvailableUnits &&
                         sitesAvailableUnits[site._id] !== undefined &&
-                        sitesAvailableUnits[site._id] <= 0;
+                        sitesAvailableUnits[site._id] < requiredUnits;
                       const calculated = hasSelectedDates
-                        ? calculateSiteSubtotal(site, dateRange.from!, dateRange.to!)
+                        ? calculateSiteSubtotal(site, dateRange.from!, dateRange.to!, booking.guests)
                         : null;
 
                       // Determine if we are rendering for a holiday, weekend, etc.
-                      let averagePricePerNight = 0;
+                      let averagePricePerNight = site.pricing.basePrice;
                       let showHolidayLabel = false;
                       let holidayLabelText = '';
                       let showWeekendLabel = false;
@@ -1518,8 +1600,6 @@ export function SitesListSection({
                           return checkInDate >= start && checkInDate <= end;
                         });
 
-                        averagePricePerNight = Math.round(calculated.subtotal / nights);
-
                         if (checkInSeason) {
                           // Ngày lễ → chỉ hiện giá lễ, không hiện giá cuối tuần
                           showHolidayLabel = true;
@@ -1530,7 +1610,7 @@ export function SitesListSection({
                           const hasWeekendPricing = site.pricing.weekendPrice && site.pricing.weekendPrice !== site.pricing.basePrice && site.pricing.weekendPrice > 0;
                           if (hasWeekendPricing) {
                             showWeekendLabel = true;
-                            weekendLabelText = `Cuối tuần: ${site.pricing.weekendPrice?.toLocaleString()} ₫`;
+                            weekendLabelText = `Cuối tuần: ${site.pricing.weekendPrice!.toLocaleString()} ₫`;
                           }
                         }
                       } else {
@@ -1547,17 +1627,13 @@ export function SitesListSection({
                         const hasWeekendPrice = site.pricing.weekendPrice && site.pricing.weekendPrice !== site.pricing.basePrice && site.pricing.weekendPrice > 0;
 
                         if (activeSeason) {
-                          // Hôm nay là ngày lễ → chỉ hiện giá lễ
-                          averagePricePerNight = activeSeason.price;
                           showHolidayLabel = true;
                           holidayLabelText = `Giá ${activeSeason.name}`;
                         } else {
-                          // Không phải ngày lễ → hiện giá ngày thường
-                          averagePricePerNight = site.pricing.basePrice;
                           // Nếu có giá cuối tuần thì hiện thêm label cuối tuần
                           if (hasWeekendPrice) {
                             showWeekendLabel = true;
-                            weekendLabelText = `Cuối tuần: ${site.pricing.weekendPrice?.toLocaleString()} ₫`;
+                            weekendLabelText = `Cuối tuần: ${site.pricing.weekendPrice!.toLocaleString()} ₫`;
                           }
                         }
                       }
@@ -1707,7 +1783,9 @@ export function SitesListSection({
                                         {averagePricePerNight.toLocaleString()}{' '}
                                         <span className="text-sm font-normal">₫</span>
                                       </p>
-                                      <span className="text-sm text-gray-500">/ đêm</span>
+                                      <span className="text-sm text-gray-500">
+                                        {isPerPerson ? '/ khách / đêm' : '/ đêm'}
+                                      </span>
                                     </div>
                                     {showHolidayLabel && (
                                       <p className="text-xs font-normal text-amber-600 dark:text-amber-400 mt-0.5">
@@ -1722,10 +1800,11 @@ export function SitesListSection({
 
                                   </div>
                                   {(() => {
+                                    const requiredUnits = Math.ceil(booking.guests / (site.capacity.maxGuests || 1)) || 1;
                                     const isSoldOut = hasSelectedDates &&
                                       sitesAvailableUnits &&
                                       sitesAvailableUnits[site._id] !== undefined &&
-                                      sitesAvailableUnits[site._id] <= 0;
+                                      sitesAvailableUnits[site._id] < requiredUnits;
 
                                     return (
                                       <Button
@@ -1862,32 +1941,40 @@ export function SitesListSection({
                       .filter(s => !filteredSites.includes(s) && s.isActive)
                       .map(site => {
                         const dateRange = booking.dateRange;
+                        const siteUnit = getSiteUnit(site.accommodationType);
                         const hasSelectedDates = !!(dateRange?.from && dateRange?.to);
                         const isBlocked = siteBlockedMap.get(site._id);
                         const combinedCapacity = (site.capacity.maxGuests || 0) * (site.capacity.maxConcurrentBookings || 1);
                         const isCapacityExceeded = booking.guests > combinedCapacity;
-                        const isUnavailable = isCapacityExceeded || (isBlocked && hasSelectedDates);
+                        
+                        // Check pets conditions
+                        const maxPets = site.capacity.maxPets || 0;
+                        const combinedPetsCapacity = maxPets * (site.capacity.maxConcurrentBookings || 1);
+                        const isPetsNotAllowed = booking.pets > 0 && maxPets === 0;
+                        const isPetsCapacityExceeded = booking.pets > 0 && booking.pets > combinedPetsCapacity;
+                        
+                        const isUnavailable = isCapacityExceeded || isPetsNotAllowed || isPetsCapacityExceeded || (isBlocked && hasSelectedDates);
+                        const requiredUnits = Math.ceil(booking.guests / (site.capacity.maxGuests || 1)) || 1;
                         const isSoldOut = hasSelectedDates &&
                           sitesAvailableUnits &&
                           sitesAvailableUnits[site._id] !== undefined &&
-                          sitesAvailableUnits[site._id] <= 0;
-
+                          sitesAvailableUnits[site._id] < requiredUnits;
                         const calculated = hasSelectedDates
-                          ? calculateSiteSubtotal(site, dateRange.from!, dateRange.to!)
+                          ? calculateSiteSubtotal(site, dateRange.from!, dateRange.to!, booking.guests)
                           : null;
-                        const siteUnit = getSiteUnit(site.accommodationType);
 
-                        // Determine if we are rendering for a holiday, weekend, etc.
-                        let averagePricePerNight = 0;
+                        const hasWeekendPrice = site.pricing.weekendPrice && site.pricing.weekendPrice !== site.pricing.basePrice;
+                        const isPerPerson = site.pricing.rateType === 'person';
+                        const multiplier = isPerPerson ? booking.guests : requiredUnits;
+
+                        let averagePricePerNight = site.pricing.basePrice;
                         let showHolidayLabel = false;
                         let holidayLabelText = '';
                         let showWeekendLabel = false;
                         let weekendLabelText = '';
-                        let activeSeason: any = null;
-                        const hasWeekendPrice = site.pricing.weekendPrice && site.pricing.weekendPrice !== site.pricing.basePrice;
+                        let activeSeason = null;
 
                         if (calculated && hasSelectedDates) {
-                          averagePricePerNight = Math.round(calculated.subtotal / nights);
                           if (calculated.hasSeasonalPrice) {
                             showHolidayLabel = true;
                             const overlappingSeason = site.pricing.seasonalPricing?.find((season: any) => {
@@ -1897,10 +1984,11 @@ export function SitesListSection({
                               end.setHours(0, 0, 0, 0);
                               return start <= dateRange.to! && end >= dateRange.from!;
                             });
+                            activeSeason = overlappingSeason;
                             holidayLabelText = overlappingSeason ? `Giá ${overlappingSeason.name}` : 'Giá lễ';
                           } else if (calculated.hasWeekendPrice) {
                             showWeekendLabel = true;
-                            weekendLabelText = `Cuối tuần: ${site.pricing.weekendPrice?.toLocaleString()} ₫`;
+                            weekendLabelText = `Cuối tuần: ${site.pricing.weekendPrice!.toLocaleString()} ₫`;
                           }
                         } else {
                           const today = new Date();
@@ -1913,23 +2001,13 @@ export function SitesListSection({
                             return today >= start && today <= end;
                           });
 
-                          const dayOfWeek = today.getDay();
-                          const isTodayWeekendDay = dayOfWeek === 5 || dayOfWeek === 6;
-
                           if (activeSeason) {
-                            averagePricePerNight = activeSeason.price;
                             showHolidayLabel = true;
                             holidayLabelText = `Giá ${activeSeason.name}`;
                           } else {
-                            if (isTodayWeekendDay && hasWeekendPrice) {
-                              averagePricePerNight = site.pricing.weekendPrice!;
-                            } else {
-                              averagePricePerNight = site.pricing.basePrice;
-                            }
-
                             if (hasWeekendPrice) {
                               showWeekendLabel = true;
-                              weekendLabelText = `Cuối tuần: ${site.pricing.weekendPrice?.toLocaleString()} ₫`;
+                              weekendLabelText = `Cuối tuần: ${site.pricing.weekendPrice!.toLocaleString()} ₫`;
                             }
                           }
                         }
@@ -1952,13 +2030,17 @@ export function SitesListSection({
                                     <div className="absolute inset-0 flex items-center justify-center bg-black/50 pointer-events-none">
                                       <Badge
                                         variant="destructive"
-                                        className="text-sm"
+                                        className="text-sm text-center"
                                       >
                                         {isSoldOut
                                           ? 'Hết chỗ'
                                           : isCapacityExceeded
                                             ? 'Không đáp ứng đủ số người'
-                                            : (siteUnavailableReason.get(site._id) || 'Không khả dụng')}
+                                            : isPetsNotAllowed
+                                              ? 'Không cho phép thú cưng'
+                                              : isPetsCapacityExceeded
+                                                ? 'Vượt quá số lượng thú cưng'
+                                                : (siteUnavailableReason.get(site._id) || 'Không khả dụng')}
                                       </Badge>
                                     </div>
                                   )}
@@ -2020,7 +2102,9 @@ export function SitesListSection({
                                         {averagePricePerNight.toLocaleString()}{' '}
                                         <span className="text-sm font-normal">₫</span>
                                       </p>
-                                      <span className="text-sm text-gray-500">/ đêm</span>
+                                      <span className="text-sm text-gray-500">
+                                        {isPerPerson ? '/ khách / đêm' : '/ đêm'}
+                                      </span>
                                     </div>
                                     {activeSeason && (
                                       <p className="text-xs font-normal text-amber-600 dark:text-amber-400 mt-0.5">
@@ -2047,10 +2131,11 @@ export function SitesListSection({
                                       Không khả dụng
                                     </Button>
                                   ) : (() => {
+                                    const requiredUnits = Math.ceil(booking.guests / (site.capacity.maxGuests || 1)) || 1;
                                     const isSoldOut = hasSelectedDates &&
                                       sitesAvailableUnits &&
                                       sitesAvailableUnits[site._id] !== undefined &&
-                                      sitesAvailableUnits[site._id] <= 0;
+                                      sitesAvailableUnits[site._id] < requiredUnits;
 
                                     return (
                                       <Button

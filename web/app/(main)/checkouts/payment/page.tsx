@@ -358,17 +358,22 @@ export default function PaymentPage() {
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
+    const isPerPerson = siteDetails?.data?.pricing?.rateType === "person";
+    const multiplier = isPerPerson ? bookingData.guests : numberOfUnits;
+
     return {
-      subtotal: calculatedSubtotal * numberOfUnits,
+      subtotal: calculatedSubtotal * multiplier,
       weekdayNights: computedWeekdayNights,
       weekendNights: computedWeekendNights,
       seasonalNights: computedSeasonalNights,
       seasonalDetails: Object.values(seasonalMatchCounts),
     };
-  }, [bookingData.checkIn, bookingData.checkOut, bookingData.basePrice, siteDetails, nights, numberOfUnits]);
+  }, [bookingData.checkIn, bookingData.checkOut, bookingData.basePrice, siteDetails, nights, numberOfUnits, bookingData.guests]);
 
   const weekendPrice = siteDetails?.data?.pricing?.weekendPrice ?? bookingData.basePrice;
   const hasDetailedPricing = weekendNights > 0 || seasonalNights > 0;
+  const isPerPerson = siteDetails?.data?.pricing?.rateType === "person";
+  const multiplier = isPerPerson ? bookingData.guests : numberOfUnits;
 
   // Promo code states & handlers
   const [promoCodeInput, setPromoCodeInput] = useState('');
@@ -652,9 +657,9 @@ export default function PaymentPage() {
           Quay lại
         </Button>
 
-        <div className="grid gap-8 lg:grid-cols-3">
+        <div className="grid gap-8 lg:grid-cols-12">
           {/* Left: Form Section */}
-          <form onSubmit={handleSubmit} className="lg:col-span-2">
+          <form onSubmit={handleSubmit} className="lg:col-span-7">
             <div className="space-y-6">
               {/* Guest Information */}
               <Card>
@@ -943,6 +948,15 @@ export default function PaymentPage() {
                 </CardContent>
               </Card>
 
+              {/* Not Enough Units Warning */}
+              {!hasEnoughUnits && !isAvailableUnitsLoading && !isSiteLoading && (
+                <Alert variant="destructive">
+                  <AlertDescription>
+                    Không đủ vị trí/lều trống cho số lượng khách ({bookingData.guests} người) trong thời gian đã chọn. Vui lòng chọn ngày khác hoặc giảm số lượng khách.
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {/* Error Message */}
               {bookingMutation.isError && (
                 <Alert variant="destructive">
@@ -972,7 +986,7 @@ export default function PaymentPage() {
           </form>
 
           {/* Right: Booking Summary */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-5">
             <Card className="sticky top-8 border-0">
               <CardHeader>
                 <CardTitle>Chi tiết đặt chỗ</CardTitle>
@@ -1161,24 +1175,33 @@ export default function PaymentPage() {
                         <div className="flex justify-between text-sm">
                           <span>
                             {formatPrice(bookingData.basePrice)} ×{' '}
-                            {weekdayNights} đêm thường {numberOfUnits > 1 && `× ${numberOfUnits} vị trí`}
+                            {weekdayNights} đêm thường{' '}
+                            {isPerPerson 
+                              ? `× ${bookingData.guests} khách` 
+                              : numberOfUnits > 1 
+                                ? `× ${numberOfUnits} vị trí` 
+                                : ''}
                           </span>
                           <span>
-                            {formatPrice(weekdayNights * bookingData.basePrice * numberOfUnits)}
+                            {formatPrice(weekdayNights * bookingData.basePrice * multiplier)}
                           </span>
                         </div>
                       )}
                       {weekendNights > 0 && (
                         <div className="flex justify-between text-sm">
                           <span className="flex items-center gap-1">
-                            {formatPrice(weekendPrice)} × {weekendNights} đêm
-                            cuối tuần {numberOfUnits > 1 && `× ${numberOfUnits} vị trí`}
+                            {formatPrice(weekendPrice)} × {weekendNights} đêm cuối tuần{' '}
+                            {isPerPerson 
+                              ? `× ${bookingData.guests} khách` 
+                              : numberOfUnits > 1 
+                                ? `× ${numberOfUnits} vị trí` 
+                                : ''}
                             <span className="text-xs text-blue-600">
                               (Thứ 6, 7)
                             </span>
                           </span>
                           <span>
-                            {formatPrice(weekendNights * weekendPrice * numberOfUnits)}
+                            {formatPrice(weekendNights * weekendPrice * multiplier)}
                           </span>
                         </div>
                       )}
@@ -1186,13 +1209,18 @@ export default function PaymentPage() {
                         <div key={season.name} className="flex justify-between text-sm">
                           <span className="flex items-center gap-1">
                             {formatPrice(season.price)} × {season.count} đêm{' '}
-                            {season.name} {numberOfUnits > 1 && `× ${numberOfUnits} vị trí`}
+                            {season.name}{' '}
+                            {isPerPerson 
+                              ? `× ${bookingData.guests} khách` 
+                              : numberOfUnits > 1 
+                                ? `× ${numberOfUnits} vị trí` 
+                                : ''}
                             <span className="text-xs text-amber-600 font-medium">
                               (Mùa vụ)
                             </span>
                           </span>
                           <span>
-                            {formatPrice(season.count * season.price * numberOfUnits)}
+                            {formatPrice(season.count * season.price * multiplier)}
                           </span>
                         </div>
                       ))}
@@ -1205,7 +1233,12 @@ export default function PaymentPage() {
                   ) : (
                     <div className="flex justify-between text-sm">
                       <span>
-                        {formatPrice(bookingData.basePrice)} × {nights} đêm {numberOfUnits > 1 && `× ${numberOfUnits} vị trí`}
+                        {formatPrice(bookingData.basePrice)} × {nights} đêm{' '}
+                        {isPerPerson 
+                          ? `× ${bookingData.guests} khách` 
+                          : numberOfUnits > 1 
+                            ? `× ${numberOfUnits} vị trí` 
+                            : ''}
                       </span>
                       <span>{formatPrice(subtotal)}</span>
                     </div>

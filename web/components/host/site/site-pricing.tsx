@@ -17,6 +17,7 @@ interface Season {
 }
 
 interface Pricing {
+  rateType?: "site" | "person";
   basePrice: number;
   weekendPrice?: number;
   currency: string;
@@ -37,6 +38,7 @@ interface SitePricingProps {
 
 export function SitePricing({ data, onChange }: SitePricingProps) {
   const pricing: Pricing = useMemo(() => ({
+    rateType: data?.rateType ?? "site",
     basePrice: Number(data?.basePrice ?? 0),
     weekendPrice: data?.weekendPrice === undefined ? undefined : Number(data.weekendPrice),
     currency: data?.currency ?? "VND",
@@ -101,13 +103,26 @@ export function SitePricing({ data, onChange }: SitePricingProps) {
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="basePrice">Giá cơ bản (VNĐ/đêm) <span className="text-red-500">*</span></Label>
+              <Label htmlFor="basePrice">Giá cơ bản (VNĐ) <span className="text-red-500">*</span></Label>
               <Input id="basePrice" type="number" value={pricing.basePrice ?? 0} onChange={(e) => setNumeric("basePrice", e.target.value)} min={0} step={1000} className="mt-1" />
             </div>
 
             <div>
               <Label htmlFor="currency">Tiền tệ</Label>
               <Input id="currency" value={pricing.currency} onChange={(e) => setField("currency", e.target.value || "VND")} className="mt-1" />
+            </div>
+
+            <div className="col-span-2">
+              <Label htmlFor="rateType">Mô hình tính giá</Label>
+              <select
+                id="rateType"
+                value={pricing.rateType || "site"}
+                onChange={(e) => setField("rateType", e.target.value)}
+                className="mt-1 flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 border-gray-300 dark:border-slate-800 text-gray-900 dark:text-gray-100"
+              >
+                <option value="site" className="text-black dark:text-white bg-white dark:bg-slate-900">Tính trên 1 vị trí (Cố định theo vị trí)</option>
+                <option value="person" className="text-black dark:text-white bg-white dark:bg-slate-900">Tính trên đầu người (Tính theo số lượng khách)</option>
+              </select>
             </div>
 
             <div className="col-span-2">

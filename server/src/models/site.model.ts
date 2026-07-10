@@ -61,6 +61,7 @@ export interface SiteDocument extends mongoose.Document {
 
   // Pricing (per-site)
   pricing: {
+    rateType?: "site" | "person";
     basePrice: number; // Per night
     weekendPrice?: number;
     weeklyDiscount?: number; // percentage
@@ -249,8 +250,9 @@ const siteSchema = new mongoose.Schema<SiteDocument>(
       },
     },
 
-    // Pricing
+     // Pricing
     pricing: {
+      rateType: { type: String, enum: ["site", "person"], default: "site" },
       basePrice: { type: Number, required: true, min: 0, index: true },
       weekendPrice: { type: Number, min: 0 },
       weeklyDiscount: { type: Number, min: 0, max: 100 }, // percentage

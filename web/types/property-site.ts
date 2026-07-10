@@ -200,6 +200,7 @@ export interface SiteCapacity {
 }
 
 export interface SitePricing {
+  rateType?: 'site' | 'person';
   basePrice: number;
   currency: string;
   weekendPrice?: number;

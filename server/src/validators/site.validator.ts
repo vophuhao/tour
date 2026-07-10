@@ -123,6 +123,7 @@ export const createSiteSchema = z.object({
 
   // Pricing
   pricing: z.object({
+    rateType: z.enum(["site", "person"]).default("site").optional(),
     basePrice: z.number().min(0),
     weekendPrice: z.number().min(0).optional(),
     weeklyDiscount: z.number().min(0).max(100).optional(),

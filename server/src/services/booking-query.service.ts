@@ -480,7 +480,11 @@ export class BookingQueryService {
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
-    subtotal = subtotal * numberOfUnits;
+    if (site.pricing.rateType === "person") {
+      subtotal = subtotal * numberOfGuests;
+    } else {
+      subtotal = subtotal * numberOfUnits;
+    }
 
     // Apply long-stay discount on subtotal
     let discountPercent = 0;
