@@ -29,6 +29,69 @@ export async function loadFaceApi(): Promise<any> {
 }
 
 /**
+ * Helper to convert any image source to HTMLCanvasElement.
+ * This forces the browser to apply EXIF orientation so face-api.js processes upright pixels.
+ */
+export function ensureCanvas(img: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement): HTMLCanvasElement {
+  if (img instanceof HTMLCanvasElement) return img;
+
+  const canvas = document.createElement('canvas');
+  let width = 0;
+  let height = 0;
+
+  if (img instanceof HTMLVideoElement) {
+    width = img.videoWidth;
+    height = img.videoHeight;
+  } else {
+    width = img.naturalWidth || img.width;
+    height = img.naturalHeight || img.height;
+  }
+
+  // Scale down if too large (max 1000px) to speed up face detection and increase model accuracy
+  const MAX_DIM = 1000;
+  if (width > MAX_DIM || height > MAX_DIM) {
+    if (width > height) {
+      height = Math.round((height * MAX_DIM) / width);
+      width = MAX_DIM;
+    } else {
+      width = Math.round((width * MAX_DIM) / height);
+      height = MAX_DIM;
+    }
+  }
+
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.drawImage(img, 0, 0, width, height);
+  }
+  return canvas;
+}
+
+function rotateCanvas(canvas: HTMLCanvasElement, degrees: number): HTMLCanvasElement {
+  const newCanvas = document.createElement('canvas');
+  const ctx = newCanvas.getContext('2d');
+  if (!ctx) return canvas;
+
+  const radians = (degrees * Math.PI) / 180;
+  
+  if (degrees === 90 || degrees === 270) {
+    newCanvas.width = canvas.height;
+    newCanvas.height = canvas.width;
+  } else {
+    newCanvas.width = canvas.width;
+    newCanvas.height = canvas.height;
+  }
+
+  ctx.translate(newCanvas.width / 2, newCanvas.height / 2);
+  ctx.rotate(radians);
+  ctx.drawImage(canvas, -canvas.width / 2, -canvas.height / 2);
+
+  return newCanvas;
+}
+
+/**
  * Compare two image sources and return similarity score (0–1).
  * 1.0 = identical, 0.0 = completely different.
  * Uses euclidean distance; threshold typically < 0.6 for same person.
@@ -41,11 +104,20 @@ export async function compareFaces(
     const fa = await loadFaceApi();
 
     const detect = async (el: any) => {
-      const detection = await fa
-        .detectSingleFace(el, new fa.SsdMobilenetv1Options({ minConfidence: 0.4 }))
-        .withFaceLandmarks()
-        .withFaceDescriptor();
-      return detection;
+      const canvasEl = ensureCanvas(el);
+      const angles = [0, 90, 270, 180];
+
+      for (const angle of angles) {
+        const testCanvas = angle === 0 ? canvasEl : rotateCanvas(canvasEl, angle);
+        const detection = await fa
+          .detectSingleFace(testCanvas, new fa.SsdMobilenetv1Options({ minConfidence: 0.2 }))
+          .withFaceLandmarks()
+          .withFaceDescriptor();
+        if (detection) {
+          return detection;
+        }
+      }
+      return null;
     };
 
     const [d1, d2] = await Promise.all([detect(img1), detect(img2)]);

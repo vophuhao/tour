@@ -42,6 +42,76 @@ export function SiteCapacity({
     onChange({ ...capacity, [field]: value });
   };
 
+  const handleGuestsChange = (val: number | undefined) => {
+    if (val === undefined) {
+      onChange({ ...capacity, maxGuests: undefined, maxAdults: undefined, maxChildren: undefined });
+      return;
+    }
+
+    const g = val;
+    let a = capacity.maxAdults;
+    let c = capacity.maxChildren;
+
+    if (a !== undefined) {
+      a = Math.min(a, g);
+      c = g - a;
+    } else if (c !== undefined) {
+      c = Math.min(c, g);
+      a = g - c;
+    }
+
+    onChange({
+      ...capacity,
+      maxGuests: g,
+      maxAdults: a,
+      maxChildren: c,
+    });
+  };
+
+  const handleAdultsChange = (val: number | undefined) => {
+    const g = capacity.maxGuests;
+    if (g === undefined) {
+      onChange({ ...capacity, maxAdults: val });
+      return;
+    }
+
+    if (val === undefined || val === 0) {
+      onChange({ ...capacity, maxAdults: 0, maxChildren: 0 });
+      return;
+    }
+
+    const a = Math.min(val, g);
+    const c = g - a;
+
+    onChange({
+      ...capacity,
+      maxAdults: a,
+      maxChildren: c,
+    });
+  };
+
+  const handleChildrenChange = (val: number | undefined) => {
+    const g = capacity.maxGuests;
+    if (g === undefined) {
+      onChange({ ...capacity, maxChildren: val });
+      return;
+    }
+
+    if (val === undefined || val === 0) {
+      onChange({ ...capacity, maxAdults: 0, maxChildren: 0 });
+      return;
+    }
+
+    const c = Math.min(val, g);
+    const a = g - c;
+
+    onChange({
+      ...capacity,
+      maxAdults: a,
+      maxChildren: c,
+    });
+  };
+
   const safe = (v: any, d: any = "") => (v === undefined || v === null ? d : v);
 
   const showUnitNaming = lodgingProvided && lodgingProvided !== "bring_your_own" && (capacity.maxConcurrentBookings ?? 1) > 1;
@@ -79,7 +149,7 @@ export function SiteCapacity({
             id="maxGuests"
             type="number"
             value={String(safe(capacity.maxGuests, ""))}
-            onChange={(e) => updateField("maxGuests", e.target.value === "" ? undefined : Number(e.target.value))}
+            onChange={(e) => handleGuestsChange(e.target.value === "" ? undefined : Number(e.target.value))}
             min={1}
             className="mt-1"
           />
@@ -91,7 +161,7 @@ export function SiteCapacity({
             id="maxAdults"
             type="number"
             value={String(safe(capacity.maxAdults, ""))}
-            onChange={(e) => updateField("maxAdults", e.target.value === "" ? undefined : Number(e.target.value))}
+            onChange={(e) => handleAdultsChange(e.target.value === "" ? undefined : Number(e.target.value))}
             min={0}
             className="mt-1"
           />
@@ -103,7 +173,7 @@ export function SiteCapacity({
             id="maxChildren"
             type="number"
             value={String(safe(capacity.maxChildren, ""))}
-            onChange={(e) => updateField("maxChildren", e.target.value === "" ? undefined : Number(e.target.value))}
+            onChange={(e) => handleChildrenChange(e.target.value === "" ? undefined : Number(e.target.value))}
             min={0}
             className="mt-1"
           />

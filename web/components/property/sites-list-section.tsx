@@ -211,6 +211,14 @@ function calculateSiteSubtotal(site: Site, checkIn: Date, checkOut: Date, guests
   };
 }
 
+const formatCapacityText = (capacity: { maxGuests: number; maxAdults?: number; maxChildren?: number }) => {
+  const { maxGuests, maxAdults, maxChildren } = capacity;
+  if (maxAdults !== undefined && maxAdults > 0 && maxChildren !== undefined && maxChildren > 0) {
+    return `${maxAdults} người lớn, ${maxChildren} trẻ em`;
+  }
+  return `${maxGuests} người`;
+};
+
 interface SitesListSectionProps {
   sites: Site[];
   property: Property;
@@ -892,13 +900,21 @@ export function SitesListSection({
     const combinedCapacity = (selectedSite.capacity.maxGuests || 0) * (selectedSite.capacity.maxConcurrentBookings || 1);
     const isCapacityExceeded = booking.guests > combinedCapacity;
 
+    const maxAdults = selectedSite.capacity.maxAdults !== undefined ? selectedSite.capacity.maxAdults : (selectedSite.capacity.maxGuests || 0);
+    const combinedAdultsCapacity = maxAdults * (selectedSite.capacity.maxConcurrentBookings || 1);
+    const isAdultsExceeded = adults > combinedAdultsCapacity;
+
+    const maxChildren = selectedSite.capacity.maxChildren !== undefined ? selectedSite.capacity.maxChildren : (selectedSite.capacity.maxGuests || 0);
+    const combinedChildrenCapacity = maxChildren * (selectedSite.capacity.maxConcurrentBookings || 1);
+    const isChildrenExceeded = children > combinedChildrenCapacity;
+
     const maxPets = selectedSite.capacity.maxPets || 0;
     const combinedPetsCapacity = maxPets * (selectedSite.capacity.maxConcurrentBookings || 1);
     const isPetsNotAllowed = booking.pets > 0 && maxPets === 0;
     const isPetsCapacityExceeded = booking.pets > 0 && booking.pets > combinedPetsCapacity;
 
-    return isCapacityExceeded || isPetsNotAllowed || isPetsCapacityExceeded || (isBlocked && hasSelectedDates);
-  }, [selectedSite, siteBlockedMap, booking.guests, booking.pets, hasSelectedDates]);
+    return isCapacityExceeded || isAdultsExceeded || isChildrenExceeded || isPetsNotAllowed || isPetsCapacityExceeded || (isBlocked && hasSelectedDates);
+  }, [selectedSite, siteBlockedMap, booking.guests, booking.pets, hasSelectedDates, adults, children]);
 
   const selectedSiteUnavailableReasonText = useMemo(() => {
     if (!selectedSite) return '';
@@ -907,6 +923,18 @@ export function SitesListSection({
     
     if (booking.guests > combinedCapacity) {
       return 'Không đáp ứng đủ số người';
+    }
+
+    const maxAdults = selectedSite.capacity.maxAdults !== undefined ? selectedSite.capacity.maxAdults : (selectedSite.capacity.maxGuests || 0);
+    const combinedAdultsCapacity = maxAdults * (selectedSite.capacity.maxConcurrentBookings || 1);
+    if (adults > combinedAdultsCapacity) {
+      return 'Vượt quá số người lớn tối đa';
+    }
+
+    const maxChildren = selectedSite.capacity.maxChildren !== undefined ? selectedSite.capacity.maxChildren : (selectedSite.capacity.maxGuests || 0);
+    const combinedChildrenCapacity = maxChildren * (selectedSite.capacity.maxConcurrentBookings || 1);
+    if (children > combinedChildrenCapacity) {
+      return 'Vượt quá số trẻ em tối đa';
     }
     
     const maxPets = selectedSite.capacity.maxPets || 0;
@@ -921,7 +949,7 @@ export function SitesListSection({
       return siteUnavailableReason.get(selectedSite._id) || 'Không khả dụng vào ngày đã chọn';
     }
     return '';
-  }, [selectedSite, siteBlockedMap, booking.guests, booking.pets, hasSelectedDates, siteUnavailableReason]);
+  }, [selectedSite, siteBlockedMap, booking.guests, booking.pets, hasSelectedDates, siteUnavailableReason, adults, children]);
 
   // Filter sites
   const filteredSites = useMemo(() => {
@@ -936,7 +964,21 @@ export function SitesListSection({
     if (booking.guests) {
       result = result.filter(s => {
         const combinedCapacity = (s.capacity.maxGuests || 0) * (s.capacity.maxConcurrentBookings || 1);
-        return combinedCapacity >= booking.guests;
+        if (combinedCapacity < booking.guests) return false;
+
+        // Enforce max adults if configured
+        if (s.capacity.maxAdults !== undefined && s.capacity.maxAdults > 0) {
+          const combinedAdults = s.capacity.maxAdults * (s.capacity.maxConcurrentBookings || 1);
+          if (adults > combinedAdults) return false;
+        }
+
+        // Enforce max children if configured
+        if (s.capacity.maxChildren !== undefined) {
+          const combinedChildren = s.capacity.maxChildren * (s.capacity.maxConcurrentBookings || 1);
+          if (children > combinedChildren) return false;
+        }
+
+        return true;
       });
     }
 
@@ -974,6 +1016,8 @@ export function SitesListSection({
     booking.dateRange,
     siteBlockedMap,
     sitesAvailableUnits,
+    adults,
+    children,
   ]);
 
   // Group sites by accommodation type
@@ -1065,7 +1109,7 @@ export function SitesListSection({
                   <div className="grid grid-cols-2 gap-y-3 gap-x-6 text-sm text-gray-700 dark:text-gray-300">
                     <div className="flex justify-between border-b border-slate-50 dark:border-slate-800/50 pb-1.5">
                       <span className="text-gray-500">Sức chứa tối đa:</span>
-                      <span className="font-semibold">{selectedSite.capacity.maxGuests} người</span>
+                      <span className="font-semibold">{formatCapacityText(selectedSite.capacity)}</span>
                     </div>
                     <div className="flex justify-between border-b border-slate-50 dark:border-slate-800/50 pb-1.5">
                       <span className="text-gray-500">Số xe tối đa:</span>
@@ -1699,7 +1743,7 @@ export function SitesListSection({
                                 <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 border-b border-dashed border-slate-100 dark:border-slate-800 pb-2">
                                   <span className="flex items-center gap-1.5">
                                     <Users className="w-3.5 h-3.5 text-primary shrink-0" />
-                                    Mỗi {siteUnit}: Tối đa <strong>{site.capacity.maxGuests} người</strong>
+                                    Mỗi {siteUnit}: Tối đa <strong>{formatCapacityText(site.capacity)}</strong>
                                   </span>
                                   <span className="flex items-center gap-1.5">
                                     <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
@@ -1945,7 +1989,15 @@ export function SitesListSection({
                         const hasSelectedDates = !!(dateRange?.from && dateRange?.to);
                         const isBlocked = siteBlockedMap.get(site._id);
                         const combinedCapacity = (site.capacity.maxGuests || 0) * (site.capacity.maxConcurrentBookings || 1);
-                        const isCapacityExceeded = booking.guests > combinedCapacity;
+                        const maxAdults = site.capacity.maxAdults !== undefined ? site.capacity.maxAdults : (site.capacity.maxGuests || 0);
+                        const combinedAdultsCapacity = maxAdults * (site.capacity.maxConcurrentBookings || 1);
+                        const isAdultsExceeded = adults > combinedAdultsCapacity;
+
+                        const maxChildren = site.capacity.maxChildren !== undefined ? site.capacity.maxChildren : (site.capacity.maxGuests || 0);
+                        const combinedChildrenCapacity = maxChildren * (site.capacity.maxConcurrentBookings || 1);
+                        const isChildrenExceeded = children > combinedChildrenCapacity;
+
+                        const isCapacityExceeded = booking.guests > combinedCapacity || isAdultsExceeded || isChildrenExceeded;
                         
                         // Check pets conditions
                         const maxPets = site.capacity.maxPets || 0;
@@ -2083,7 +2135,7 @@ export function SitesListSection({
                                 <div className="mt-3 flex flex-col gap-1.5 text-xs text-slate-500 border-t border-dashed border-slate-100 dark:border-slate-800 pt-2 pb-0.5">
                                   <span className="flex items-center gap-1.5">
                                     <Users className="w-3.5 h-3.5 text-primary shrink-0" />
-                                    Mỗi {siteUnit}: Tối đa <strong>{site.capacity.maxGuests} người</strong>
+                                    Mỗi {siteUnit}: Tối đa <strong>{formatCapacityText(site.capacity)}</strong>
                                   </span>
                                   <span className="flex items-center gap-1.5">
                                     <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />

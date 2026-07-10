@@ -437,8 +437,8 @@ export default function HostRegisterPage() {
 
                   <div className="flex gap-3 pt-2">
                     <Button variant="outline" className="flex-1 h-11 rounded-xl cursor-pointer" onClick={() => setStep(1)} disabled={isValidatingCccd}>Quay lại</Button>
-                    <Button 
-                      className="flex-1 h-11 rounded-xl font-semibold cursor-pointer" 
+                    <Button
+                      className="flex-1 h-11 rounded-xl font-semibold cursor-pointer"
                       onClick={() => { if (validateStep2()) setStep(3); }}
                       disabled={isValidatingCccd || cccdValid !== true}
                     >
@@ -639,7 +639,7 @@ export default function HostRegisterPage() {
                   </div>
 
                   {/* Dev Bypass Helper bottom */}
-                  <div className="pt-2 text-center">
+                  {/* <div className="pt-2 text-center">
                     <button
                       type="button"
                       className="text-xs text-amber-500/70 hover:text-amber-500 hover:underline font-bold cursor-pointer transition-colors"
@@ -652,7 +652,7 @@ export default function HostRegisterPage() {
                     >
                       Bỏ qua kiểm tra KYC (Bypass KYC)
                     </button>
-                  </div>
+                  </div> */}
                 </div>
               )}
             </div>
