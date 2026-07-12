@@ -535,9 +535,9 @@ export default function RoadtripPage() {
                       }`}
                   >
 
-                    {/* Top image section */}
-                    <div className="relative h-48 w-full overflow-hidden rounded-xl shrink-0">
-                      <Link href={buildPropertyLink(property.slug || property._id)}>
+                    <Link href={buildPropertyLink(property.slug || property._id)} className="block h-full flex flex-col justify-between">
+                      {/* Top image section */}
+                      <div className="relative h-48 w-full overflow-hidden rounded-xl shrink-0">
                         <Image
                           src={getCoverPhoto(property)}
                           alt={property.name}
@@ -545,83 +545,83 @@ export default function RoadtripPage() {
                           className="object-cover transition-transform duration-300 hover:scale-105"
                           sizes="(max-width: 768px) 100vw, 33vw"
                         />
-                      </Link>
 
-                      {/* Action buttons (top-left) */}
-                      <div className="absolute top-3 left-3 z-20 flex gap-2">
-                        <FavoriteButton
-                          propertyId={property._id}
-                          className="bg-white/90 backdrop-blur-xs hover:bg-white h-8 w-8 p-0"
-                        />
-                        <CompareButton
-                          propertyId={property._id}
-                          className="bg-white/90 backdrop-blur-xs hover:bg-white h-8 w-8 p-0"
-                        />
+                        {/* Action buttons (top-left) */}
+                        <div className="absolute top-3 left-3 z-20 flex gap-2">
+                          <FavoriteButton
+                            propertyId={property._id}
+                            className="bg-white/90 backdrop-blur-xs hover:!bg-white h-8 w-8 p-0"
+                          />
+                          <CompareButton
+                            propertyId={property._id}
+                            className="bg-white/90 backdrop-blur-xs hover:!bg-white h-8 w-8 p-0"
+                          />
+                        </div>
+
+                        {/* Views count badge */}
+                        <div className="absolute top-3 right-3 z-20">
+                          <Badge variant="outline" className="flex bg-white/90 backdrop-blur-xs text-gray-800 items-center gap-1.5 rounded-full px-2 py-1 text-xs shadow border-none">
+                            <Eye className="h-3 w-3 text-gray-700" />
+                            <span>
+                              {formatViews(property.stats?.viewCount ?? property.viewCount ?? 0)}
+                            </span>
+                          </Badge>
+                        </div>
                       </div>
 
-                      {/* Views count badge */}
-                      <div className="absolute top-3 right-3 z-20">
-                        <Badge className="flex bg-white/90 backdrop-blur-xs hover:bg-white text-gray-800 items-center gap-1.5 rounded-full px-2 py-1 text-xs shadow border-none">
-                          <Eye className="h-3 w-3 text-gray-700" />
-                          <span>
-                            {formatViews(property.stats?.viewCount ?? property.viewCount ?? 0)}
-                          </span>
-                        </Badge>
-                      </div>
-                    </div>
+                      {/* Bottom details section */}
+                      <div className="space-y-1.5 p-4 flex-1 flex flex-col justify-between">
+                        <div className="space-y-1.5">
 
-                    {/* Bottom details section */}
-                    <div className="space-y-1.5 p-4 flex-1 flex flex-col justify-between">
-                      <div className="space-y-1.5">
-
-                        {/* Rating + Superhost */}
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-1">
-                            {property.stats?.averageRating && property.stats.averageRating > 0 ? (
-                              <>
-                                <span className="text-base">👍</span>
-                                <span className="text-sm font-semibold text-gray-900">
-                                  {Math.round((property.stats.averageRating / 5) * 100)}%
-                                </span>
-                                <span className="text-xs text-gray-500">
-                                  ({property.stats.totalReviews || 0})
-                                </span>
-                              </>
-                            ) : (
-                              <span className="text-xs text-gray-400">Chưa có đánh giá</span>
+                          {/* Rating + Superhost */}
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1">
+                              {property.stats?.averageRating && property.stats.averageRating > 0 ? (
+                                <>
+                                  <span className="text-base">👍</span>
+                                  <span className="text-sm font-semibold text-gray-900">
+                                    {Math.round((property.stats.averageRating / 5) * 100)}%
+                                  </span>
+                                  <span className="text-xs text-gray-500">
+                                    ({property.stats.totalReviews || 0})
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-xs text-gray-400">Chưa có đánh giá</span>
+                              )}
+                            </div>
+                            {property.isSuperhost && (
+                              <SuperhostBadge size="xs" showTooltip superhostSince={property.superhostSince} />
                             )}
                           </div>
-                          {property.isSuperhost && (
-                            <SuperhostBadge size="xs" showTooltip superhostSince={property.superhostSince} />
-                          )}
+
+                          {/* Title */}
+                          <h3 className="text-base font-semibold text-gray-900 line-clamp-1">
+                            {property.name}
+                          </h3>
+
+                          {/* Sites count + Property type */}
+                          <p className="text-sm text-gray-600">
+                            {property.stats?.totalSites || 0} địa điểm · {getPropertyTypeDisplay(property.propertyType)}
+                          </p>
+
+                          {/* Location */}
+                          <p className="text-sm text-gray-500 truncate">
+                            {getLandSizeDisplay(property)} · {property.location?.city}, {property.location?.state}
+                          </p>
+
+                          {/* Price */}
+                          <div className="pt-0.5">
+                            <span className="text-sm text-gray-500">từ </span>
+                            <span className="text-base font-bold text-gray-900">
+                              {property.minPrice ? formatPrice(property.minPrice) : '50k'}
+                            </span>
+                            <span className="text-sm text-gray-500"> / đêm</span>
+                          </div>
+
                         </div>
-
-                        {/* Title */}
-                        <h3 className="text-base font-semibold text-gray-900 line-clamp-1">
-                          {property.name}
-                        </h3>
-
-                        {/* Sites count + Property type */}
-                        <p className="text-sm text-gray-600">
-                          {property.stats?.totalSites || 0} địa điểm · {getPropertyTypeDisplay(property.propertyType)}
-                        </p>
-
-                        {/* Location */}
-                        <p className="text-sm text-gray-500 truncate">
-                          {getLandSizeDisplay(property)} · {property.location?.city}, {property.location?.state}
-                        </p>
-
-                        {/* Price */}
-                        <div className="pt-0.5">
-                          <span className="text-sm text-gray-500">từ </span>
-                          <span className="text-base font-bold text-gray-900">
-                            {property.minPrice ? formatPrice(property.minPrice) : '50k'}
-                          </span>
-                          <span className="text-sm text-gray-500"> / đêm</span>
-                        </div>
-
                       </div>
-                    </div>
+                    </Link>
                   </Card>
                 ))}
               </div>

@@ -81,7 +81,7 @@ export function CampsiteList({
               onMouseEnter={() => setHoveredCampsite(campsite)}
               onMouseLeave={() => setHoveredCampsite(null)}
             >
-              <Link href={`/land/${campsite.slug}`}>
+              <Link href={`/land/${campsite.slug}`} className="block h-full">
                 <div className="relative h-48 w-full">
                   <Image
                     src={campsite.images[0] || '/placeholder-campsite.jpg'}
@@ -95,38 +95,38 @@ export function CampsiteList({
                     </div>
                   )}
                 </div>
-              </Link>
 
-              <div className="space-y-2 p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1">
-                    <h3 className="line-clamp-1 font-semibold">
-                      {campsite.name}
-                    </h3>
-                    <p className="text-muted-foreground text-sm">
-                      {campsite.location.city}, {campsite.location.state}
+                <div className="space-y-2 p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <h3 className="line-clamp-1 font-semibold">
+                        {campsite.name}
+                      </h3>
+                      <p className="text-muted-foreground text-sm">
+                        {campsite.location.city}, {campsite.location.state}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="shrink-0">
+                      {campsite.propertyType}
+                    </Badge>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-lg font-bold">
+                        {formatPrice(campsite.pricing.basePrice)}
+                      </span>
+                      <span className="text-muted-foreground text-sm">
+                        {' '}
+                        / đêm
+                      </span>
+                    </div>
+                    <p className="text-muted-foreground text-xs">
+                      Tối đa {campsite.capacity.maxGuests} khách
                     </p>
                   </div>
-                  <Badge variant="outline" className="shrink-0">
-                    {campsite.propertyType}
-                  </Badge>
                 </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-lg font-bold">
-                      {formatPrice(campsite.pricing.basePrice)}
-                    </span>
-                    <span className="text-muted-foreground text-sm">
-                      {' '}
-                      / đêm
-                    </span>
-                  </div>
-                  <p className="text-muted-foreground text-xs">
-                    Tối đa {campsite.capacity.maxGuests} khách
-                  </p>
-                </div>
-              </div>
+              </Link>
             </Card>
           ))}
         </div>

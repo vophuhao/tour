@@ -19,6 +19,7 @@ import { sendBookingCancelledEmail } from "../utils/send-booking-email";
 import WalletService from "./wallet.service";
 import { SettingService } from "./setting.service";
 import { notifyPropertyChange } from "../socket";
+import { acquireLock, releaseLock } from "../config/redis";
 
 const { PayOS } = require("@payos/node");
 
@@ -147,7 +148,6 @@ export class BookingService {
       checkInDate,
       checkOutDate,
       input.promoCodeId,
-      input.comboId,
       numberOfUnits,
       services
     );
@@ -156,7 +156,9 @@ export class BookingService {
     let payOSCheckoutUrl: string | null = null;
     const code = this.generateBookingCode();
     payOSOrderCode = Math.floor(Date.now() / 1000);
-    const amount = 2000;
+    const amount = paymentMethod === "deposit"
+      ? Math.max(2000, Math.round(pricing.total * 0.5))
+      : Math.max(2000, pricing.total);
 
     try {
       const paymentLink = await payos.paymentRequests.create({
@@ -178,99 +180,121 @@ export class BookingService {
       console.error("Error creating PayOS payment link:", err.message);
     }
 
-    const session = await mongoose.startSession();
-    let booking: BookingDocument;
+    const lockKey = `lock:booking:site:${siteId || campsiteId}`;
+    let lockToken: string | null = null;
+    const maxRetries = 15;
+    const delayMs = 200;
+
+    for (let i = 0; i < maxRetries; i++) {
+      lockToken = await acquireLock(lockKey, 6000);
+      if (lockToken) break;
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+
+    appAssert(
+      lockToken,
+      ErrorFactory.conflict("Hệ thống đang bận xử lý yêu cầu đặt chỗ cho vị trí này. Vui lòng thử lại sau giây lát.")
+    );
 
     try {
-      await session.withTransaction(async () => {
-        const isAvailable = await this.bookingQueryService.checkAvailabilityInSession(
-          siteId,
-          checkIn,
-          checkOut,
-          session,
-          numberOfUnits
-        );
-        appAssert(isAvailable, ErrorFactory.conflict("Vị trí này không còn đủ chỗ trống trong thời gian bạn chọn"));
+      const session = await mongoose.startSession();
+      let booking: BookingDocument;
 
-        const [newBooking] = await BookingModel.create(
-          [
-            {
-              code,
-              payOSOrderCode,
-              payOSCheckoutUrl,
-              property: propertyId,
-              site: siteId,
-              guest: guestId,
-              host: property.host,
-              checkIn: checkInDate,
-              checkOut: checkOutDate,
-              nights,
-              numberOfGuests,
-              numberOfPets,
-              numberOfVehicles,
-              numberOfUnits,
-              pricing,
-              services,
-              guestMessage,
-              fullnameGuest,
-              phone,
-              email,
-              paymentMethod,
-              paymentStatus: "pending",
-            },
-          ],
-          { session }
-        );
+      try {
+        await session.withTransaction(async () => {
+          const isAvailable = await this.bookingQueryService.checkAvailabilityInSession(
+            siteId,
+            checkIn,
+            checkOut,
+            session,
+            numberOfUnits
+          );
+          appAssert(isAvailable, ErrorFactory.conflict("Vị trí này không còn đủ chỗ trống trong thời gian bạn chọn"));
 
-        appAssert(newBooking, ErrorFactory.internalError("Không thể tạo booking"));
-        booking = newBooking;
-        await booking.calculateTotal(session);
-
-        if (pricing.promoCode) {
-          const { PromoCodeModel } = await import("@/models/promo-code.model");
-          await PromoCodeModel.updateOne(
-            { code: pricing.promoCode },
-            { $inc: { usageCount: 1 } },
+          const [newBooking] = await BookingModel.create(
+            [
+              {
+                code,
+                payOSOrderCode,
+                payOSCheckoutUrl,
+                property: propertyId,
+                site: siteId,
+                guest: guestId,
+                host: property.host,
+                checkIn: checkInDate,
+                checkOut: checkOutDate,
+                nights,
+                numberOfGuests,
+                numberOfPets,
+                numberOfVehicles,
+                numberOfUnits,
+                pricing,
+                services,
+                guestMessage,
+                fullnameGuest,
+                phone,
+                email,
+                paymentMethod,
+                paymentStatus: "pending",
+              },
+            ],
             { session }
           );
-        }
 
-        if (siteId) {
-          const maxConcurrent = site!.capacity.maxConcurrentBookings || 1;
-          if (maxConcurrent === 1) {
-            await this.blockDatesForBooking(siteId, checkInDate, checkOutDate, session);
+          appAssert(newBooking, ErrorFactory.internalError("Không thể tạo booking"));
+          booking = newBooking;
+          await booking.calculateTotal(session);
+
+          if (pricing.promoCode) {
+            const { PromoCodeModel } = await import("@/models/promo-code.model");
+            await PromoCodeModel.updateOne(
+              { code: pricing.promoCode },
+              { $inc: { usageCount: 1 } },
+              { session }
+            );
           }
-        }
 
-        if (site!.bookingSettings.instantBook) {
-          await booking.confirm(session);
-        }
-      });
+          if (siteId) {
+            const maxConcurrent = site!.capacity.maxConcurrentBookings || 1;
+            if (maxConcurrent === 1) {
+              await this.blockDatesForBooking(siteId, checkInDate, checkOutDate, session);
+            }
+          }
+
+          if (site!.bookingSettings.instantBook) {
+            await booking.confirm(session);
+          }
+        });
+      } finally {
+        await session.endSession();
+      }
+
+      try {
+        const UserModel = (await import("@/models/user.model")).default;
+        const guest = await UserModel.findById(guestId);
+
+        await this.bookingNotificationService.notifyNewBooking(
+          property.host.toString(),
+          booking!._id!.toString(),
+          booking!.code!,
+          guest?.username || fullnameGuest || "Khách",
+          property.name,
+          property._id!.toString(),
+          !!site!.bookingSettings.instantBook,
+          guestId
+        );
+      } catch (error) {
+        console.error("Failed to send booking notification:", error);
+      }
+
+      notifyPropertyChange(propertyId);
+
+      return booking!;
     } finally {
-      await session.endSession();
+      if (lockToken) {
+        await releaseLock(lockKey, lockToken);
+      }
     }
-
-    try {
-      const UserModel = (await import("@/models/user.model")).default;
-      const guest = await UserModel.findById(guestId);
-
-      await this.bookingNotificationService.notifyNewBooking(
-        property.host.toString(),
-        booking!._id!.toString(),
-        booking!.code!,
-        guest?.username || fullnameGuest || "Khách",
-        property.name,
-        property._id!.toString(),
-        !!site!.bookingSettings.instantBook,
-        guestId
-      );
-    } catch (error) {
-      console.error("Failed to send booking notification:", error);
-    }
-
-    notifyPropertyChange(propertyId);
-
-    return booking!;
   }
 
   private generateBookingCode(): string {
@@ -372,8 +396,9 @@ export class BookingService {
         refundRate = policy.refundRateAboveThreshold;
         hostRate = policy.hostRateAboveThreshold;
       }
-      const refundAmount = Math.round(booking.pricing.total * refundRate);
-      const hostAmount = Math.round(booking.pricing.total * hostRate);
+      const actualPaid = booking.paymentMethod === "deposit" ? Math.round(booking.pricing.total * 0.5) : booking.pricing.total;
+      const refundAmount = Math.round(actualPaid * refundRate);
+      const hostAmount = Math.round(actualPaid * hostRate);
 
       booking.cannotAttendRequest = {
         requestedAt: now,
@@ -449,7 +474,7 @@ export class BookingService {
     appAssert(booking, ErrorFactory.resourceNotFound("Booking"));
     appAssert(booking.status === "confirmed", ErrorFactory.badRequest("Booking chưa được confirm"));
 
-    if (!booking.walletCredited) {
+    if (booking.paymentMethod !== "deposit" && !booking.walletCredited) {
       const walletService = new WalletService();
       await walletService.creditHostWallet(
         booking.host.toString(),
@@ -583,15 +608,17 @@ export class BookingService {
       !booking.guestConfirmedAttendance,
       ErrorFactory.badRequest("Đã xác nhận đến rồi")
     );
-    appAssert(
-      !booking.walletCredited,
-      ErrorFactory.badRequest("Tiền đã được chuyển vào ví")
-    );
+    if (booking.paymentMethod !== "deposit") {
+      appAssert(
+        !booking.walletCredited,
+        ErrorFactory.badRequest("Tiền đã được chuyển vào ví")
+      );
+    }
 
     const now = new Date();
     const checkIn = new Date(booking.checkIn);
     const checkOut = new Date(booking.checkOut);
-    const deadline = new Date(checkOut.getTime() + 5 * 24 * 60 * 60 * 1000);
+    const deadline = new Date(checkOut.getTime() + 3 * 24 * 60 * 60 * 1000);
 
     appAssert(
       now >= checkIn,
@@ -604,12 +631,25 @@ export class BookingService {
       ErrorFactory.badRequest("Thời gian xác nhận đã hết hạn")
     );
 
-    const walletService = new WalletService();
-    await walletService.creditHostWallet(
-      booking.host.toString(),
-      booking._id.toString(),
-      booking.pricing.total
-    );
+    if (booking.paymentMethod !== "deposit") {
+      const walletService = new WalletService();
+      await walletService.creditHostWallet(
+        booking.host.toString(),
+        booking._id.toString(),
+        booking.pricing.total
+      );
+    } else {
+      // Nếu thanh toán cọc (deposit) nhưng ví chưa được cộng tiền đặt cọc (do lỗi webhook hoặc chạy local)
+      if (!booking.walletCredited) {
+        const walletService = new WalletService();
+        const depositAmount = Math.round(booking.pricing.total * 0.5);
+        await walletService.creditHostWalletDeposit(
+          booking.host.toString(),
+          booking._id.toString(),
+          depositAmount
+        );
+      }
+    }
 
     const updated = await BookingModel.findByIdAndUpdate(
       booking._id,
@@ -655,10 +695,12 @@ export class BookingService {
       !booking.cannotAttendRequest,
       ErrorFactory.badRequest("Đã gửi yêu cầu không đến trước đó rồi")
     );
-    appAssert(
-      !booking.walletCredited,
-      ErrorFactory.badRequest("Tiền đã được xử lý")
-    );
+    if (booking.paymentMethod !== "deposit") {
+      appAssert(
+        !booking.walletCredited,
+        ErrorFactory.badRequest("Tiền đã được xử lý")
+      );
+    }
 
     const now = new Date();
     const checkIn = new Date(booking.checkIn);
@@ -673,8 +715,9 @@ export class BookingService {
       refundRate = policy.refundRateAboveThreshold;
       hostRate = policy.hostRateAboveThreshold;
     }
-    const refundAmount = Math.round(booking.pricing.total * refundRate);
-    const hostAmount = Math.round(booking.pricing.total * hostRate);
+    const actualPaid = booking.paymentMethod === "deposit" ? Math.round(booking.pricing.total * 0.5) : booking.pricing.total;
+    const refundAmount = Math.round(actualPaid * refundRate);
+    const hostAmount = Math.round(actualPaid * hostRate);
 
     booking.cannotAttendRequest = {
       requestedAt: now,

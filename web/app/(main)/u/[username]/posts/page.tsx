@@ -14,7 +14,7 @@ import { useMounted } from '@/hooks/useMounted';
 import { Button } from '@/components/ui/button';
 import {
   MessageSquare, Eye, Heart, Edit3, Trash2,
-  Loader2, Plus, ChevronLeft, ChevronRight, Clock, Lock,
+  Loader2, Plus, ChevronLeft, ChevronRight, Clock, Lock, AlertCircle,
 } from 'lucide-react';
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
@@ -45,7 +45,7 @@ export default function MyPostsPage() {
       const res: any = await API.get(`/forum/${currentUser._id}/posts`, {
         params: { page, pageSize: 12 },
       });
-      return res?.data ?? res;
+      return res;
     },
     enabled: isOwnProfile && !!currentUser?._id,
   });
@@ -160,7 +160,11 @@ export default function MyPostsPage() {
             return (
               <div
                 key={post._id}
-                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row gap-4 items-start shadow-sm"
+                className={`bg-white dark:bg-slate-900 border rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row gap-4 items-start shadow-sm transition-all ${
+                  post.status === 'hidden'
+                    ? 'border-rose-200 dark:border-rose-900/40 bg-rose-50/5 dark:bg-rose-950/5'
+                    : 'border-slate-200 dark:border-slate-800'
+                }`}
               >
                 {/* Cover image */}
                 {displayImage && (
@@ -205,6 +209,16 @@ export default function MyPostsPage() {
                       <Clock size={12} /> {new Date(post.createdAt).toLocaleDateString('vi-VN')}
                     </span>
                   </div>
+
+                  {post.status === 'hidden' && (
+                    <div className="mt-2.5 flex items-start gap-2 px-3 py-2 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-xl text-xs text-rose-650 dark:text-rose-400 w-full">
+                      <AlertCircle className="h-4 w-4 shrink-0 text-rose-500 mt-0.5" />
+                      <div>
+                        <span className="font-bold text-rose-700 dark:text-rose-400">Bài viết đã bị ẩn bởi quản trị viên:</span>{' '}
+                        {post.moderationReason || 'Bài viết bị báo cáo hoặc vi phạm tiêu chuẩn cộng đồng.'}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Actions */}

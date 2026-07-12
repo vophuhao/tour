@@ -33,13 +33,13 @@ export class BookingQueryService {
    */
   async getBooking(bookingId: string, userId: string): Promise<BookingDocument> {
     const booking = await BookingModel.findOne({ code: bookingId })
-      .populate("property", "name location photos cancellationPolicy slug")
+      .populate("property", "name location photos slug")
       .populate({
         path: "site",
         select: "name accommodationType photos pricing slug unitNames",
         populate: {
           path: "property",
-          select: "name location photos slug host cancellationPolicy",
+          select: "name location photos slug host",
           populate: {
             path: "host",
             select: "fullName username avatarUrl",
@@ -420,7 +420,6 @@ export class BookingQueryService {
     checkIn: Date,
     checkOut: Date,
     promoCodeId?: string,
-    comboId?: string,
     numberOfUnits: number = 1,
     services?: Array<{ name: string; price: number; unit: string; quantity: number }>
   ): Promise<any> {
@@ -497,21 +496,7 @@ export class BookingQueryService {
       subtotal = Math.round(subtotal * (1 - discountPercent / 100));
     }
 
-    // Apply Combo Discount
-    let comboDiscount = 0;
-    if (comboId) {
-      const { ComboModel } = await import("@/models/combo.model");
-      const combo = await ComboModel.findOne({ _id: comboId, isActive: true });
-      if (combo) {
-        if (combo.discountType === "percentage") {
-          comboDiscount = Math.round((subtotal * combo.discountValue) / 100);
-        } else if (combo.discountType === "fixed_price") {
-          comboDiscount = Math.max(0, subtotal - combo.discountValue);
-        } else {
-          comboDiscount = combo.discountValue;
-        }
-      }
-    }
+
 
     // Apply Promo Code Discount
     let promoDiscount = 0;
@@ -546,7 +531,7 @@ export class BookingQueryService {
 
         if (meetsGuests && meetsBookingQuantity && meetsNights && meetsDates) {
           promoCodeStr = promo.code;
-          const netSubtotal = Math.max(0, subtotal - comboDiscount);
+          const netSubtotal = subtotal;
           if (promo.discountType === "percentage") {
             promoDiscount = Math.round((netSubtotal * promo.discountValue) / 100);
             if (promo.maxDiscountAmount && promoDiscount > promo.maxDiscountAmount) {
@@ -590,7 +575,7 @@ export class BookingQueryService {
       }, 0);
     }
 
-    const netSubtotal = Math.max(0, subtotal - comboDiscount - promoDiscount);
+    const netSubtotal = Math.max(0, subtotal - promoDiscount);
 
     // Platform service fee for camper is dynamic
     const settings = await SettingService.getSettings();
@@ -613,8 +598,6 @@ export class BookingQueryService {
       tax: 0,
       promoCode: promoCodeStr || undefined,
       promoDiscount,
-      comboId: comboId || undefined,
-      comboDiscount,
       total: netSubtotal + cleaning + pet + extraGuest + vehicle + serviceFee + servicesFee,
     };
   }

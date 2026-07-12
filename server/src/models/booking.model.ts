@@ -37,8 +37,6 @@ export interface BookingDocument extends mongoose.Document {
     total: number; // tổng cuối
     promoCode?: string;
     promoDiscount?: number;
-    comboId?: mongoose.Types.ObjectId;
-    comboDiscount?: number;
     servicesFee?: number;
   };
 
@@ -201,8 +199,6 @@ const bookingSchema = new mongoose.Schema<BookingDocument>(
       total: { type: Number, required: true, min: 0 },
       promoCode: { type: String, trim: true },
       promoDiscount: { type: Number, default: 0, min: 0 },
-      comboId: { type: mongoose.Schema.Types.ObjectId, ref: "Combo" },
-      comboDiscount: { type: Number, default: 0, min: 0 },
       servicesFee: { type: Number, default: 0, min: 0 },
     },
 
@@ -384,11 +380,10 @@ bookingSchema.methods.calculateTotal = async function (
     vehicleFee = 0,
     servicesFee = 0,
     promoDiscount = 0,
-    comboDiscount = 0,
   } = this.pricing;
   this.pricing.total = Math.max(
     0,
-    subtotal - promoDiscount - comboDiscount + cleaningFee + petFee + extraGuestFee + serviceFee + tax + vehicleFee + servicesFee
+    subtotal - promoDiscount + cleaningFee + petFee + extraGuestFee + serviceFee + tax + vehicleFee + servicesFee
   );
   return this.save(session ? { session } : undefined);
 };

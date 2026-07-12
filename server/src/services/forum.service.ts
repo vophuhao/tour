@@ -2,7 +2,7 @@ import { v2 as cloudinary } from "cloudinary";
 import sanitizeHtml from "sanitize-html";
 import validator from "validator";
 import streamifier from "streamifier";
-import { isValidObjectId } from "mongoose";
+import { isValidObjectId, Types } from "mongoose";
 import ForumPost from "../models/forum.post.model";
 import Comment from "../models/comment.model";
 
@@ -697,7 +697,9 @@ export class ForumService {
   }> {
     const { page, pageSize, userId, isOwnProfile, isAdmin } = input;
 
-    const query: any = { userId };
+    const query: any = {
+      userId: isValidObjectId(userId) ? new Types.ObjectId(userId) : userId
+    };
 
     if (!isOwnProfile && !isAdmin) {
       query.visibility = "public";
@@ -711,7 +713,7 @@ export class ForumService {
       .sort({ createdAt: -1 })
       .skip((page - 1) * pageSize)
       .limit(pageSize)
-      .populate("userId", "name avatarUrl email");
+      .populate("userId", "username avatarUrl email");
 
     const postsWithLikeInfo = posts.map((post: any) => {
       const postObj = post.toObject();
@@ -732,7 +734,9 @@ export class ForumService {
    * Get saved posts
    */
   async getSavedPosts(userId: string, isAdmin: boolean): Promise<any[]> {
-    const query: any = { savedBy: userId };
+    const query: any = {
+      savedBy: isValidObjectId(userId) ? new Types.ObjectId(userId) : userId
+    };
     if (!isAdmin) {
       query.status = "active";
     } else {
@@ -741,7 +745,7 @@ export class ForumService {
 
     const posts = await ForumPost.find(query)
       .sort({ createdAt: -1 })
-      .populate("userId", "name avatarUrl email");
+      .populate("userId", "username avatarUrl email");
 
     return posts;
   }
@@ -750,7 +754,9 @@ export class ForumService {
    * Get liked posts
    */
   async getLikedPosts(userId: string, isAdmin: boolean): Promise<any[]> {
-    const query: any = { likes: userId };
+    const query: any = {
+      likes: isValidObjectId(userId) ? new Types.ObjectId(userId) : userId
+    };
     if (!isAdmin) {
       query.status = "active";
     } else {
@@ -759,7 +765,7 @@ export class ForumService {
 
     const posts = await ForumPost.find(query)
       .sort({ createdAt: -1 })
-      .populate("userId", "name avatarUrl email");
+      .populate("userId", "username avatarUrl email");
 
     return posts;
   }

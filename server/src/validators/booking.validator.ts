@@ -37,7 +37,6 @@ export const createBookingSchema = z
     phone: z.string().max(20).optional(),
     email: z.string().max(100).optional(),
     promoCodeId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid promoCodeId").optional(),
-    comboId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid comboId").optional(),
     services: z
       .array(
         z.object({

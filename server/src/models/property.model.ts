@@ -57,16 +57,6 @@ export interface PropertyDocument extends mongoose.Document {
   checkInInstructions?: string;
   checkOutInstructions?: string;
 
-  // Policies
-  cancellationPolicy: {
-    type: "flexible" | "moderate" | "strict";
-    description?: string;
-    refundRules: Array<{
-      daysBeforeCheckIn: number;
-      refundPercentage: number; // 0-100
-    }>;
-  };
-
   // Stats (aggregated from sites)
   stats: {
     totalSites: number;
@@ -218,22 +208,6 @@ const propertySchema = new mongoose.Schema<PropertyDocument>(
 
     checkInInstructions: { type: String, maxlength: 2000 },
     checkOutInstructions: { type: String, maxlength: 2000 },
-
-    // Policies
-    cancellationPolicy: {
-      type: {
-        type: String,
-        enum: ["flexible", "moderate", "strict"],
-        default: "moderate",
-      },
-      description: { type: String, maxlength: 1000 },
-      refundRules: [
-        {
-          daysBeforeCheckIn: { type: Number, required: true, min: 0 },
-          refundPercentage: { type: Number, required: true, min: 0, max: 100 },
-        },
-      ],
-    },
 
     // Stats
     stats: {

@@ -121,12 +121,12 @@ export function PropertyPromotions({ promotions }: PropertyPromotionsProps) {
                       {isCopied ? (
                         <>
                           <Check className="h-2.5 w-2.5 text-emerald-500" />
-                          Đã lưu
+                          Đã sao chép
                         </>
                       ) : (
                         <>
                           <Copy className="h-2.5 w-2.5" />
-                          Lưu mã
+                          Sao chép
                         </>
                       )}
                     </Button>

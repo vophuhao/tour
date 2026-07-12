@@ -28,13 +28,10 @@ export default function NewPropertyPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [uploading, setUploading] = useState(false);
 
-  // typed shapes for the form data to ensure cancellationPolicy.type is the expected union
-  type RefundRule = { daysBeforeCheckIn: number; refundPercentage: number };
   type PropertyRule = { text: string; category: "pets" | "noise" | "fire" | "general"; order: number };
-  type CancellationType = "moderate" | "super_strict" | "strict" | "flexible";
 
   interface Policies {
-    cancellationPolicy: { type: CancellationType; description: string; refundRules: RefundRule[] };
+
     depositRequired: boolean;
     depositAmount: number;
     depositType: "fixed" | "percentage";
@@ -75,7 +72,7 @@ export default function NewPropertyPage() {
     },
     photos: [] as File[],
     policies: {
-      cancellationPolicy: { type: "moderate", description: "Chính sách hủy mặc định", refundRules: [] as RefundRule[] },
+
       depositRequired: false,
       depositAmount: 0,
       depositType: "fixed" as "fixed" | "percentage",
@@ -192,11 +189,7 @@ export default function NewPropertyPage() {
         },
         photos: uploadedPhotos,
         nearbyAttractions: b.nearbyAttractions ?? [],
-        cancellationPolicy: {
-          type: "moderate",
-          description: "Chính sách hủy vừa phải mặc định",
-          refundRules: [],
-        },
+
         rules: formData.policies.rules ?? [],
         depositRequired: false,
         depositAmount: 0,

@@ -120,11 +120,7 @@ interface PropertyWithSites {
   rules?: Array<{ text: string; category: string; order: number }>;
   checkInInstructions?: string;
   checkOutInstructions?: string;
-  cancellationPolicy?: {
-    type: "flexible" | "moderate" | "strict";
-    description?: string;
-    refundRules?: Array<{ daysBeforeCheckIn: number; refundPercentage: number }>;
-  };
+
   settings?: {
     instantBookEnabled: boolean;
     requireApproval: boolean;
@@ -151,7 +147,6 @@ interface SiteInfo {
     petFee?: number;
     vehicleFee?: number;
     cleaningFee?: number;
-    depositAmount?: number;
     currency?: string;
   };
   capacity?: {
@@ -988,32 +983,7 @@ export default function AdminHostsPage() {
                     </div>
                   </div>
 
-                  <div>
-                    <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-1.5 flex items-center gap-1.5">
-                      <Lock className="w-4 h-4 text-primary" /> Chính sách hủy phòng
-                    </h4>
-                    <div className="text-xs text-slate-650 dark:text-slate-400 bg-slate-50 dark:bg-slate-950 p-3.5 rounded-xl border border-slate-155 dark:border-slate-850 space-y-2 leading-relaxed">
-                      <p>
-                        <strong>Loại hình: </strong>
-                        <Badge className="bg-primary hover:bg-primary/95 text-white uppercase text-[10px] font-bold px-1.5 py-0 h-4.5 rounded">
-                          {selectedPropertyDetail.cancellationPolicy?.type || "moderate"}
-                        </Badge>
-                      </p>
-                      {selectedPropertyDetail.cancellationPolicy?.description && (
-                        <p className="text-slate-400 italic">"{selectedPropertyDetail.cancellationPolicy.description}"</p>
-                      )}
-                      {selectedPropertyDetail.cancellationPolicy?.refundRules && selectedPropertyDetail.cancellationPolicy.refundRules.length > 0 && (
-                        <div className="pt-2 border-t border-slate-200/50 dark:border-slate-800 space-y-1">
-                          {selectedPropertyDetail.cancellationPolicy.refundRules.map((rule, idx) => (
-                            <div key={idx} className="flex justify-between">
-                              <span>Trước {rule.daysBeforeCheckIn} ngày:</span>
-                              <span className="font-semibold text-emerald-600">Hoàn {rule.refundPercentage}%</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+
 
                   <div>
                     <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-1.5 flex items-center gap-1.5">
@@ -1286,11 +1256,6 @@ export default function AdminHostsPage() {
                           <span className="font-semibold">{fmt(selectedSiteDetail.pricing.cleaningFee)}₫</span>
                         </div>
                       )}
-                      {selectedSiteDetail.pricing?.depositAmount !== undefined && (
-                        <div className="flex justify-between border-t pt-1.5 border-slate-200/60 dark:border-slate-800">
-                          <span>Đặt cọc thế chân:</span>
-                          <span className="font-bold text-slate-700 dark:text-slate-350">{fmt(selectedSiteDetail.pricing.depositAmount)}₫</span>
-                        </div>
                       )}
                     </div>
                   </div>

@@ -25,7 +25,6 @@ import {
   settingRoutes,
   servicePackageRoutes,
   promoCodeRoutes,
-  comboRoutes,
 } from "./routes";
 
 import dashboardHRoutes from "./routes/dashbardH.route";
@@ -132,6 +131,19 @@ cron.schedule("0 */6 * * *", async () => {
     }
   } catch (err) {
     console.error("❌ Auto-settle job failed:", err);
+  }
+});
+
+// Cron: Tự động hoàn thành booking sau checkout date hoặc 3 ngày sau checkin (mỗi 10 phút)
+cron.schedule("*/10 * * * *", async () => {
+  console.log("🔄 Running auto-complete bookings job...");
+  try {
+    const result = await bookingLifecycleService.autoCompleteBooking();
+    if (result.completed > 0) {
+      console.log(`✅ Auto-complete: đã hoàn thành ${result.completed}/${result.total} booking`);
+    }
+  } catch (err) {
+    console.error("❌ Auto-complete bookings job failed:", err);
   }
 });
 
@@ -288,7 +300,7 @@ app.use("/admin/settings", authenticate, settingRoutes);
 app.use("/admin/promotions", authenticate, adminPromoCodeRoutes);
 app.use("/host/service-packages", authenticate, servicePackageRoutes);
 app.use("/host/promotions", authenticate, promoCodeRoutes);
-app.use("/host/combos", authenticate, comboRoutes);
+
 
 // ============================================================
 // Global Error Handler
@@ -344,6 +356,30 @@ server.listen(PORT, async () => {
       }
     } catch (err) {
       console.error("❌ Checkout blocks cleanup failed:", err);
+    }
+
+    try {
+      console.log("🔄 Running startup auto-completion check...");
+      const completionResult = await bookingLifecycleService.autoCompleteBooking();
+      if (completionResult.completed > 0) {
+        console.log(`✅ [Startup] Auto-completed ${completionResult.completed}/${completionResult.total} bookings.`);
+      } else {
+        console.log("✅ [Startup] Booking auto-completion check completed (no action needed).");
+      }
+    } catch (err) {
+      console.error("❌ [Startup] Booking auto-completion check failed:", err);
+    }
+
+    try {
+      console.log("🩹 Running startup uncredited completed bookings healing...");
+      const healResult = await bookingLifecycleService.healUncreditedCompletedBookings();
+      if (healResult.healed > 0) {
+        console.log(`✅ [Startup] Healed ${healResult.healed} uncredited completed bookings.`);
+      } else {
+        console.log("✅ [Startup] Uncredited completed bookings check completed (no action needed).");
+      }
+    } catch (err) {
+      console.error("❌ [Startup] Uncredited completed bookings check failed:", err);
     }
   })();
 });

@@ -186,7 +186,6 @@ export default function NewSitePage() {
                     petFee: pricingForServer.petFee !== undefined ? Number(pricingForServer.petFee) : undefined,
                     vehicleFee: pricingForServer.vehicleFee !== undefined ? Number(pricingForServer.vehicleFee) : undefined,
                     cleaningFee: pricingForServer.cleaningFee !== undefined ? Number(pricingForServer.cleaningFee) : undefined,
-                    depositAmount: pricingForServer.depositAmount !== undefined ? Number(pricingForServer.depositAmount) : undefined,
                     currency: pricingForServer.currency || "VND",
                     seasonalPricing: pricingForServer.seasonalPricing,
                 },

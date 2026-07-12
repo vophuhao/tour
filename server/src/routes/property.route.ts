@@ -1,6 +1,5 @@
 import PropertyController from "@/controllers/property.controller";
 import ReviewController from "@/controllers/review.controller";
-import ComboController from "@/controllers/combo.controller";
 import { container, TOKENS } from "@/di";
 import { authenticate } from "@/middleware";
 import type { PropertyService } from "@/services/property.service";
@@ -8,7 +7,6 @@ import type { ReviewService } from "@/services/review.service";
 import { Router } from "express";
 
 const propertyRoutes = Router();
-const comboController = new ComboController();
 
 const propertyService = container.resolve<PropertyService>(TOKENS.PropertyService);
 const propertyController = new PropertyController(propertyService);
@@ -46,8 +44,7 @@ propertyRoutes.get("/host/:hostId", authenticate, propertyController.getHostProp
 propertyRoutes.get("/:propertyId/reviews", reviewController.getPropertyReviews);
 propertyRoutes.get("/:propertyId/reviews/stats", reviewController.getPropertyReviewStats);
 
-// Property combos route (public)
-propertyRoutes.get("/:propertyId/combos", comboController.getPropertyCombos);
+
 propertyRoutes.get("/:id/services/availability", propertyController.getPropertyServicesAvailability);
 
 // Property stats (must be before /:idOrSlug)

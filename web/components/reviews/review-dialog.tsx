@@ -22,6 +22,7 @@ interface ReviewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   bookingId: string;
+  bookingCode?: string;
   propertyId: string;
   siteId: string;
   propertyName: string;
@@ -62,11 +63,10 @@ function RatingStars({
             disabled={disabled}
           >
             <Star
-              className={`h-8 w-8 ${
-                star <= value
+              className={`h-8 w-8 ${star <= value
                   ? 'fill-yellow-400 text-yellow-400'
                   : 'text-gray-300'
-              }`}
+                }`}
             />
           </button>
         ))}
@@ -79,6 +79,7 @@ export function ReviewDialog({
   open,
   onOpenChange,
   bookingId,
+  bookingCode,
   propertyId,
   siteId,
   propertyName,
@@ -119,6 +120,9 @@ export function ReviewDialog({
 
       // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ['booking', bookingId] });
+      if (bookingCode) {
+        queryClient.invalidateQueries({ queryKey: ['booking', bookingCode] });
+      }
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({
         queryKey: ['property-reviews', propertyId],
@@ -274,13 +278,12 @@ export function ReviewDialog({
                 Nhận xét của bạn sẽ giúp ích cho những người khác
               </p>
               <p
-                className={`text-xs ${
-                  comment.length < 10
+                className={`text-xs ${comment.length < 10
                     ? 'text-red-600'
                     : comment.length > 1800
                       ? 'text-orange-600'
                       : 'text-muted-foreground'
-                }`}
+                  }`}
               >
                 {comment.length}/2000
               </p>

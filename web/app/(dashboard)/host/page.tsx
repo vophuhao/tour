@@ -75,12 +75,18 @@ interface DashboardStats {
     confirmed: number;
     cancelled: number;
     completed: number;
+    thisMonthCount?: number;
+    thisMonthGrowth?: number;
   };
   totalRevenue: number;
+  thisMonthRevenue?: number;
+  revenueGrowth?: number;
   averageRating: number;
   totalReviews: number;
   recentBookings: any[];
   sitesCount: number;
+  propertyBookingCounts?: Record<string, number>;
+  propertyViewCounts?: Record<string, number>;
 }
 
 interface RevenueData {
@@ -108,6 +114,7 @@ export default function HostDashboard() {
   const [revenueData, setRevenueData] = useState<RevenueData | null>(null);
   const [myProperties, setMyProperties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [superhostData, setSuperhostData] = useState<any>(null);
   const [period, setPeriod] = useState('month'); // week, month, year, all
 
   // Calendar State
@@ -126,6 +133,22 @@ export default function HostDashboard() {
       loadRevenueData();
     }
   }, [user, period]);
+
+  const loadSuperhostStatus = async (propertyId: string) => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API}/properties/${propertyId}/superhost-status`, {
+        credentials: 'include',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const statusData = await response.json();
+        setSuperhostData(statusData.data);
+      }
+    } catch (err) {
+      console.error('Load superhost status error:', err);
+    }
+  };
 
   const loadDashboardData = async () => {
     try {
@@ -159,6 +182,9 @@ export default function HostDashboard() {
         const data = await response.json();
         const list = Array.isArray(data.data) ? data.data : (data.data?.properties || []);
         setMyProperties(list);
+        if (list.length > 0) {
+          loadSuperhostStatus(list[0]._id);
+        }
       }
     } catch (err) {
       console.error('Load properties list error:', err);
@@ -290,10 +316,26 @@ export default function HostDashboard() {
   }
 
   // Calculate top values
-  const totalRev = stats.totalRevenue || 0;
-  const bookingsCount = stats.bookings.total || 0;
+  const totalRev = stats.thisMonthRevenue !== undefined ? stats.thisMonthRevenue : (stats.totalRevenue || 0);
+  const bookingsCount = stats.bookings.thisMonthCount !== undefined ? stats.bookings.thisMonthCount : (stats.bookings.total || 0);
   const avgRating = stats.averageRating || 4.8;
   const reviewsCount = stats.totalReviews || 0;
+
+  // Superhost calculations from state
+  const shRating = superhostData?.criteria?.rating?.value ?? avgRating;
+  const shRatingRequired = superhostData?.criteria?.rating?.required ?? 4.8;
+  const shRatingPassed = superhostData?.criteria?.rating?.passed ?? (shRating >= shRatingRequired);
+
+  const shResponseRate = superhostData?.criteria?.responseRate?.value ?? 95;
+  const shResponseRateRequired = superhostData?.criteria?.responseRate?.required ?? 90;
+  const shResponseRatePassed = superhostData?.criteria?.responseRate?.passed ?? (shResponseRate >= shResponseRateRequired);
+
+  const shCompleted = superhostData?.criteria?.completedBookings?.value ?? (stats.bookings.completed || 0);
+  const shCompletedRequired = superhostData?.criteria?.completedBookings?.required ?? 10;
+  const shCompletedPassed = superhostData?.criteria?.completedBookings?.passed ?? (shCompleted >= shCompletedRequired);
+
+  const shNoCancellationsValue = superhostData?.criteria?.noHostCancellations?.value ?? true;
+  const shNoCancellationsPassed = superhostData?.criteria?.noHostCancellations?.passed ?? true;
 
   // Occupancy rate calculation (simulated based on bookings & sites)
   const totalSites = stats.sitesCount || 10;
@@ -396,25 +438,39 @@ export default function HostDashboard() {
             <div className="space-y-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Doanh Thu Tháng Này</span>
               <span className="text-2xl font-black text-slate-900 dark:text-white block">{formatCurrency(totalRev)}</span>
-              <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                <TrendingUp className="h-3.5 w-3.5" /> +12.4% <span className="text-slate-400 font-normal">so với tháng trước</span>
-              </span>
+              {stats.revenueGrowth !== undefined ? (
+                <span className={`text-[10px] font-semibold flex items-center gap-1 ${stats.revenueGrowth >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
+                  {stats.revenueGrowth >= 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+                  {stats.revenueGrowth >= 0 ? '+' : ''}{stats.revenueGrowth}% <span className="text-slate-400 font-normal">so với tháng trước</span>
+                </span>
+              ) : (
+                <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                  <TrendingUp className="h-3.5 w-3.5" /> +12.4% <span className="text-slate-400 font-normal">so với tháng trước</span>
+                </span>
+              )}
             </div>
             <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-105 transition-transform">
               <DollarSign className="h-5 w-5" />
             </div>
           </CardContent>
         </Card>
-
+ 
         {/* KPI 2: Total Bookings */}
         <Card className="relative overflow-hidden border border-slate-200/80 dark:border-slate-850 hover:shadow-md transition-all duration-300 group">
           <CardContent className="p-5 flex items-center justify-between">
             <div className="space-y-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Booking Tháng Này</span>
               <span className="text-2xl font-black text-slate-900 dark:text-white block">{bookingsCount} đơn</span>
-              <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                <TrendingUp className="h-3.5 w-3.5" /> +8.2% <span className="text-slate-400 font-normal">so với tháng trước</span>
-              </span>
+              {stats.bookings.thisMonthGrowth !== undefined ? (
+                <span className={`text-[10px] font-semibold flex items-center gap-1 ${stats.bookings.thisMonthGrowth >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
+                  {stats.bookings.thisMonthGrowth >= 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+                  {stats.bookings.thisMonthGrowth >= 0 ? '+' : ''}{stats.bookings.thisMonthGrowth}% <span className="text-slate-400 font-normal">so với tháng trước</span>
+                </span>
+              ) : (
+                <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                  <TrendingUp className="h-3.5 w-3.5" /> +8.2% <span className="text-slate-400 font-normal">so với tháng trước</span>
+                </span>
+              )}
             </div>
             <div className="h-10 w-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:scale-105 transition-transform">
               <CalendarCheck className="h-5 w-5" />
@@ -723,14 +779,28 @@ export default function HostDashboard() {
                       {myProperties.map((property) => {
                         const seed = property._id.slice(-4);
                         const seedNum = parseInt(seed, 16) || 12;
-                        const views = (seedNum % 200) + 110;
-                        const localBookings = stats.recentBookings?.filter(
-                          (b: any) => String(b.property?._id || b.property) === String(property._id)
-                        ).length || 0;
-                        const totalBookings = localBookings + (property.status === 'active' ? (seedNum % 5 + 3) : 0);
-                        const convRate = ((totalBookings / views) * 100).toFixed(1);
-                        const occRate = Math.min(94, Math.max(30, 48 + totalBookings * 5.5));
-                        const localRating = property.averageRating || (4.6 + (seedNum % 5) * 0.1).toFixed(1);
+                        
+                        // Use real booking counts from stats endpoint if available, fallback to old mock calculation
+                        const totalBookings = stats.propertyBookingCounts
+                          ? (stats.propertyBookingCounts[property._id] ?? 0)
+                          : (stats.recentBookings?.filter(
+                              (b: any) => String(b.property?._id || b.property) === String(property._id)
+                            ).length || 0) + (property.status === 'active' ? (seedNum % 5 + 3) : 0);
+
+                        // Use real view counts from stats endpoint if available, fallback to seed-based views
+                        const views = stats.propertyViewCounts
+                          ? (stats.propertyViewCounts[property._id] ?? 0)
+                          : ((seedNum % 200) + 110);
+
+                        const convRate = views > 0 
+                          ? Math.min(100, (totalBookings / views) * 100).toFixed(1) 
+                          : (totalBookings > 0 ? '100.0' : '0.0');
+
+                        const occRate = totalBookings === 0 
+                          ? 0 
+                          : Math.min(100, Math.max(30, 48 + totalBookings * 5.5));
+
+                        const localRating = property.stats?.averageRating ?? property.averageRating ?? (4.6 + (seedNum % 5) * 0.1).toFixed(1);
 
                         return (
                           <tr key={property._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors">
@@ -743,7 +813,7 @@ export default function HostDashboard() {
                             <td className="py-3 text-center">
                               <div className="flex items-center justify-center gap-1.5">
                                 <span className="font-semibold text-slate-700 dark:text-slate-300">{occRate}%</span>
-                                <div className="w-12 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden hidden md:block">
+                                <div className="w-20 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden hidden md:block">
                                   <div className="h-full bg-indigo-500" style={{ width: `${occRate}%` }} />
                                 </div>
                               </div>
@@ -905,8 +975,8 @@ export default function HostDashboard() {
                 <div>
                   <CardTitle className="text-sm font-bold text-slate-850 dark:text-slate-200 flex items-center gap-2">
                     Lộ Trình Đạt Danh Hiệu Superhost
-                    <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-[9px] font-bold py-0.5 px-2">
-                      Đang xử lý
+                    <Badge className={`${superhostData?.isEligible ? "bg-green-600 hover:bg-green-700" : "bg-amber-500 hover:bg-amber-600"} text-white text-[9px] font-bold py-0.5 px-2`}>
+                      {superhostData?.isEligible ? "Đạt tiêu chuẩn" : "Đang xử lý"}
                     </Badge>
                   </CardTitle>
                   <CardDescription className="text-[11px] text-slate-400">
@@ -924,12 +994,12 @@ export default function HostDashboard() {
                   <Star className="h-4 w-4 text-amber-500 fill-amber-500" /> Đánh giá trung bình
                 </span>
                 <span className="font-bold text-slate-850 dark:text-white">
-                  {avgRating} / 4.8
+                  {shRating} / {shRatingRequired}
                 </span>
               </div>
-              <Progress value={Math.min((avgRating / 4.8) * 100, 100)} className="h-1.5 bg-slate-100 dark:bg-slate-800" />
+              <Progress value={Math.min((shRating / shRatingRequired) * 100, 100)} className="h-1.5 bg-slate-100 dark:bg-slate-800" />
               <p className="text-[10px] text-slate-400 flex items-center gap-1">
-                {avgRating >= 4.8 ? (
+                {shRatingPassed ? (
                   <span className="text-green-600 font-semibold">✓ Đạt tiêu chuẩn</span>
                 ) : (
                   <span className="text-amber-500 font-semibold">⚠ Cần thêm đánh giá tốt</span>
@@ -944,28 +1014,36 @@ export default function HostDashboard() {
                   <MessageSquare className="h-4 w-4 text-indigo-500" /> Tỷ lệ phản hồi
                 </span>
                 <span className="font-bold text-slate-850 dark:text-white">
-                  95% / 90%
+                  {shResponseRate}% / {shResponseRateRequired}%
                 </span>
               </div>
-              <Progress value={95} className="h-1.5 bg-slate-100 dark:bg-slate-800" />
+              <Progress value={shResponseRate} className="h-1.5 bg-slate-100 dark:bg-slate-800" />
               <p className="text-[10px] text-slate-400 flex items-center gap-1">
-                <span className="text-green-600 font-semibold">✓ Đạt tiêu chuẩn</span>
+                {shResponseRatePassed ? (
+                  <span className="text-green-600 font-semibold">✓ Đạt tiêu chuẩn</span>
+                ) : (
+                  <span className="text-rose-500 font-semibold">⚠ Cần tối thiểu {shResponseRateRequired}%</span>
+                )}
               </p>
             </div>
 
-            {/* Target 3: Acceptance Rate */}
+            {/* Target 3: No Cancellations */}
             <div className="p-3 bg-white dark:bg-slate-900 border rounded-xl space-y-2">
               <div className="flex justify-between items-center text-xs">
                 <span className="font-semibold text-slate-700 dark:text-slate-350 flex items-center gap-1">
-                  <Percent className="h-4 w-4 text-emerald-500" /> Tỷ lệ chấp nhận đơn
+                  <ShieldAlert className="h-4 w-4 text-rose-500" /> Không tự ý hủy đơn
                 </span>
                 <span className="font-bold text-slate-850 dark:text-white">
-                  92% / 90%
+                  {shNoCancellationsValue ? "0 lần" : "Có hủy"}
                 </span>
               </div>
-              <Progress value={92} className="h-1.5 bg-slate-100 dark:bg-slate-800" />
+              <Progress value={shNoCancellationsValue ? 100 : 0} className="h-1.5 bg-slate-100 dark:bg-slate-800" />
               <p className="text-[10px] text-slate-400 flex items-center gap-1">
-                <span className="text-green-600 font-semibold">✓ Đạt tiêu chuẩn</span>
+                {shNoCancellationsPassed ? (
+                  <span className="text-green-600 font-semibold">✓ Đạt tiêu chuẩn</span>
+                ) : (
+                  <span className="text-rose-500 font-semibold">⚠ Tự ý hủy đặt đơn</span>
+                )}
               </p>
             </div>
 
@@ -976,15 +1054,15 @@ export default function HostDashboard() {
                   <CalendarCheck className="h-4 w-4 text-purple-500" /> Booking hoàn tất
                 </span>
                 <span className="font-bold text-slate-850 dark:text-white">
-                  {stats.bookings.completed || 0} / 10
+                  {shCompleted} / {shCompletedRequired}
                 </span>
               </div>
-              <Progress value={Math.min(((stats.bookings.completed || 0) / 10) * 100, 100)} className="h-1.5 bg-slate-100 dark:bg-slate-800" />
+              <Progress value={Math.min((shCompleted / shCompletedRequired) * 100, 100)} className="h-1.5 bg-slate-100 dark:bg-slate-800" />
               <p className="text-[10px] text-slate-400 flex items-center gap-1">
-                {stats.bookings.completed >= 10 ? (
+                {shCompletedPassed ? (
                   <span className="text-green-600 font-semibold">✓ Đạt tiêu chuẩn</span>
                 ) : (
-                  <span className="text-slate-400">Cần thêm {10 - (stats.bookings.completed || 0)} đơn đặt phòng hoàn tất</span>
+                  <span className="text-slate-400">Cần thêm {shCompletedRequired - shCompleted} đơn đặt phòng hoàn tất</span>
                 )}
               </p>
             </div>

@@ -225,10 +225,10 @@ export class BookingLifecycleService {
   }
 
   /**
-   * Auto settle payments to Host wallet after 5 days without guest confirmation
+   * Auto settle payments to Host wallet after 3 days without guest confirmation
    */
   async autoSettleExpiredBookings() {
-    const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
 
     const expiredBookings = await BookingModel.find({
       status: "confirmed",
@@ -236,7 +236,7 @@ export class BookingLifecycleService {
       guestConfirmedAttendance: { $ne: true },
       walletCredited: { $ne: true },
       cannotAttendRequest: { $exists: false },
-      checkIn: { $lte: fiveDaysAgo },
+      checkIn: { $lte: threeDaysAgo },
     });
 
     const WalletService = (await import("./wallet.service")).default;
@@ -245,11 +245,20 @@ export class BookingLifecycleService {
 
     for (const booking of expiredBookings) {
       try {
-        await walletService.creditHostWalletAutoSettle(
-          booking.host.toString(),
-          (booking._id as mongoose.Types.ObjectId).toString(),
-          booking.pricing.total
-        );
+        if (booking.paymentMethod === "deposit") {
+          const depositAmount = Math.round(booking.pricing.total * 0.5);
+          await walletService.creditHostWalletDeposit(
+            booking.host.toString(),
+            (booking._id as mongoose.Types.ObjectId).toString(),
+            depositAmount
+          );
+        } else {
+          await walletService.creditHostWalletAutoSettle(
+            booking.host.toString(),
+            (booking._id as mongoose.Types.ObjectId).toString(),
+            booking.pricing.total
+          );
+        }
         await BookingModel.findByIdAndUpdate(booking._id, {
           guestConfirmedAttendance: false,
           walletCredited: true,
@@ -416,5 +425,51 @@ export class BookingLifecycleService {
       hostRefundsProcessed,
       guestRefundsProcessed,
     };
+  }
+
+  /**
+   * Self-healing: Scan and credit any completed bookings where the host was not paid
+   */
+  async healUncreditedCompletedBookings() {
+    try {
+      const uncreditedBookings = await BookingModel.find({
+        status: "completed",
+        paymentStatus: "paid",
+        walletCredited: { $ne: true },
+      });
+
+      if (uncreditedBookings.length === 0) return { healed: 0 };
+
+      const WalletService = (await import("./wallet.service")).default;
+      const walletService = new WalletService();
+      let healed = 0;
+
+      for (const booking of uncreditedBookings) {
+        try {
+          if (booking.paymentMethod === "deposit") {
+            const depositAmount = Math.round(booking.pricing.total * 0.5);
+            await walletService.creditHostWalletDeposit(
+              booking.host.toString(),
+              (booking._id as mongoose.Types.ObjectId).toString(),
+              depositAmount
+            );
+          } else {
+            await walletService.creditHostWallet(
+              booking.host.toString(),
+              (booking._id as mongoose.Types.ObjectId).toString(),
+              booking.pricing.total
+            );
+          }
+          healed++;
+          console.log(`✨ Self-healing: Credited host for completed booking #${booking.code}`);
+        } catch (err: any) {
+          console.error(`❌ Self-healing failed for booking ${booking._id}:`, err.message);
+        }
+      }
+      return { healed };
+    } catch (err: any) {
+      console.error("❌ Error in healUncreditedCompletedBookings:", err.message);
+      return { healed: 0 };
+    }
   }
 }

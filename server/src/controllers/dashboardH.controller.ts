@@ -45,7 +45,7 @@ export const getHostStats = catchErrors(async (req: Request, res: Response) => {
 
   // Load host properties
   const properties = await PropertyModel.find({ host: hostId })
-    .select("_id name status")
+    .select("_id name status stats")
     .lean();
 
   const propertyIds = properties.map((p) => p._id);
@@ -75,10 +75,40 @@ export const getHostStats = catchErrors(async (req: Request, res: Response) => {
   const bookingsStats = {
     total: bookings.length,
     pending: bookings.filter((b) => b.status === "pending").length,
-    confirmed: bookings.filter((b) => b.status === "confirmed").length,
+    confirmed: bookings.filter((b) => b.status === "confirmed" && new Date(b.checkOut) >= new Date()).length,
     cancelled: bookings.filter((b) => b.status === "cancelled").length,
-    completed: bookings.filter((b) => b.status === "completed").length,
+    completed: bookings.filter((b) => b.status === "completed" || (b.status === "confirmed" && new Date(b.checkOut) < new Date())).length,
   };
+
+  // Calculate current month vs last month stats
+  const now = new Date();
+  const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+
+  const thisMonthBookings = bookings.filter((b) => new Date(b.createdAt) >= startOfThisMonth);
+  const lastMonthBookings = bookings.filter((b) => {
+    const date = new Date(b.createdAt);
+    return date >= startOfLastMonth && date <= endOfLastMonth;
+  });
+
+  const thisMonthBookingsCount = thisMonthBookings.length;
+  const thisMonthRevenue = thisMonthBookings
+    .filter((b) => b.status === "confirmed" || b.status === "completed")
+    .reduce((sum, b) => sum + getBookingAmount(b), 0);
+
+  const lastMonthBookingsCount = lastMonthBookings.length;
+  const lastMonthRevenue = lastMonthBookings
+    .filter((b) => b.status === "confirmed" || b.status === "completed")
+    .reduce((sum, b) => sum + getBookingAmount(b), 0);
+
+  const revenueGrowth = lastMonthRevenue > 0
+    ? Number((((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100).toFixed(1))
+    : 0;
+
+  const bookingsGrowth = lastMonthBookingsCount > 0
+    ? Number((((thisMonthBookingsCount - lastMonthBookingsCount) / lastMonthBookingsCount) * 100).toFixed(1))
+    : 0;
 
   // Calculate total revenue (confirmed + completed)
   const revenueBookings = bookings.filter(
@@ -111,16 +141,57 @@ export const getHostStats = catchErrors(async (req: Request, res: Response) => {
   // Count sites
   const sitesCount = await SiteModel.countDocuments({ property: { $in: propertyIds } });
 
+  // Calculate real booking counts and view counts per property
+  const propertyBookingCounts: Record<string, number> = {};
+  const propertyViewCounts: Record<string, number> = {};
+
+  let redisClientInstance: any = null;
+  try {
+    redisClientInstance = require("../config/redis").redisClient;
+  } catch (err) {
+    console.warn("Failed to require redisClient:", err);
+  }
+
+  for (const p of properties) {
+    const pIdStr = p._id.toString();
+
+    // Count real bookings
+    propertyBookingCounts[pIdStr] = bookings.filter(
+      (b) => String(b.property?._id || b.property) === pIdStr
+    ).length;
+
+    // Count real views from Redis + DB
+    let redisViews = 0;
+    if (redisClientInstance && redisClientInstance.isOpen) {
+      try {
+        const val = await redisClientInstance.hGet("property_views", pIdStr);
+        if (val) redisViews = parseInt(val) || 0;
+      } catch (err) {
+        console.warn("Failed to get views from Redis:", err);
+      }
+    }
+    const dbViews = p.stats?.viewCount || 0;
+    propertyViewCounts[pIdStr] = dbViews + redisViews;
+  }
+
   res.json({
     success: true,
     data: {
       properties: propertiesStats,
-      bookings: bookingsStats,
+      bookings: {
+        ...bookingsStats,
+        thisMonthCount: thisMonthBookingsCount,
+        thisMonthGrowth: bookingsGrowth,
+      },
       totalRevenue,
+      thisMonthRevenue,
+      revenueGrowth,
       averageRating: Number(averageRating.toFixed(1)),
       totalReviews: reviews.length,
       recentBookings,
       sitesCount,
+      propertyBookingCounts,
+      propertyViewCounts,
     },
   });
 });

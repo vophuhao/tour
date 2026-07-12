@@ -5,6 +5,7 @@ import appAssert from "../utils/app-assert";
 import { sendBookingSuccessEmail } from "../utils/send-booking-email";
 import { PAYOS_CHECKSUM_KEY } from "../constants";
 import { notifyPropertyChange } from "../socket";
+import WalletService from "./wallet.service";
 
 /**
  * Verify PayOS webhook signature using HMAC-SHA256
@@ -73,6 +74,21 @@ export default class PayOSService {
       if (success) {
         booking.paymentStatus = "paid";
         booking.paidAt = new Date(); // Set đúng thời điểm thanh toán thành công
+
+        if (booking.paymentMethod === "deposit") {
+          try {
+            const walletService = new WalletService();
+            const paidAmount = data.data?.amount || Math.round(booking.pricing.total * 0.5);
+            await walletService.creditHostWalletDeposit(
+              booking.host.toString(),
+              booking._id.toString(),
+              paidAmount
+            );
+          } catch (walletErr: any) {
+            console.error("Lỗi khi cộng ví host cho booking đặt cọc:", walletErr.message);
+          }
+        }
+
         await booking.save();
 
         // Gửi email xác nhận đặt chỗ cho khách hàng

@@ -20,7 +20,6 @@ export async function createBooking(data: {
   phone?: string;
   email?: string;
   promoCodeId?: string;
-  comboId?: string;
   unitNumber?: string;
   numberOfUnits?: number;
   services?: Array<{

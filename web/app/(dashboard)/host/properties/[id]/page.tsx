@@ -77,11 +77,6 @@ export default function EditPropertyPage() {
         photos: [], // New photos to upload (File[])
         existingPhotos: propertyData.photos || [], // Keep track of existing photos
         policies: {
-          cancellationPolicy: propertyData.cancellationPolicy || {
-            type: "moderate",
-            description: "",
-            refundRules: [],
-          },
           depositRequired: propertyData.depositRequired ?? false,
           depositAmount: propertyData.depositAmount ?? 0,
           depositType: propertyData.depositType || "fixed",
@@ -265,11 +260,7 @@ export default function EditPropertyPage() {
         },
         photos: finalPhotos,
         nearbyAttractions: b.nearbyAttractions ?? [],
-        cancellationPolicy: {
-          type: "moderate",
-          description: "Chính sách hủy vừa phải mặc định",
-          refundRules: [],
-        },
+
         rules: formData.policies.rules ?? [],
         depositRequired: false,
         depositAmount: 0,

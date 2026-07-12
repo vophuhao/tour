@@ -65,7 +65,6 @@ interface BookingSummaryData {
   guests: number;
   pets: number;
   vehicles: number;
-  depositAmount: number;
 }
 
 interface SiteDetails {
@@ -77,7 +76,6 @@ interface SiteDetails {
     petFee?: number;
     vehicleFee?: number;
     additionalGuestFee?: number;
-    depositAmount?: number;
     weekendPrice?: number;
     currency: string;
   };
@@ -119,7 +117,6 @@ export default function PaymentPage() {
     guests: Number(searchParams.get('guests')) || 1,
     pets: Number(searchParams.get('pets')) || 0,
     vehicles: Number(searchParams.get('vehicles')) || 1,
-    depositAmount: Number(searchParams.get('depositAmount')) || 0,
   };
 
   const [bookingData, setBookingData] = useState(initialBookingData);
@@ -148,7 +145,6 @@ export default function PaymentPage() {
       guests: Number(searchParams.get('guests')) || 1,
       pets: Number(searchParams.get('pets')) || 0,
       vehicles: Number(searchParams.get('vehicles')) || 1,
-      depositAmount: Number(searchParams.get('depositAmount')) || 0,
     };
     setBookingData(newBookingData);
   }, [searchParams]);
@@ -170,7 +166,6 @@ export default function PaymentPage() {
         petFee: siteDetails.data.pricing.petFee || 0,
         vehicleFee: siteDetails.data.pricing.vehicleFee || 0,
         additionalGuestFee: siteDetails.data.pricing.additionalGuestFee || 0,
-        depositAmount: siteDetails.data.pricing.depositAmount || 0,
         currency: siteDetails.data.pricing.currency,
       }));
     }
@@ -488,11 +483,8 @@ export default function PaymentPage() {
     servicesFee
   );
 
-  // FIX: Deposit calculation - calculate percentage from total
-  const siteDepositAmount = bookingData.depositAmount || 0;
-
-  // If depositAmount > 0, treat it as percentage, else default 30%
-  const depositPercentage = siteDepositAmount > 0 ? siteDepositAmount : 30;
+  // Set deposit percentage to exactly 50% as requested
+  const depositPercentage = 50;
 
   // Calculate actual deposit amount based on total
   const depositAmount = Math.round(total * (depositPercentage / 100));
@@ -893,7 +885,7 @@ export default function PaymentPage() {
                       </label>
 
                       {/* Deposit Payment */}
-                      {/* {hasDepositOption && (
+                      {hasDepositOption && (
                         <label
                           htmlFor="deposit"
                           className={`hover:bg-accent flex cursor-pointer items-start space-x-3 rounded-lg border-2 p-4 transition ${paymentMethod === 'deposit'
@@ -933,7 +925,7 @@ export default function PaymentPage() {
                             </div>
                           </div>
                         </label>
-                      )} */}
+                      )}
                     </div>
                   </RadioGroup>
 

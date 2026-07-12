@@ -45,7 +45,7 @@ export default function MySpotsPage() {
     queryFn: async () => {
       if (!currentUser?._id) return null;
       const res: any = await getFreeSpots({ page, limit: 12, author: currentUser._id } as any);
-      return res?.data ?? res;
+      return res;
     },
     enabled: isOwnProfile && !!currentUser?._id,
   });

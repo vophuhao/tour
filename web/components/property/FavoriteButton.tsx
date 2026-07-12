@@ -42,7 +42,7 @@ export function FavoriteButton({
       onClick={handleClick}
       disabled={isLoading}
       className={cn(
-        'rounded-full transition-all duration-200',
+        'rounded-full transition-all duration-200 cursor-pointer',
         isFavorited && 'text-red-500 hover:text-red-600',
         className,
       )}

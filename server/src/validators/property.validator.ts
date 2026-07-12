@@ -1,18 +1,6 @@
 import { z } from "zod";
 
-// Cancellation policy sub-schema
-const cancellationPolicySchema = z.object({
-  type: z.enum(["flexible", "moderate", "strict"]),
-  description: z.string().max(1000).optional(),
-  refundRules: z
-    .array(
-      z.object({
-        daysBeforeCheckIn: z.number().int().min(0),
-        refundPercentage: z.number().min(0).max(100),
-      })
-    )
-    .optional(),
-});
+
 
 // Validator cho tạo property
 export const createPropertySchema = z.object({
@@ -88,8 +76,7 @@ export const createPropertySchema = z.object({
   checkInInstructions: z.string().max(2000).optional(),
   checkOutInstructions: z.string().max(2000).optional(),
 
-  // Policies
-  cancellationPolicy: cancellationPolicySchema.optional(),
+
 
   // Property Settings
   settings: z

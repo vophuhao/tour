@@ -100,6 +100,10 @@ export class BookingDTO {
       review: booking.review,
       transactionId: booking.transactionId,
       paidAt: booking.paidAt,
+      platformFee: booking.platformFee,
+      hostNetAmount: booking.hostNetAmount,
+      walletCredited: booking.walletCredited,
+      walletCreditedAt: booking.walletCreditedAt,
       updatedAt: booking.updatedAt,
       createdAt: booking.createdAt,
     };

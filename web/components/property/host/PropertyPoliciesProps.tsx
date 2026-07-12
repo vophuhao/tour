@@ -22,8 +22,6 @@ import {
 
 interface PropertyPoliciesProps {
   data: {
-    cancellationPolicy: "flexible" | "moderate" | "strict" | "super_strict";
-    cancellationDetails?: string;
     depositRequired: boolean;
     depositAmount?: number;
     depositType?: "fixed" | "percentage";
@@ -62,82 +60,7 @@ export function PropertyPolicies({ data, onChange }: PropertyPoliciesProps) {
       </div>
 
       <div className="space-y-6">
-        {/* Cancellation Policy */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Chính sách hủy</CardTitle>
-            <CardDescription>
-              Chọn mức độ linh hoạt cho việc hủy đặt chỗ
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="cancellationPolicy">Loại chính sách</Label>
-              <Select
-                value={data.cancellationPolicy}
-                onValueChange={(value: any) =>
-                  onChange({ cancellationPolicy: value })
-                }
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="flexible">
-                    <div>
-                      <div className="font-semibold">Linh hoạt</div>
-                      <div className="text-xs text-gray-500">
-                        Hoàn 100% nếu hủy trước 24h
-                      </div>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="moderate">
-                    <div>
-                      <div className="font-semibold">Vừa phải</div>
-                      <div className="text-xs text-gray-500">
-                        Hoàn 50% nếu hủy trước 5 ngày
-                      </div>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="strict">
-                    <div>
-                      <div className="font-semibold">Nghiêm ngặt</div>
-                      <div className="text-xs text-gray-500">
-                        Hoàn 50% nếu hủy trước 7 ngày
-                      </div>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="super_strict">
-                    <div>
-                      <div className="font-semibold">Rất nghiêm ngặt</div>
-                      <div className="text-xs text-gray-500">
-                        Không hoàn tiền
-                      </div>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
 
-            <div>
-              <Label htmlFor="cancellationDetails">Chi tiết bổ sung</Label>
-              <Textarea
-                id="cancellationDetails"
-                value={data.cancellationDetails}
-                onChange={(e) =>
-                  onChange({ cancellationDetails: e.target.value })
-                }
-                placeholder="Mô tả thêm về chính sách hủy của bạn..."
-                rows={4}
-                maxLength={500}
-                className="mt-1"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                {data.cancellationDetails?.length || 0}/500 ký tự
-              </p>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Deposit Policy */}
         <Card>

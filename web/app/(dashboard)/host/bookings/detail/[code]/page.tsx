@@ -124,6 +124,7 @@ interface BookingData {
   cancelledAt?: string;
   cancellationReason?: string;
   refundAmount?: number;
+  hostNetAmount?: number;
 
   // Review
   reviewed: boolean;
@@ -213,64 +214,7 @@ export default function BookingDetailPage() {
     }
   };
 
-  // Calculate refund amount based on cancellation policy
-  const calculateRefundInfo = () => {
 
-    if (!booking || !booking.cancelledAt) {
-      return {
-        refundPercentage: 0,
-        refundAmount: 0,
-        daysBeforeCancellation: 0,
-        applicableRule: null as any,
-      };
-    }
-
-    const checkInDate = new Date(booking.checkIn);
-    const cancelledDate = new Date(booking.cancelledAt);
-    const daysBeforeCancellation = differenceInDays(checkInDate, cancelledDate);
-
-    // Get cancellation policy from property
-    const cancellationPolicy = booking.property.cancellationPolicy;
-
-    if (!cancellationPolicy || !cancellationPolicy.refundRules || cancellationPolicy.refundRules.length === 0) {
-      return {
-        refundPercentage: 100,
-        refundAmount: booking.pricing.total,
-        daysBeforeCancellation,
-        applicableRule: null,
-      };
-    }
-
-    // Find applicable refund rule
-    // Sort rules by daysBeforeCheckIn descending
-    const sortedRules = [...cancellationPolicy.refundRules].sort(
-      (a, b) => b.daysBeforeCheckIn - a.daysBeforeCheckIn
-    );
-
-    let applicableRule = sortedRules.find(
-      rule => daysBeforeCancellation >= rule.daysBeforeCheckIn
-    );
-
-    // If no rule found, use the strictest one (0 days = no refund)
-    if (!applicableRule) {
-      applicableRule = sortedRules[sortedRules.length - 1];
-    }
-
-    const refundPercentage = applicableRule?.refundPercentage || 0;
-
-    // Calculate refund amount based on what was actually paid
-    const paidAmount = getPaidAmount();
-    const refundAmount = (paidAmount * refundPercentage) / 100;
-
-    return {
-      refundPercentage,
-      refundAmount,
-      daysBeforeCancellation,
-      applicableRule,
-    };
-  };
-
-  const refundInfo = calculateRefundInfo();
 
   const handleCancelBooking = async () => {
     if (!cancelReason.trim()) {
@@ -407,7 +351,35 @@ export default function BookingDetailPage() {
       }
 
       // Refund info if cancelled
-      if (booking.status === 'cancelled' && refundInfo.refundAmount > 0) {
+      const refundInfo = (() => {
+        const isCancelledOrRefunded = booking.status === 'cancelled' || booking.status === 'refunded' || booking.paymentStatus === 'refunded';
+        if (!isCancelledOrRefunded) return null;
+
+        const cancellationTime = booking.cancelledAt ? new Date(booking.cancelledAt) : new Date(booking.updatedAt);
+        const checkInTime = new Date(booking.checkIn);
+        const daysBeforeCancellation = differenceInDays(checkInTime, cancellationTime);
+
+        const totalPaid = booking.paymentMethod === 'deposit'
+          ? booking.pricing.total * 0.5
+          : booking.pricing.total;
+
+        let refundAmount = booking.refundAmount;
+        if (refundAmount === undefined || refundAmount === null) {
+          refundAmount = booking.paymentStatus === 'paid' ? totalPaid : 0;
+        }
+
+        const refundPercentage = totalPaid > 0
+          ? Math.round((refundAmount / totalPaid) * 100)
+          : 0;
+
+        return {
+          refundAmount,
+          refundPercentage,
+          daysBeforeCancellation: Math.max(0, daysBeforeCancellation),
+        };
+      })();
+
+      if (refundInfo && refundInfo.refundAmount > 0) {
         y += 2;
         doc.text(`Số tiền hoàn lại (${refundInfo.refundPercentage}%): ${formatPricePDF(refundInfo.refundAmount)}`, 20, y);
         y += 6;
@@ -578,7 +550,7 @@ export default function BookingDetailPage() {
 
   const getPaymentMethodLabel = (method?: string) => {
     const labels: any = {
-      deposit: 'Đặt cọc',
+      deposit: `Đặt cọc 50%`,
       full: 'Thanh toán đầy đủ',
     };
     return labels[method || ''] || 'Chưa chọn';
@@ -597,13 +569,13 @@ export default function BookingDetailPage() {
   const getPaidAmount = () => {
     if (!booking || booking.paymentStatus !== 'paid') return 0;
     return booking.paymentMethod === 'deposit'
-      ? booking.pricing.total * 0.3 // 30% deposit
+      ? (booking.pricing.total * 0.5)
       : booking.pricing.total;
   };
 
   const getRemainingAmount = () => {
     if (!booking || booking.paymentMethod !== 'deposit') return 0;
-    return booking.pricing.total * 0.7; // 70% remaining
+    return booking.pricing.total - getPaidAmount();
   };
 
   if (loading) {
@@ -837,7 +809,7 @@ export default function BookingDetailPage() {
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-gray-700">
-                            {booking.paymentMethod === 'deposit' ? 'Số tiền đã cọc (30%):' : 'Số tiền đã thanh toán:'}
+                            {booking.paymentMethod === 'deposit' ? 'Số tiền đã cọc (50%):' : 'Số tiền đã thanh toán:'}
                           </span>
                           <span className="font-bold text-emerald-700">
                             {formatPrice(getPaidAmount())}
@@ -848,14 +820,20 @@ export default function BookingDetailPage() {
                           <>
                             <Separator className="my-2" />
                             <div className="flex justify-between items-center">
-                              <span className="text-sm text-gray-700">Còn lại (70%):</span>
+                              <span className="text-sm text-gray-700">Còn lại (50%):</span>
                               <span className="font-bold text-orange-600">
                                 {formatPrice(getRemainingAmount())}
                               </span>
                             </div>
-                            <p className="text-xs text-gray-600 mt-2 italic">
-                              * Số tiền còn lại sẽ được thanh toán khi nhận chỗ
-                            </p>
+                            <div className="mt-2 space-y-1 text-xs text-emerald-800 bg-emerald-100/50 p-2.5 rounded border border-emerald-200">
+                              <p>ℹ️ <strong>Thông tin ví Host:</strong> Hệ thống đã chuyển tiền đặt cọc 50% ({formatPrice(getPaidAmount())}) vào ví của bạn.</p>
+                              {booking.hostNetAmount !== undefined && booking.hostNetAmount > 0 && (
+                                <p>💰 <strong>Số tiền thực nhận vào ví:</strong> {formatPrice(booking.hostNetAmount)} (sau khi trừ phí hệ thống).</p>
+                              )}
+                              <p className="text-orange-700 mt-1 italic font-medium">
+                                * Số tiền còn lại {formatPrice(getRemainingAmount())} sẽ do khách thanh toán trực tiếp cho bạn khi nhận chỗ.
+                              </p>
+                            </div>
                           </>
                         )}
 
@@ -1133,11 +1111,10 @@ export default function BookingDetailPage() {
                 <div className="flex items-center gap-4">
                   <div className="relative h-16 w-16 overflow-hidden rounded-full">
                     {booking.guest.avatarUrl ? (
-                      <Image
+                      <img
                         src={booking.guest.avatarUrl}
                         alt={booking.guest.username}
-                        fill
-                        className="object-cover"
+                        className="h-full w-full object-cover"
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-gray-200 text-2xl font-semibold text-gray-600">
@@ -1309,13 +1286,13 @@ export default function BookingDetailPage() {
                 {booking.paymentMethod === 'deposit' && booking.paymentStatus !== 'paid' && (
                   <div className="rounded-lg bg-blue-50 p-3 text-sm">
                     <p className="font-medium text-blue-900">
-                      💰 Phương thức: Đặt cọc 30%
+                      💰 Phương thức: Đặt cọc  50%
                     </p>
                     <p className="mt-1 text-xs text-blue-700">
-                      Cần thanh toán: {formatPrice(booking.pricing.total * 0.3)}
+                      Cần thanh toán: {formatPrice((booking.pricing.total * 0.5))}
                     </p>
                     <p className="mt-1 text-xs text-blue-700">
-                      Còn lại khi nhận chỗ: {formatPrice(booking.pricing.total * 0.7)}
+                      Còn lại khi nhận chỗ: {formatPrice(booking.pricing.total - ((booking.pricing.total * 0.5)))}
                     </p>
                   </div>
                 )}
@@ -1383,7 +1360,7 @@ export default function BookingDetailPage() {
                       <div className="flex-1">
                         <p className="text-sm font-medium">Đã hoàn tiền</p>
                         <p className="text-xs text-gray-500">
-                          {formatPrice(booking.refundAmount || refundInfo.refundAmount)}
+                          {formatPrice(booking.refundAmount || 0)}
                         </p>
                       </div>
                     </div>

@@ -154,12 +154,12 @@ export default function SavesPage() {
                           {isProperty ? (
                             <FavoriteButton
                               propertyId={item?._id || ''}
-                              className="bg-white/90 backdrop-blur-sm hover:bg-white"
+                              className="bg-white/90 backdrop-blur-sm hover:!bg-white"
                             />
                           ) : (
                             <SiteFavoriteButton
                               siteId={item?._id || ''}
-                              className="bg-white/90 backdrop-blur-sm hover:bg-white"
+                              className="bg-white/90 backdrop-blur-sm hover:!bg-white"
                             />
                           )}
                         </div>
@@ -348,7 +348,7 @@ function PropertyCard({
           <div className="absolute top-3 left-3 z-10">
             <FavoriteButton
               propertyId={favorite.property?._id || ''}
-              className="bg-white/90 backdrop-blur-sm hover:bg-white"
+              className="bg-white/90 backdrop-blur-sm hover:!bg-white"
             />
           </div>
           <Image
@@ -432,7 +432,7 @@ function SiteCard({
           <div className="absolute top-3 left-3 z-10">
             <SiteFavoriteButton
               siteId={favorite.site?._id || ''}
-              className="bg-white/90 backdrop-blur-sm hover:bg-white"
+              className="bg-white/90 backdrop-blur-sm hover:!bg-white"
             />
           </div>
           <Image

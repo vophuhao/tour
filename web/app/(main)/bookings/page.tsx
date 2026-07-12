@@ -61,7 +61,7 @@ const STATUS_OPTIONS = [
 
 /**
  * Kiểm tra xem nút "Xác nhận đã đến" có hiển thị không
- * Điều kiện: confirmed + paid + chưa confirm + trong khoảng [checkIn, checkOut + 5 ngày]
+ * Điều kiện: confirmed + paid + chưa confirm + trong khoảng [checkIn, checkOut + 3 ngày]
  */
 function canConfirmArrival(booking: any): boolean {
     if (booking.status !== "confirmed") return false;
@@ -73,7 +73,7 @@ function canConfirmArrival(booking: any): boolean {
     const now = new Date();
     const checkIn = new Date(booking.checkIn);
     const checkOut = new Date(booking.checkOut);
-    const deadline = new Date(checkOut.getTime() + 5 * 24 * 60 * 60 * 1000);
+    const deadline = new Date(checkOut.getTime() + 3 * 24 * 60 * 60 * 1000);
 
     return now >= checkIn && now <= deadline;
 }
@@ -379,7 +379,7 @@ export default function BookingsPage() {
                                                     <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg border border-blue-200">
                                                         <Clock className="h-4 w-4 text-blue-500 flex-shrink-0" />
                                                         <span className="text-xs text-blue-700">
-                                                            Nút xác nhận đến sẽ hiện từ ngày check-in đến 5 ngày sau check-out.
+                                                            Nút xác nhận đến sẽ hiện từ ngày check-in đến 3 ngày sau check-out.
                                                             Nút báo không đến hiện trong 6 giờ trước/sau check-in.
                                                         </span>
                                                     </div>

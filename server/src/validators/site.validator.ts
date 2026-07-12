@@ -132,7 +132,6 @@ export const createSiteSchema = z.object({
     petFee: z.number().min(0).optional(),
     vehicleFee: z.number().min(0).optional(),
     cleaningFee: z.number().min(0).optional(),
-    depositAmount: z.number().min(0).optional(),
     currency: z.string().default("VND"),
     seasonalPricing: z
       .array(

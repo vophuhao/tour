@@ -24,10 +24,9 @@ interface Pricing {
   weeklyDiscount?: number;
   monthlyDiscount?: number;
   additionalGuestFee?: number;
-  petFee?: number;
   cleaningFee?: number;
-  depositAmount?: number;
   vehicleFee?: number;
+  petFee?: number;
   seasonalPricing?: Season[];
 }
 
@@ -47,7 +46,6 @@ export function SitePricing({ data, onChange }: SitePricingProps) {
     additionalGuestFee: data?.additionalGuestFee === undefined ? undefined : Number(data.additionalGuestFee),
     petFee: data?.petFee === undefined ? undefined : Number(data.petFee),
     cleaningFee: data?.cleaningFee === undefined ? undefined : Number(data.cleaningFee),
-    depositAmount: data?.depositAmount === undefined ? undefined : Number(data.depositAmount),
     vehicleFee: data?.vehicleFee === undefined ? undefined : Number(data.vehicleFee),
     seasonalPricing: Array.isArray(data?.seasonalPricing) ? data.seasonalPricing.map(s => ({
       name: s.name ?? "",
@@ -187,11 +185,6 @@ export function SitePricing({ data, onChange }: SitePricingProps) {
             <div>
               <Label htmlFor="cleaningFee">Phí dọn dẹp (VNĐ)</Label>
               <Input id="cleaningFee" type="number" value={pricing.cleaningFee ?? ""} onChange={(e) => setNumeric("cleaningFee", e.target.value)} min={0} className="mt-1" />
-            </div>
-
-            <div>
-              <Label htmlFor="depositAmount">Số tiền đặt cọc (VNĐ)</Label>
-              <Input id="depositAmount" type="number" value={pricing.depositAmount ?? ""} onChange={(e) => setNumeric("depositAmount", e.target.value)} min={0} className="mt-1" />
             </div>
 
             <div>

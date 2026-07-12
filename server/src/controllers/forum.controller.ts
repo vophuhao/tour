@@ -1,5 +1,6 @@
 import { catchErrors } from "@/errors";
 import 'multer';
+import { verifyToken } from "@/utils/jwt";
 import type {
   CreatePostInput,
   ForumService,
@@ -189,7 +190,17 @@ export default class ForumController {
   getUserPosts = catchErrors(async (req: any, res: any) => {
     const userId = req.params.userId || "";
     const input = getUserPostsSchema.parse(req.query);
-    const currentUserId = req.userId ? mongoIdSchema.parse(req.userId) : undefined;
+    
+    let currentUserId: string | undefined;
+    const accessToken = req.cookies?.accessToken as string | undefined;
+    if (accessToken) {
+      try {
+        const { payload } = verifyToken(accessToken);
+        if (payload) {
+          currentUserId = payload.userId.toString();
+        }
+      } catch {}
+    }
 
     const isOwnProfile = currentUserId?.toString() === userId;
     const isAdmin = false;

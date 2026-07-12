@@ -70,7 +70,6 @@ export interface SiteDocument extends mongoose.Document {
     petFee?: number;
     vehicleFee?: number;
     cleaningFee?: number;
-    depositAmount?: number;
     currency: string;
 
     // Seasonal pricing
@@ -261,7 +260,6 @@ const siteSchema = new mongoose.Schema<SiteDocument>(
       petFee: { type: Number, min: 0, default: 0 },
       vehicleFee: { type: Number, min: 0, default: 0 },
       cleaningFee: { type: Number, min: 0, default: 0 },
-      depositAmount: { type: Number, min: 0, default: 0 },
       currency: { type: String, default: "VND" },
 
       seasonalPricing: [

@@ -83,6 +83,59 @@ export default class WalletService {
   }
 
   /**
+   * Cộng tiền đặt cọc 50% vào ví host ngay sau khi khách thanh toán cọc thành công.
+   */
+  async creditHostWalletDeposit(
+    hostUserId: string,
+    bookingId: string,
+    depositAmount: number
+  ) {
+    const booking = await BookingModel.findById(bookingId);
+    appAssert(booking, ErrorFactory.resourceNotFound("Booking"));
+
+    const settings = await SettingService.getSettings();
+    const platformFeeRate = settings.platformFeeRate;
+    const platformFee = Math.round(depositAmount * platformFeeRate);
+    const netAmount = depositAmount - platformFee;
+
+    let hostRecord = await HostModel.findOne({ user: hostUserId });
+    if (!hostRecord && mongoose.Types.ObjectId.isValid(hostUserId)) {
+      hostRecord = await HostModel.findById(hostUserId);
+    }
+    appAssert(hostRecord, ErrorFactory.resourceNotFound("Host"));
+
+    const balanceBefore = hostRecord.walletBalance;
+    const balanceAfter = balanceBefore + netAmount;
+
+    // Cộng ví
+    hostRecord.walletBalance = balanceAfter;
+    await hostRecord.save();
+
+    // Ghi log giao dịch
+    const tx = await WalletTransactionModel.create({
+      host: hostUserId,
+      type: "credit",
+      amount: netAmount,
+      bookingId: new mongoose.Types.ObjectId(bookingId),
+      description: `Nhận tiền đặt cọc 50% - Booking #${booking.code || bookingId.slice(-6).toUpperCase()}`,
+      balanceBefore,
+      balanceAfter,
+    });
+
+    // Cập nhật booking
+    await BookingModel.findByIdAndUpdate(bookingId, {
+      $set: {
+        walletCredited: true,
+        walletCreditedAt: new Date(),
+        platformFee,
+        hostNetAmount: netAmount,
+      },
+    });
+
+    return { netAmount, platformFee, balanceAfter, txId: tx._id };
+  }
+
+  /**
    * Cộng tiền vào ví host khi hết thời hạn (khách không xác nhận sau 5 ngày)
    * Host nhận 100% net
    */

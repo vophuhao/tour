@@ -35,7 +35,10 @@ export class SuperhostService {
     const [completedBookings, hostCancelledBookings, properties] = await Promise.all([
       BookingModel.countDocuments({
         host: hostId,
-        status: "completed",
+        $or: [
+          { status: "completed" },
+          { status: "confirmed", checkOut: { $lt: new Date() } }
+        ],
         createdAt: { $gte: twelveMonthsAgo },
       }),
       BookingModel.countDocuments({

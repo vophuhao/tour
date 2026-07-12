@@ -411,7 +411,7 @@ export default class NotificationService {
       message: `${guestName} đã đánh giá ${rating}⭐ cho ${propertyName}`,
       review: reviewId,
       property: propertyId,
-      link: `/host/properties/${propertyId}/reviews`,
+      link: `/host/reviews`,
       actionType: "view_review",
       priority: "medium",
       role: "host",

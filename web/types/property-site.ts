@@ -112,14 +112,7 @@ export interface Property {
     directions?: string;
     parkingInstructions?: string;
   };
-  cancellationPolicy?: {
-    type: 'flexible' | 'moderate' | 'strict';
-    description?: string;
-    refundRules?: Array<{
-      daysBeforeCheckIn: number;
-      refundPercentage: number;
-    }>;
-  };
+
 
   propertyType: PropertyType;
   lodgingType: LodgingType;
@@ -210,7 +203,6 @@ export interface SitePricing {
   petFee?: number;
   vehicleFee?: number;
   cleaningFee?: number;
-  depositAmount?: number;
   seasonalPricing?: Array<{
     name: string;
     startDate: string;

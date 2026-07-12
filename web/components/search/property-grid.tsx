@@ -141,24 +141,25 @@ export function PropertyGrid({
               onMouseEnter={() => setHoveredProperty(property)}
               onMouseLeave={() => setHoveredProperty(null)}
             >
-              <Link href={buildPropertyLink(property.slug || property._id)}>
+              <Link href={buildPropertyLink(property.slug || property._id)} className="block h-full">
                 <div className="relative h-48 w-full overflow-hidden rounded-lg">
                   {/* Action buttons (top-left) */}
                   <div className="absolute top-3 left-3 z-20 flex gap-2">
                     <FavoriteButton
                       propertyId={property._id}
-                      className="bg-white/90 backdrop-blur-sm hover:bg-white"
+                      className="bg-white/90 backdrop-blur-sm hover:!bg-white"
                     />
                     <CompareButton
                       propertyId={property._id}
-                      className="bg-white/90 backdrop-blur-sm hover:bg-white"
+                      className="bg-white/90 backdrop-blur-sm hover:!bg-white"
                     />
                   </div>
 
                   {/* View count badge (top-right) */}
                   <div className="absolute top-3 right-3 z-20">
                     <Badge
-                      className="flex bg-background items-center gap-2 rounded-full px-2 py-1 text-xs shadow"
+                      variant="outline"
+                      className="flex bg-white/90 backdrop-blur-sm border-none items-center gap-2 rounded-full px-2 py-1 text-xs shadow"
                     >
                       <Eye className="h-3 w-3 text-gray-700" />
                       <span className="font-medium text-gray-700">
@@ -175,68 +176,68 @@ export function PropertyGrid({
                     className="object-cover transition-transform hover:scale-105"
                   />
                 </div>
-              </Link>
 
-              <div className="space-y-1.5 p-4">
-                {/* Rating + Superhost badge */}
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1">
-                    {property.stats?.averageRating &&
-                      property.stats.averageRating > 0 ? (
-                      <>
-                        <span className="text-base">👍</span>
-                        <span className="text-sm font-semibold text-gray-900">
-                          {Math.round((property.stats.averageRating / 5) * 100)}%
+                <div className="space-y-1.5 p-4">
+                  {/* Rating + Superhost badge */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1">
+                      {property.stats?.averageRating &&
+                        property.stats.averageRating > 0 ? (
+                        <>
+                          <span className="text-base">👍</span>
+                          <span className="text-sm font-semibold text-gray-900">
+                            {Math.round((property.stats.averageRating / 5) * 100)}%
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            ({property.stats.totalReviews || 0})
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-xs text-gray-400">
+                          Chưa có đánh giá
                         </span>
-                        <span className="text-xs text-gray-500">
-                          ({property.stats.totalReviews || 0})
-                        </span>
-                      </>
-                    ) : (
-                      <span className="text-xs text-gray-400">
-                        Chưa có đánh giá
-                      </span>
+                      )}
+                    </div>
+                    {(property as any).isSuperhost && (
+                      <SuperhostBadge size="xs" showTooltip superhostSince={(property as any).superhostSince} />
                     )}
                   </div>
-                  {(property as any).isSuperhost && (
-                    <SuperhostBadge size="xs" showTooltip superhostSince={(property as any).superhostSince} />
-                  )}
+
+                  {/* Title */}
+                  <h3 className="line-clamp-1 text-base font-semibold text-gray-900">
+                    {property.name}
+                  </h3>
+
+                  {/* Sites count + Property type */}
+                  <p className="text-sm text-gray-600">
+                    {property.stats?.totalSites || 0} địa điểm ·{' '}
+                    {property.propertyType === 'private_land'
+                      ? 'Đất tư nhân'
+                      : property.propertyType === 'campground'
+                        ? 'Khu cắm trại'
+                        : property.propertyType === 'farm'
+                          ? 'Trang trại'
+                          : property.propertyType === 'ranch'
+                            ? 'Trang trại chăn nuôi'
+                            : 'Khu nghỉ dưỡng'}
+                  </p>
+
+                  {/* Location - acres + city */}
+                  <p className="text-sm text-gray-500">
+                    {getLandSizeDisplay(property)} · {property.location?.city},{' '}
+                    {property.location?.state}
+                  </p>
+
+                  {/* Price */}
+                  <div className="pt-0.5">
+                    <span className="text-sm text-gray-500">từ </span>
+                    <span className="text-base font-bold text-gray-900">
+                      {property.minPrice ? formatPrice(property.minPrice) : '50k'}
+                    </span>
+                    <span className="text-sm text-gray-500"> / đêm</span>
+                  </div>
                 </div>
-
-                {/* Title */}
-                <h3 className="line-clamp-1 text-base font-semibold text-gray-900">
-                  {property.name}
-                </h3>
-
-                {/* Sites count + Property type */}
-                <p className="text-sm text-gray-600">
-                  {property.stats?.totalSites || 0} địa điểm ·{' '}
-                  {property.propertyType === 'private_land'
-                    ? 'Đất tư nhân'
-                    : property.propertyType === 'campground'
-                      ? 'Khu cắm trại'
-                      : property.propertyType === 'farm'
-                        ? 'Trang trại'
-                        : property.propertyType === 'ranch'
-                          ? 'Trang trại chăn nuôi'
-                          : 'Khu nghỉ dưỡng'}
-                </p>
-
-                {/* Location - acres + city */}
-                <p className="text-sm text-gray-500">
-                  {getLandSizeDisplay(property)} · {property.location?.city},{' '}
-                  {property.location?.state}
-                </p>
-
-                {/* Price */}
-                <div className="pt-0.5">
-                  <span className="text-sm text-gray-500">từ </span>
-                  <span className="text-base font-bold text-gray-900">
-                    {property.minPrice ? formatPrice(property.minPrice) : '50k'}
-                  </span>
-                  <span className="text-sm text-gray-500"> / đêm</span>
-                </div>
-              </div>
+              </Link>
             </Card>
           ))}
         </div>

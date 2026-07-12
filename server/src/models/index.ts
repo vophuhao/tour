@@ -24,6 +24,5 @@ export { SystemSettingModel, type ISystemSetting } from "./system-setting.model"
 export { ServicePackageModel, type ServicePackageDocument, type IService } from "./service-package.model";
 
 export { PromoCodeModel, type PromoCodeDocument } from "./promo-code.model";
-export { ComboModel, type ComboDocument } from "./combo.model";
 export { default as ServiceBlockModel, type ServiceBlockDocument } from "./service-block.model";
 

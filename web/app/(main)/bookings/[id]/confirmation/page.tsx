@@ -178,6 +178,7 @@ interface BookingData {
   };
   cancellationReason?: string;
   refundAmount?: number;
+  hostNetAmount?: number;
   cancellInformation?: {
     fullnameGuest?: string;
     bankCode?: string;
@@ -479,7 +480,24 @@ export default function ConfirmationPage() {
   const site = booking.site;
   const siteName = site?.name || booking.campsite?.name || 'Site';
   const propertyName = property?.name || booking.campsite?.host?.name || '';
-  const location = property?.location || booking.campsite?.location;
+  const location = (property?.location || booking.campsite?.location) as {
+    city: string;
+    state: string;
+    address?: string;
+    directions?: string;
+    accessInstructions?: string;
+    parkingInstructions?: string;
+  } | undefined;
+
+  // Google Maps link based on site coordinates or property coordinates
+  const coordinates =
+    booking.site?.siteLocation?.coordinates?.coordinates ||
+    property?.location?.coordinates?.coordinates;
+
+  const googleMapsUrl =
+    coordinates && coordinates.length === 2
+      ? `https://www.google.com/maps/search/?api=1&query=${coordinates[1]},${coordinates[0]}`
+      : null;
 
   // Booking times - prefer site booking settings, fallback to campsite or defaults
   const checkInTime =
@@ -498,11 +516,10 @@ export default function ConfirmationPage() {
 
   // Calculate payment amounts
   const totalAmount = booking.pricing?.total || 0;
-  const depositPercentage =
-    booking.pricing?.depositPercentage || site?.pricing?.depositAmount || 30;
-  const depositAmount =
-    booking.pricing?.depositAmount ||
-    Math.round(totalAmount * (depositPercentage / 100));
+  const depositPercentage = booking.paymentMethod === 'deposit' ? 50 : 100;
+  const depositAmount = booking.paymentMethod === 'deposit'
+    ? Math.round(totalAmount * 0.5)
+    : totalAmount;
   const remainingAmount = totalAmount - depositAmount;
 
   const formatPrice = (price: number) => {
@@ -672,10 +689,18 @@ export default function ConfirmationPage() {
                           : `Đã thanh toán đầy đủ ${totalAmount.toLocaleString('vi-VN')} ₫`}
                       </p>
                       {booking.paymentMethod === 'deposit' && (
-                        <p className="mt-1 text-xs text-gray-600">
-                          💰 Còn lại {remainingAmount.toLocaleString('vi-VN')} ₫
-                          thanh toán khi nhận phòng
-                        </p>
+                        <>
+                          <p className="mt-1 text-xs text-gray-600">
+                            💰 Còn lại {remainingAmount.toLocaleString('vi-VN')} ₫
+                            thanh toán khi nhận phòng
+                          </p>
+                          {/* <div className="mt-2 space-y-1 text-xs text-emerald-800 bg-emerald-100/50 p-2.5 rounded border border-emerald-200">
+                            <p>ℹ️ <strong>Thông tin ví Host:</strong> Hệ thống đã chuyển tiền đặt cọc 50% ({depositAmount.toLocaleString('vi-VN')} ₫) vào ví của chủ nhà.</p>
+                            {booking.hostNetAmount !== undefined && booking.hostNetAmount > 0 && (
+                              <p>💰 <strong>Số tiền chuyển vào ví Host:</strong> {booking.hostNetAmount.toLocaleString('vi-VN')} ₫ (sau khi trừ phí hệ thống).</p>
+                            )}
+                          </div> */}
+                        </>
                       )}
                     </div>
                   </div>
@@ -684,117 +709,117 @@ export default function ConfirmationPage() {
             )}
 
             {/* Cancelled & Paid: Show Refund details input form */}
-            {booking.status === 'cancelled' && 
-              booking.paymentStatus === 'paid' && 
+            {booking.status === 'cancelled' &&
+              booking.paymentStatus === 'paid' &&
               !(booking.cancellInformation?.fullnameGuest && booking.cancellInformation?.bankCode && booking.cancellInformation?.bankType) &&
               !(booking.cannotAttendRequest?.bankAccountName && booking.cannotAttendRequest?.bankName && booking.cannotAttendRequest?.bankAccountNumber) && (
-              <Card className="mb-6 border-2 border-red-300 bg-gradient-to-r from-red-50 to-orange-50">
-                <CardContent className="pt-6">
-                  <div className="flex flex-col gap-4">
-                    <div className="flex items-start gap-4">
-                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-500">
-                        <AlertCircle className="h-6 w-6 text-white" />
+                <Card className="mb-6 border-2 border-red-300 bg-gradient-to-r from-red-50 to-orange-50">
+                  <CardContent className="pt-6">
+                    <div className="flex flex-col gap-4">
+                      <div className="flex items-start gap-4">
+                        <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-500">
+                          <AlertCircle className="h-6 w-6 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-red-900">
+                            Đơn đặt chỗ đã bị hủy bởi Chủ trang trại / Hệ thống
+                          </h3>
+                          <p className="mt-1 text-sm text-gray-700 font-medium">
+                            Lý do hủy: {booking.cancellationReason || "Yêu cầu từ phía chủ nhà hoặc hệ thống"}
+                          </p>
+                          <p className="mt-2 text-sm text-gray-600">
+                            Vì bạn đã thanh toán thành công, vui lòng cung cấp thông tin tài khoản ngân hàng bên dưới để hệ thống thực hiện hoàn tiền 100% tự động cho bạn.
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-red-900">
-                          Đơn đặt chỗ đã bị hủy bởi Chủ trang trại / Hệ thống
-                        </h3>
-                        <p className="mt-1 text-sm text-gray-700 font-medium">
-                          Lý do hủy: {booking.cancellationReason || "Yêu cầu từ phía chủ nhà hoặc hệ thống"}
-                        </p>
-                        <p className="mt-2 text-sm text-gray-600">
-                          Vì bạn đã thanh toán thành công, vui lòng cung cấp thông tin tài khoản ngân hàng bên dưới để hệ thống thực hiện hoàn tiền 100% tự động cho bạn.
-                        </p>
+
+                      <Separator className="bg-red-200" />
+
+                      <div className="space-y-4">
+                        <h4 className="text-sm font-semibold text-gray-900">
+                          Thông tin tài khoản nhận hoàn tiền (Hoàn 100%: {booking.pricing?.total.toLocaleString('vi-VN')} ₫)
+                        </h4>
+
+                        <div className="grid gap-4 sm:grid-cols-3">
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-gray-700">Tên chủ tài khoản *</label>
+                            <Input
+                              placeholder="Nhập tên đầy đủ..."
+                              value={refundBankDetails.fullnameGuest}
+                              onChange={e => setRefundBankDetails({ ...refundBankDetails, fullnameGuest: e.target.value })}
+                              className="h-9 text-xs"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-gray-700">Mã ngân hàng *</label>
+                            <Input
+                              placeholder="VD: Vietcombank, MB, TCB..."
+                              value={refundBankDetails.bankCode}
+                              onChange={e => setRefundBankDetails({ ...refundBankDetails, bankCode: e.target.value })}
+                              className="h-9 text-xs"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-gray-700">Số tài khoản / Chi nhánh *</label>
+                            <Input
+                              placeholder="Nhập số tài khoản..."
+                              value={refundBankDetails.bankType}
+                              onChange={e => setRefundBankDetails({ ...refundBankDetails, bankType: e.target.value })}
+                              className="h-9 text-xs"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end pt-2">
+                          <Button
+                            onClick={handleSubmitRefundBankDetails}
+                            disabled={submittingRefund}
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                          >
+                            {submittingRefund ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Đang gửi...
+                              </>
+                            ) : (
+                              'Xác nhận nhận hoàn tiền 100%'
+                            )}
+                          </Button>
+                        </div>
                       </div>
                     </div>
-
-                    <Separator className="bg-red-200" />
-
-                    <div className="space-y-4">
-                      <h4 className="text-sm font-semibold text-gray-900">
-                        Thông tin tài khoản nhận hoàn tiền (Hoàn 100%: {booking.pricing?.total.toLocaleString('vi-VN')} ₫)
-                      </h4>
-
-                      <div className="grid gap-4 sm:grid-cols-3">
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-medium text-gray-700">Tên chủ tài khoản *</label>
-                          <Input
-                            placeholder="Nhập tên đầy đủ..."
-                            value={refundBankDetails.fullnameGuest}
-                            onChange={e => setRefundBankDetails({ ...refundBankDetails, fullnameGuest: e.target.value })}
-                            className="h-9 text-xs"
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-medium text-gray-700">Mã ngân hàng *</label>
-                          <Input
-                            placeholder="VD: Vietcombank, MB, TCB..."
-                            value={refundBankDetails.bankCode}
-                            onChange={e => setRefundBankDetails({ ...refundBankDetails, bankCode: e.target.value })}
-                            className="h-9 text-xs"
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-medium text-gray-700">Số tài khoản / Chi nhánh *</label>
-                          <Input
-                            placeholder="Nhập số tài khoản..."
-                            value={refundBankDetails.bankType}
-                            onChange={e => setRefundBankDetails({ ...refundBankDetails, bankType: e.target.value })}
-                            className="h-9 text-xs"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex justify-end pt-2">
-                        <Button
-                          onClick={handleSubmitRefundBankDetails}
-                          disabled={submittingRefund}
-                          className="bg-red-600 hover:bg-red-700 text-white"
-                        >
-                          {submittingRefund ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Đang gửi...
-                            </>
-                          ) : (
-                            'Xác nhận nhận hoàn tiền 100%'
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                  </CardContent>
+                </Card>
+              )}
 
             {/* Cancelled & Paid but already submitted: Show waiting for refund details */}
-            {booking.status === 'cancelled' && 
-              booking.paymentStatus === 'paid' && 
+            {booking.status === 'cancelled' &&
+              booking.paymentStatus === 'paid' &&
               ((booking.cancellInformation?.fullnameGuest && booking.cancellInformation?.bankCode && booking.cancellInformation?.bankType) ||
-               (booking.cannotAttendRequest?.bankAccountName && booking.cannotAttendRequest?.bankName && booking.cannotAttendRequest?.bankAccountNumber)) && (
-              <Card className="mb-6 border border-gray-200 bg-gray-50">
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gray-400">
-                      <Clock className="h-6 w-6 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900">
-                        Đã ghi nhận thông tin nhận tiền hoàn
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        Đơn đặt của bạn đã hủy. Chúng tôi đã nhận được thông tin hoàn tiền của bạn và đang tiến hành chuyển trả số tiền trong vòng 5-7 ngày làm việc.
-                      </p>
-                      <div className="mt-2 text-xs text-gray-500 bg-white p-3 rounded-lg border">
-                        <p><strong>Người nhận:</strong> {booking.cancellInformation?.fullnameGuest || booking.cannotAttendRequest?.bankAccountName}</p>
-                        <p><strong>Ngân hàng:</strong> {booking.cancellInformation?.bankCode || booking.cannotAttendRequest?.bankName}</p>
-                        <p><strong>Số tài khoản:</strong> {booking.cancellInformation?.bankType || booking.cannotAttendRequest?.bankAccountNumber}</p>
+                (booking.cannotAttendRequest?.bankAccountName && booking.cannotAttendRequest?.bankName && booking.cannotAttendRequest?.bankAccountNumber)) && (
+                <Card className="mb-6 border border-gray-200 bg-gray-50">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gray-400">
+                        <Clock className="h-6 w-6 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900">
+                          Đã ghi nhận thông tin nhận tiền hoàn
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          Đơn đặt của bạn đã hủy. Chúng tôi đã nhận được thông tin hoàn tiền của bạn và đang tiến hành chuyển trả số tiền trong vòng 5-7 ngày làm việc.
+                        </p>
+                        <div className="mt-2 text-xs text-gray-500 bg-white p-3 rounded-lg border">
+                          <p><strong>Người nhận:</strong> {booking.cancellInformation?.fullnameGuest || booking.cannotAttendRequest?.bankAccountName}</p>
+                          <p><strong>Ngân hàng:</strong> {booking.cancellInformation?.bankCode || booking.cannotAttendRequest?.bankName}</p>
+                          <p><strong>Số tài khoản:</strong> {booking.cancellInformation?.bankType || booking.cannotAttendRequest?.bankAccountNumber}</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                  </CardContent>
+                </Card>
+              )}
 
             {/* Refunded state */}
             {booking.status === 'refunded' && (
@@ -986,12 +1011,44 @@ export default function ConfirmationPage() {
               {/* Site/Location */}
               <div className="flex items-start gap-3">
                 <MapPin className="text-muted-foreground mt-1 h-5 w-5" />
-                <div>
+                <div className="space-y-1.5 flex-1">
                   <p className="font-medium">Địa điểm</p>
                   <p className="text-muted-foreground">
-                    {location?.address ||
-                      `${location?.city || ''}, ${location?.state || ''}`}
+                    {[location?.address, location?.city, location?.state]
+                      .filter(Boolean)
+                      .join(', ') || 'Chưa cập nhật địa chỉ'}
                   </p>
+                  {googleMapsUrl && (
+                    <div className="mt-1.5">
+                      <a
+                        href={googleMapsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-600 hover:text-emerald-700 hover:underline cursor-pointer"
+                      >
+                        <MapPin className="h-3.5 w-3.5" />
+                        Mở tọa độ chính xác trên Google Maps
+                      </a>
+                    </div>
+                  )}
+                  {location?.directions && (
+                    <div className="text-sm bg-gray-50 p-2.5 rounded-lg border border-gray-150 mt-2">
+                      <p className="font-semibold text-gray-800 mb-0.5">🚗 Chỉ đường:</p>
+                      <p className="text-gray-600">{location.directions}</p>
+                    </div>
+                  )}
+                  {location?.accessInstructions && (
+                    <div className="text-sm bg-gray-50 p-2.5 rounded-lg border border-gray-150 mt-2">
+                      <p className="font-semibold text-gray-800 mb-0.5">🔑 Hướng dẫn vào cổng:</p>
+                      <p className="text-gray-600">{location.accessInstructions}</p>
+                    </div>
+                  )}
+                  {location?.parkingInstructions && (
+                    <div className="text-sm bg-gray-50 p-2.5 rounded-lg border border-gray-150 mt-2">
+                      <p className="font-semibold text-gray-800 mb-0.5">🅿️ Hướng dẫn đỗ xe:</p>
+                      <p className="text-gray-600">{location.parkingInstructions}</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1366,55 +1423,7 @@ export default function ConfirmationPage() {
               </div>
             </div>
 
-            {/* Cancellation Policy */}
-            {booking?.property?.cancellationPolicy && (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3">
-                <p className="text-sm text-red-900">
-                  <strong>Chính sách hủy:</strong>{' '}
-                  {booking.property.cancellationPolicy.type === 'flexible' &&
-                    'Linh hoạt'}
-                  {booking.property.cancellationPolicy.type === 'moderate' &&
-                    'Trung bình'}
-                  {booking.property.cancellationPolicy.type === 'strict' &&
-                    'Nghiêm ngặt'}
-                </p>
 
-                {booking.property.cancellationPolicy.description && (
-                  <p className="mt-2 text-xs leading-relaxed text-red-800">
-                    {booking.property.cancellationPolicy.description}
-                  </p>
-                )}
-
-                {booking.property.cancellationPolicy.refundRules &&
-                  booking.property.cancellationPolicy.refundRules.length >
-                  0 && (
-                    <div className="mt-3 space-y-1 text-sm text-red-800">
-                      {booking.property.cancellationPolicy.refundRules
-                        .sort(
-                          (a, b) => b.daysBeforeCheckIn - a.daysBeforeCheckIn,
-                        )
-                        .map((rule, idx) => (
-                          <div
-                            key={idx}
-                            className="flex items-start gap-2 text-sm text-red-800"
-                          >
-                            <span className="mt-0.5 text-red-600">•</span>
-                            <span className="flex-1">
-                              Hủy trước{' '}
-                              <strong>{rule.daysBeforeCheckIn} ngày</strong> so
-                              với check-in: Hoàn{' '}
-                              <strong>{rule.refundPercentage}%</strong> số tiền
-                              đã thanh toán
-                            </span>
-                            <span className="font-medium">
-                              Hoàn {rule.refundPercentage}%
-                            </span>
-                          </div>
-                        ))}
-                    </div>
-                  )}
-              </div>
-            )}
 
             {/* Refund Input Section */}
             <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
@@ -1574,14 +1583,15 @@ export default function ConfirmationPage() {
       {/* Review Dialog */}
       {booking.status === 'completed' &&
         !booking.reviewed &&
-        property?._id &&
-        site?._id && (
+        (property?._id || property?.id) &&
+        (site?._id || site?.id) && (
           <ReviewDialog
             open={isReviewDialogOpen}
             onOpenChange={setIsReviewDialogOpen}
             bookingId={booking.id || booking._id}
-            propertyId={property._id}
-            siteId={site._id}
+            bookingCode={booking.code}
+            propertyId={property._id || property.id}
+            siteId={site._id || site.id}
             propertyName={propertyName}
             siteName={siteName}
           />

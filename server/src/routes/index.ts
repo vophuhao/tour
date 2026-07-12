@@ -19,6 +19,5 @@ export { default as aiRoutes } from "./ai.route";
 export { default as settingRoutes } from "./setting.route";
 export { default as servicePackageRoutes } from "./service-package.route";
 export { default as promoCodeRoutes } from "./promo-code.route";
-export { default as comboRoutes } from "./combo.route";
 
 

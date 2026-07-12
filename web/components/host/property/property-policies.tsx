@@ -34,11 +34,6 @@ interface PropertyRule {
 
 interface PropertyPoliciesProps {
   data: {
-    cancellationPolicy?: {
-      type?: "flexible" | "moderate" | "strict" | "super_strict";
-      description?: string;
-      refundRules?: RefundRule[];
-    };
     depositRequired?: boolean;
     depositAmount?: number;
     depositType?: "fixed" | "percentage";

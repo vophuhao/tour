@@ -900,11 +900,11 @@ export function SitesListSection({
     const combinedCapacity = (selectedSite.capacity.maxGuests || 0) * (selectedSite.capacity.maxConcurrentBookings || 1);
     const isCapacityExceeded = booking.guests > combinedCapacity;
 
-    const maxAdults = selectedSite.capacity.maxAdults !== undefined ? selectedSite.capacity.maxAdults : (selectedSite.capacity.maxGuests || 0);
+    const maxAdults = (selectedSite.capacity.maxAdults !== undefined && selectedSite.capacity.maxAdults !== null && selectedSite.capacity.maxAdults > 0) ? selectedSite.capacity.maxAdults : (selectedSite.capacity.maxGuests || 0);
     const combinedAdultsCapacity = maxAdults * (selectedSite.capacity.maxConcurrentBookings || 1);
     const isAdultsExceeded = adults > combinedAdultsCapacity;
 
-    const maxChildren = selectedSite.capacity.maxChildren !== undefined ? selectedSite.capacity.maxChildren : (selectedSite.capacity.maxGuests || 0);
+    const maxChildren = (selectedSite.capacity.maxChildren !== undefined && selectedSite.capacity.maxChildren !== null && selectedSite.capacity.maxChildren > 0) ? selectedSite.capacity.maxChildren : (selectedSite.capacity.maxGuests || 0);
     const combinedChildrenCapacity = maxChildren * (selectedSite.capacity.maxConcurrentBookings || 1);
     const isChildrenExceeded = children > combinedChildrenCapacity;
 
@@ -925,13 +925,13 @@ export function SitesListSection({
       return 'Không đáp ứng đủ số người';
     }
 
-    const maxAdults = selectedSite.capacity.maxAdults !== undefined ? selectedSite.capacity.maxAdults : (selectedSite.capacity.maxGuests || 0);
+    const maxAdults = (selectedSite.capacity.maxAdults !== undefined && selectedSite.capacity.maxAdults !== null && selectedSite.capacity.maxAdults > 0) ? selectedSite.capacity.maxAdults : (selectedSite.capacity.maxGuests || 0);
     const combinedAdultsCapacity = maxAdults * (selectedSite.capacity.maxConcurrentBookings || 1);
     if (adults > combinedAdultsCapacity) {
       return 'Vượt quá số người lớn tối đa';
     }
 
-    const maxChildren = selectedSite.capacity.maxChildren !== undefined ? selectedSite.capacity.maxChildren : (selectedSite.capacity.maxGuests || 0);
+    const maxChildren = (selectedSite.capacity.maxChildren !== undefined && selectedSite.capacity.maxChildren !== null && selectedSite.capacity.maxChildren > 0) ? selectedSite.capacity.maxChildren : (selectedSite.capacity.maxGuests || 0);
     const combinedChildrenCapacity = maxChildren * (selectedSite.capacity.maxConcurrentBookings || 1);
     if (children > combinedChildrenCapacity) {
       return 'Vượt quá số trẻ em tối đa';
@@ -1696,10 +1696,10 @@ export function SitesListSection({
                           onMouseEnter={() => setHoveredSite(site)}
                           onMouseLeave={() => setHoveredSite(null)}
                         >
-                          <div className="flex gap-4">
+                          <div className="flex flex-col md:flex-row gap-4">
                             {/* Site Image */}
                             {site.photos && site.photos.length > 0 && (
-                              <div className="relative flex h-62 shrink-0 basis-[45%] overflow-hidden rounded-lg bg-gray-100">
+                              <div className="relative flex h-48 sm:h-56 md:h-62 w-full md:w-auto shrink-0 md:basis-[45%] overflow-hidden rounded-lg bg-gray-100">
                                 <SiteImageSlider photos={site.photos} name={site.name} />
                                 {isSoldOut && (
                                   <div className="absolute inset-0 flex items-center justify-center bg-black/50 pointer-events-none z-10">
@@ -1716,8 +1716,7 @@ export function SitesListSection({
 
                             {/* Site Info - Max height matches image */}
                             <div
-                              className="flex flex-1 flex-col justify-between overflow-hidden py-3 pr-4"
-                              style={{ maxHeight: '248px' }}
+                              className="flex flex-1 flex-col justify-between py-3 px-4 md:px-0 md:pr-4 md:max-h-[248px] md:overflow-hidden pb-4 md:pb-3"
                             >
                               <div>
                                 {/* Title & Rating */}
@@ -1989,11 +1988,11 @@ export function SitesListSection({
                         const hasSelectedDates = !!(dateRange?.from && dateRange?.to);
                         const isBlocked = siteBlockedMap.get(site._id);
                         const combinedCapacity = (site.capacity.maxGuests || 0) * (site.capacity.maxConcurrentBookings || 1);
-                        const maxAdults = site.capacity.maxAdults !== undefined ? site.capacity.maxAdults : (site.capacity.maxGuests || 0);
+                        const maxAdults = (site.capacity.maxAdults !== undefined && site.capacity.maxAdults !== null && site.capacity.maxAdults > 0) ? site.capacity.maxAdults : (site.capacity.maxGuests || 0);
                         const combinedAdultsCapacity = maxAdults * (site.capacity.maxConcurrentBookings || 1);
                         const isAdultsExceeded = adults > combinedAdultsCapacity;
 
-                        const maxChildren = site.capacity.maxChildren !== undefined ? site.capacity.maxChildren : (site.capacity.maxGuests || 0);
+                        const maxChildren = (site.capacity.maxChildren !== undefined && site.capacity.maxChildren !== null && site.capacity.maxChildren > 0) ? site.capacity.maxChildren : (site.capacity.maxGuests || 0);
                         const combinedChildrenCapacity = maxChildren * (site.capacity.maxConcurrentBookings || 1);
                         const isChildrenExceeded = children > combinedChildrenCapacity;
 

@@ -636,9 +636,6 @@ function BookingCard({ booking, formatPrice, formatDate, onAction, onDetail }: a
               <span className={cn('h-1.5 w-1.5 rounded-full', status.dot)} />
               {status.label}
             </span>
-            <span className={cn('inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold', payment.color)}>
-              {payment.label}
-            </span>
           </div>
           {guestConfirmed && (
             <div className="absolute top-3 right-3">

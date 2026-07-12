@@ -112,7 +112,7 @@ function PropertyCard({ property }: { property: Property }) {
 
           {/* Favorite button */}
           <button
-            className="absolute top-4 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 backdrop-blur-sm transition-all hover:scale-110 hover:bg-white"
+            className="absolute top-4 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 backdrop-blur-sm transition-all hover:scale-110 hover:bg-white cursor-pointer"
             onClick={e => {
               e.preventDefault();
               // TODO: Implement favorite functionality

@@ -160,19 +160,7 @@ export function PropertyOverview({ property }: PropertyOverviewProps) {
 
         <TabsContent value="policies" className="mt-4 space-y-4">
           <div className="space-y-4">
-            {/* Cancellation Policy */}
-            {/* <div className="rounded-lg border p-4">
-              <p className="mb-2 font-medium">Chính sách hủy:</p>
-              <p className="text-muted-foreground text-sm">
-                {property.cancellationPolicy?.type === 'flexible' &&
-                  'Linh hoạt - Hoàn tiền đầy đủ nếu hủy trước 24h'}
-                {property.cancellationPolicy?.type === 'moderate' &&
-                  'Trung bình - Hoàn tiền 50% nếu hủy trước 5 ngày'}
-                {property.cancellationPolicy?.type === 'strict' &&
-                  'Nghiêm ngặt - Không hoàn tiền sau khi đặt'}
-                {!property.cancellationPolicy && 'Chưa có chính sách hủy'}
-              </p>
-            </div> */}
+
 
             {/* Pet & Children Policy */}
             <div className="grid gap-4 md:grid-cols-2">
