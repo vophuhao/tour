@@ -535,6 +535,7 @@ export class BookingService {
     );
 
     booking.status = "refunded";
+    booking.paymentStatus = "refunded";
     booking.refundAmount = refundAmount || booking.pricing.total;
     if (booking.refundRequest) {
       booking.refundRequest.status = "approved";
@@ -546,6 +547,18 @@ export class BookingService {
     await this.unblockDatesForBooking(booking.site.toString(), booking.checkIn, booking.checkOut);
 
     notifyPropertyChange(booking.property.toString());
+
+    // Send email to guest
+    try {
+      const { sendBookingRefundedEmail } = await import("../utils/send-booking-email");
+      await booking.populate([
+        { path: "property", select: "name" },
+        { path: "guest", select: "username email fullName name" }
+      ]);
+      await sendBookingRefundedEmail(booking);
+    } catch (emailErr) {
+      console.error("Lỗi gửi mail hoàn tiền (refundBooking):", emailErr);
+    }
 
     return booking;
   }
@@ -755,6 +768,25 @@ export class BookingService {
 
     await booking.save();
     notifyPropertyChange(booking.property.toString());
+
+    // Notify admin
+    try {
+      const UserModel = (await import("@/models/user.model")).default;
+      const guest = await UserModel.findById(guestId);
+      const guestName = guest?.username || "Khách hàng";
+
+      const NotificationServiceClass = (await import("@/services/notification.service")).default;
+      const notificationService = new NotificationServiceClass();
+      await notificationService.createBookingCancelRequestNotificationForAdmins(
+        guestId,
+        guestName,
+        booking._id.toString(),
+        booking.code!
+      );
+    } catch (err) {
+      console.error("Lỗi gửi thông báo hủy booking cho admin:", err);
+    }
+
     return booking;
   }
 
@@ -815,6 +847,7 @@ export class BookingService {
       if (adminNote) booking.cannotAttendRequest!.adminNote = adminNote;
       booking.refundAmount = refundAmount;
       booking.status = "refunded";
+      booking.paymentStatus = "refunded";
 
       try {
         const property = await PropertyModel.findById(booking.property);
@@ -851,6 +884,21 @@ export class BookingService {
 
     await booking.save();
     notifyPropertyChange(booking.property.toString());
+
+    // Send email to guest if approved
+    if (approved) {
+      try {
+        const { sendBookingRefundedEmail } = await import("../utils/send-booking-email");
+        await booking.populate([
+          { path: "property", select: "name" },
+          { path: "guest", select: "username email fullName name" }
+        ]);
+        await sendBookingRefundedEmail(booking);
+      } catch (emailErr) {
+        console.error("Lỗi gửi mail hoàn tiền (adminProcessCannotAttend):", emailErr);
+      }
+    }
+
     return booking;
   }
 
@@ -892,6 +940,24 @@ export class BookingService {
 
     notifyPropertyChange(booking.property.toString());
 
+    // Notify admin
+    try {
+      const UserModel = (await import("@/models/user.model")).default;
+      const guest = await UserModel.findById(userId);
+      const guestName = guest?.username || "Khách hàng";
+
+      const NotificationServiceClass = (await import("@/services/notification.service")).default;
+      const notificationService = new NotificationServiceClass();
+      await notificationService.createBookingRefundRequestNotificationForAdmins(
+        userId,
+        guestName,
+        booking._id.toString(),
+        booking.code!
+      );
+    } catch (err) {
+      console.error("Lỗi gửi thông báo hoàn tiền cho admin:", err);
+    }
+
     return booking;
   }
 
@@ -917,6 +983,7 @@ export class BookingService {
 
     if (approved) {
       booking.status = "refunded";
+      booking.paymentStatus = "refunded";
       const maxRefundable = booking.paymentMethod === "deposit" ? Math.round(booking.pricing.total * 0.5) : booking.pricing.total;
       booking.refundAmount = refundAmount !== undefined ? refundAmount : maxRefundable;
       booking.refundRequest!.status = "approved";
@@ -932,6 +999,21 @@ export class BookingService {
 
     await booking.save();
     notifyPropertyChange(booking.property.toString());
+
+    // Send email to guest if approved
+    if (approved) {
+      try {
+        const { sendBookingRefundedEmail } = await import("../utils/send-booking-email");
+        await booking.populate([
+          { path: "property", select: "name" },
+          { path: "guest", select: "username email fullName name" }
+        ]);
+        await sendBookingRefundedEmail(booking);
+      } catch (emailErr) {
+        console.error("Lỗi gửi mail hoàn tiền (adminProcessRefund):", emailErr);
+      }
+    }
+
     return booking;
   }
 

@@ -5,7 +5,7 @@ import { login } from '@/lib/client-actions';
 import { useAuthStore } from '@/store/auth.store';
 import { authFormSchema } from '@/schemas/auth.schema';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Compass } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
@@ -223,6 +223,17 @@ const AuthForm = ({ type }: { type: FormType }) => {
               onAuthSuccess={user => setAuthState(user)}
               redirectUrl={redirectUrl || undefined}
             />
+
+            {/* Back to Guest Page Button */}
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 w-full cursor-pointer flex items-center justify-center gap-2 border-primary/20 hover:bg-primary/5 hover:text-primary transition-all duration-200"
+              onClick={() => router.push('/')}
+            >
+              <Compass className="h-4 w-4" />
+              Vào trang khách
+            </Button>
           </form>
         </Form>
 

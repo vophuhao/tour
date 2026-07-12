@@ -350,7 +350,7 @@ export default function AdminSettingsPage() {
                         <ul className="list-disc list-inside mt-1 space-y-1">
                           <li>Tổng tiền dịch vụ của campsite: 1,000,000đ</li>
                           <li>Phí nền tảng ({platformFee}%): {Math.round(1000000 * platformFee / 100).toLocaleString('vi-VN')}đ</li>
-                          <li>Tổng tiền khách thanh toán: {Math.round(1000000 * (1 + platformFee / 100)).toLocaleString('vi-VN')}đ</li>
+                          <li>Tổng tiền chủ đất nhận được: {Math.round(1000000 * (1 - platformFee / 100)).toLocaleString('vi-VN')}đ</li>
                         </ul>
                       </div>
                     </div>

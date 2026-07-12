@@ -796,6 +796,70 @@ export default class NotificationService {
     await NotificationModel.insertMany(notifications);
   }
 
+  // Thông báo khách yêu cầu hủy đặt chỗ cho các Admin
+  async createBookingCancelRequestNotificationForAdmins(
+    guestUserId: string,
+    guestName: string,
+    bookingId: string,
+    bookingCode: string
+  ) {
+    const admins = await UserModel.find({ role: "admin" }).select("_id");
+    if (admins.length === 0) return;
+
+    const notifications = admins.map((admin) => ({
+      recipient: admin._id,
+      sender: new mongoose.Types.ObjectId(guestUserId),
+      type: "system",
+      title: "Yêu cầu hủy đặt chỗ mới",
+      message: `Khách hàng ${guestName} yêu cầu hủy booking #${bookingCode}`,
+      link: `/admin/bookings`,
+      actionType: "view_booking",
+      role: "admin",
+      priority: "high",
+      booking: bookingId,
+      metadata: {
+        guestUserId,
+        guestName,
+        bookingId,
+        bookingCode,
+      },
+    }));
+
+    await NotificationModel.insertMany(notifications);
+  }
+
+  // Thông báo khách yêu cầu hoàn tiền cho các Admin
+  async createBookingRefundRequestNotificationForAdmins(
+    guestUserId: string,
+    guestName: string,
+    bookingId: string,
+    bookingCode: string
+  ) {
+    const admins = await UserModel.find({ role: "admin" }).select("_id");
+    if (admins.length === 0) return;
+
+    const notifications = admins.map((admin) => ({
+      recipient: admin._id,
+      sender: new mongoose.Types.ObjectId(guestUserId),
+      type: "system",
+      title: "Yêu cầu hoàn tiền mới",
+      message: `Khách hàng ${guestName} yêu cầu hoàn tiền cho booking #${bookingCode}`,
+      link: `/admin/bookings`,
+      actionType: "view_booking",
+      role: "admin",
+      priority: "high",
+      booking: bookingId,
+      metadata: {
+        guestUserId,
+        guestName,
+        bookingId,
+        bookingCode,
+      },
+    }));
+
+    await NotificationModel.insertMany(notifications);
+  }
+
   // ==================== ADMIN SEND TO HOST HELPERS ====================
 
   // Lấy danh sách tất cả host
