@@ -57,6 +57,8 @@ export default function BookingsPage() {
   const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'gantt'>('gantt');
   const [selectedBooking, setSelectedBooking] = useState<any | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const router = useRouter();
 
   useEffect(() => {
@@ -171,6 +173,7 @@ export default function BookingsPage() {
       }
     });
     setFilteredBookings(filtered);
+    setCurrentPage(1);
   }, [bookings, activeTab, sortBy, searchTerm, selectedPropertyId, selectedSiteId]);
 
   function handleAction(type: 'confirm' | 'cancel' | 'complete' | 'attendance', booking: any) {
@@ -498,20 +501,87 @@ export default function BookingsPage() {
               <p className="text-sm text-muted-foreground">{searchTerm ? 'Không tìm thấy kết quả' : 'Các booking sẽ xuất hiện ở đây'}</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              <p className="text-xs text-muted-foreground">
-                Hiển thị <span className="font-semibold text-foreground">{filteredBookings.length}</span> booking
-              </p>
-              {filteredBookings.map(booking => (
-                <BookingCard
-                  key={booking.id || booking._id}
-                  booking={booking}
-                  formatPrice={formatPrice}
-                  formatDate={formatDate}
-                  onAction={handleAction}
-                  onDetail={() => router.push(`/host/bookings/detail/${booking.code}`)}
-                />
-              ))}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                  Hiển thị <span className="font-semibold text-foreground">
+                    {Math.min((currentPage - 1) * itemsPerPage + 1, filteredBookings.length)}-{Math.min(currentPage * itemsPerPage, filteredBookings.length)}
+                  </span> trong số <span className="font-semibold text-foreground">{filteredBookings.length}</span> booking
+                </p>
+              </div>
+              <div className="space-y-3">
+                {filteredBookings
+                  .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                  .map(booking => (
+                    <BookingCard
+                      key={booking.id || booking._id}
+                      booking={booking}
+                      formatPrice={formatPrice}
+                      formatDate={formatDate}
+                      onAction={handleAction}
+                      onDetail={() => router.push(`/host/bookings/detail/${booking.code}`)}
+                    />
+                  ))}
+              </div>
+
+              {/* Pagination Controls */}
+              {Math.ceil(filteredBookings.length / itemsPerPage) > 1 && (
+                <div className="flex items-center justify-center gap-1.5 py-4 border-t border-border mt-6">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="h-8 text-xs border-border"
+                  >
+                    Trước
+                  </Button>
+                  
+                  {Array.from({ length: Math.ceil(filteredBookings.length / itemsPerPage) }, (_, i) => i + 1).map(page => {
+                    const totalPages = Math.ceil(filteredBookings.length / itemsPerPage);
+                    // Show a maximum of 5 page buttons around the current page
+                    if (
+                      totalPages > 6 &&
+                      Math.abs(page - currentPage) > 2 &&
+                      page !== 1 &&
+                      page !== totalPages
+                    ) {
+                      if (page === 2 && currentPage > 4) {
+                        return <span key="dots-start" className="px-2 text-xs text-muted-foreground">...</span>;
+                      }
+                      if (page === totalPages - 1 && currentPage < totalPages - 3) {
+                        return <span key="dots-end" className="px-2 text-xs text-muted-foreground">...</span>;
+                      }
+                      return null;
+                    }
+
+                    return (
+                      <Button
+                        key={page}
+                        variant={currentPage === page ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setCurrentPage(page)}
+                        className={cn(
+                          "h-8 w-8 text-xs p-0 border-border",
+                          currentPage === page ? "bg-primary text-primary-foreground font-semibold" : ""
+                        )}
+                      >
+                        {page}
+                      </Button>
+                    );
+                  })}
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(filteredBookings.length / itemsPerPage)))}
+                    disabled={currentPage === Math.ceil(filteredBookings.length / itemsPerPage)}
+                    className="h-8 text-xs border-border"
+                  >
+                    Sau
+                  </Button>
+                </div>
+              )}
             </div>
           )
         )}

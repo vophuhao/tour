@@ -640,21 +640,22 @@ export function SitesListSection({
 
 
 
-  // Convert property-level blocks to disabled dates
   const propertyDisabledDates = useMemo(() => {
     const dates: Date[] = [];
-    propertyBlockedDates.forEach(
-      (block: { startDate: string; endDate: string }) => {
-        const start = parseISO(block.startDate);
-        const end = parseISO(block.endDate);
-        const current = new Date(start);
+    propertyBlockedDates
+      .filter((block: any) => !block.isSiteBlock)
+      .forEach(
+        (block: { startDate: string; endDate: string }) => {
+          const start = parseISO(block.startDate);
+          const end = parseISO(block.endDate);
+          const current = new Date(start);
 
-        while (current <= end) {
-          dates.push(new Date(current));
-          current.setDate(current.getDate() + 1);
-        }
-      },
-    );
+          while (current <= end) {
+            dates.push(new Date(current));
+            current.setDate(current.getDate() + 1);
+          }
+        },
+      );
     return dates;
   }, [propertyBlockedDates]);
 

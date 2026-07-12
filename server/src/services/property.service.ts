@@ -6,6 +6,7 @@ import {
   ReviewModel,
   SiteModel,
   UserModel,
+  AvailabilityModel,
   type PropertyAvailabilityDocument,
   type PropertyDocument,
 } from "@/models";
@@ -1271,13 +1272,93 @@ export class PropertyService {
    * Get all blocked dates for a property
    */
   async getPropertyBlockedDates(propertyId: string) {
-    return PropertyAvailabilityModel.find({
+    const propertyBlocks = await PropertyAvailabilityModel.find({
       property: propertyId,
       endDate: { $gte: new Date() }, // Only future/active blocks
     })
       .populate("property", "name")
       .sort({ startDate: 1 })
       .lean();
+
+    // Get all sites for this property
+    const sites = await SiteModel.find({ property: propertyId }).select("_id name");
+    const siteIds = sites.map(s => s._id);
+
+    // Get all manual/maintenance site blocks (not "booked" blocks)
+    const siteBlocks = await AvailabilityModel.find({
+      site: { $in: siteIds },
+      date: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) }, // Only future/active blocks
+      isAvailable: false,
+      blockType: { $ne: "booked" }
+    })
+      .sort({ site: 1, date: 1 })
+      .lean();
+
+    // Group consecutive daily blocks for each site into date ranges
+    const siteRanges: any[] = [];
+    const blocksBySite: Record<string, typeof siteBlocks> = {};
+
+    siteBlocks.forEach((block) => {
+      const siteIdStr = block.site.toString();
+      if (!blocksBySite[siteIdStr]) {
+        blocksBySite[siteIdStr] = [];
+      }
+      blocksBySite[siteIdStr].push(block);
+    });
+
+    for (const siteIdStr of Object.keys(blocksBySite)) {
+      const siteName = sites.find(s => s._id.toString() === siteIdStr)?.name || "Site";
+      const blocks = blocksBySite[siteIdStr];
+      if (!blocks || blocks.length === 0) continue;
+
+      let currentRange: any = null;
+
+      blocks.forEach((block) => {
+        const currentDate = new Date(block.date);
+        currentDate.setHours(0, 0, 0, 0);
+
+        if (!currentRange) {
+          currentRange = {
+            _id: `site-block-${siteIdStr}-${block.date.toISOString()}`,
+            isSiteBlock: true,
+            siteId: siteIdStr,
+            siteName,
+            startDate: block.date,
+            endDate: block.date,
+            reason: block.reason || "Bảo trì / Khóa lịch site",
+            dates: [block.date.toISOString().split('T')[0]]
+          };
+        } else {
+          // Check if block is the consecutive day
+          const prevEnd = new Date(currentRange.endDate);
+          prevEnd.setDate(prevEnd.getDate() + 1);
+          prevEnd.setHours(0, 0, 0, 0);
+
+          if (currentDate.getTime() === prevEnd.getTime()) {
+            currentRange.endDate = block.date;
+            currentRange.dates.push(block.date.toISOString().split('T')[0]);
+          } else {
+            siteRanges.push(currentRange);
+            currentRange = {
+              _id: `site-block-${siteIdStr}-${block.date.toISOString()}`,
+              isSiteBlock: true,
+              siteId: siteIdStr,
+              siteName,
+              startDate: block.date,
+              endDate: block.date,
+              reason: block.reason || "Bảo trì / Khóa lịch site",
+              dates: [block.date.toISOString().split('T')[0]]
+            };
+          }
+        }
+      });
+
+      if (currentRange) {
+        siteRanges.push(currentRange);
+      }
+    }
+
+    return [...propertyBlocks, ...siteRanges];
   }
 
   /**

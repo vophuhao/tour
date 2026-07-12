@@ -174,6 +174,11 @@ const ForumPostDetail: React.FC = () => {
         setCommentCount(postData.post.commentCount);
         setViewCount(postData.post.viewCount);
 
+        // Load related posts
+        if (postData.post) {
+          loadRelatedPosts(postData.post);
+        }
+
         // Kiểm tra follow status và lấy thông tin follow
         //  if (postData.userId) {
         //    try {

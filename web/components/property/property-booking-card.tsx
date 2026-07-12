@@ -164,20 +164,21 @@ export function PropertyBookingCard({
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Expand property-level date ranges into individual Date objects
   const propertyDisabledDates = useMemo(() => {
     const disabled: Date[] = [];
-    propertyBlockedDates.forEach(
-      (block: { startDate: string; endDate: string }) => {
-        const start = parseISO(block.startDate);
-        const end = parseISO(block.endDate);
-        let current = start;
-        while (current <= end) {
-          disabled.push(new Date(current));
-          current = addDays(current, 1);
-        }
-      },
-    );
+    propertyBlockedDates
+      .filter((block: any) => !block.isSiteBlock)
+      .forEach(
+        (block: { startDate: string; endDate: string }) => {
+          const start = parseISO(block.startDate);
+          const end = parseISO(block.endDate);
+          let current = start;
+          while (current <= end) {
+            disabled.push(new Date(current));
+            current = addDays(current, 1);
+          }
+        },
+      );
     return disabled;
   }, [propertyBlockedDates]);
 

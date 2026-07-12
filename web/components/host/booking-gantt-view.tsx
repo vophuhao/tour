@@ -21,6 +21,7 @@ import {
   unblockPropertyDates,
   getSitesByProperty,
   blockSiteDates,
+  unblockSiteDates,
 } from '@/lib/property-site-api';
 import { cn } from '@/lib/utils';
 import type { Booking, PropertyBlockedDates } from '@/types/property-site';
@@ -188,7 +189,13 @@ export function BookingGanttView({
 
   // Unblock dates mutation
   const unblockMutation = useMutation({
-    mutationFn: (blockId: string) => unblockPropertyDates(blockId),
+    mutationFn: async (data: { blockId?: string; isSiteBlock?: boolean; siteId?: string; dates?: string[] }) => {
+      if (data.isSiteBlock && data.siteId && data.dates) {
+        return unblockSiteDates(data.siteId, data.dates);
+      } else if (data.blockId) {
+        return unblockPropertyDates(data.blockId);
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ['all-properties-blocked-dates'],
@@ -321,7 +328,9 @@ export function BookingGanttView({
     const blockGroups = new Map<string, typeof allBlockedDates>();
 
     allBlockedDates.forEach(block => {
-      const key = `${block.startDate}-${block.endDate}-${block.reason || ''}`;
+      const key = block.isSiteBlock
+        ? `site-${block.siteId}-${block.startDate}-${block.endDate}-${block.reason || ''}`
+        : `${block.startDate}-${block.endDate}-${block.reason || ''}`;
       if (!blockGroups.has(key)) {
         blockGroups.set(key, []);
       }
@@ -629,13 +638,17 @@ export function BookingGanttView({
 
                       const displayText = bar.isAllProperties
                         ? 'Tất cả'
-                        : typeof bar.blocks[0].property === 'object'
-                          ? bar.blocks[0].property.name
-                          : 'Unknown Property';
+                        : bar.blocks[0].isSiteBlock
+                          ? `${bar.blocks[0].siteName} (Khóa site)`
+                          : typeof bar.blocks[0].property === 'object'
+                            ? bar.blocks[0].property.name
+                            : 'Unknown Property';
 
                       const tooltipText = bar.isAllProperties
                         ? `Tất cả property - ${bar.blocks[0].reason || 'Blocked'}`
-                        : `${displayText} - ${bar.blocks[0].reason || 'Blocked'}`;
+                        : bar.blocks[0].isSiteBlock
+                          ? `Site: ${bar.blocks[0].siteName} - ${bar.blocks[0].reason || 'Blocked'}`
+                          : `${displayText} - ${bar.blocks[0].reason || 'Blocked'}`;
 
                       return (
                         <div
@@ -662,11 +675,18 @@ export function BookingGanttView({
                                 if (bar.isAllProperties) {
                                   await Promise.all(
                                     bar.blocks.map(block =>
-                                      unblockMutation.mutateAsync(block._id),
+                                      unblockMutation.mutateAsync({ blockId: block._id }),
                                     ),
                                   );
+                                } else if (bar.blocks[0].isSiteBlock) {
+                                  const block = bar.blocks[0];
+                                  unblockMutation.mutate({
+                                    isSiteBlock: true,
+                                    siteId: block.siteId,
+                                    dates: block.dates,
+                                  });
                                 } else {
-                                  unblockMutation.mutate(bar.blocks[0]._id);
+                                  unblockMutation.mutate({ blockId: bar.blocks[0]._id });
                                 }
                               }}
                               className="ml-2 rounded p-0.5 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-gray-600"
