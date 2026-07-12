@@ -8,10 +8,6 @@ export interface AvailabilityDocument extends mongoose.Document {
   date: Date; // ngày cụ thể
   isAvailable: boolean; // có sẵn hay không
 
-  // Pricing override
-  price?: number; // giá custom cho ngày này (nếu khác basePrice)
-  minNights?: number; // số đêm tối thiểu cho ngày này
-
   // Block types
   blockType?: "booked" | "blocked" | "maintenance" | "seasonal"; // loại block
   reason?: string; // lý do block
@@ -43,9 +39,6 @@ const availabilitySchema = new mongoose.Schema<AvailabilityDocument>(
 
     date: { type: Date, required: true },
     isAvailable: { type: Boolean, default: true },
-
-    price: { type: Number, min: 0 },
-    minNights: { type: Number, min: 1 },
 
     blockType: {
       type: String,

@@ -1256,7 +1256,7 @@ export default function AdminHostsPage() {
                           <span className="font-semibold">{fmt(selectedSiteDetail.pricing.cleaningFee)}₫</span>
                         </div>
                       )}
-                      )}
+
                     </div>
                   </div>
 
