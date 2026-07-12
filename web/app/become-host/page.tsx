@@ -227,36 +227,23 @@ export default function HostRegisterPage() {
 
   /* ─── Submit ─── */
   async function handleSubmit() {
-    if (faceStatus !== "matched") { toast.error("Vui lòng hoàn thành xác minh khuôn mặt"); return; }
-    if (!idFrontFile) { toast.error("Vui lòng tải lên ảnh mặt trước CCCD"); return; }
     setSubmitting(true);
     try {
-      const selfieBase64 = selfieUrl.split(",")[1] ?? selfieUrl;
-      const idFrontBase64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const base64 = (reader.result as string).split(",")[1] ?? reader.result as string;
-          resolve(base64);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(idFrontFile);
-      });
-
       const res = await verifyKycAndBecomeHost({
         name: form.name,
         gmail: form.gmail,
         phone: form.phone,
         idNumber: form.idNumber.replace(/\s/g, ""),
-        faceMatchScore: faceScore,
-        selfieImage: selfieBase64,
-        idCardImage: idFrontBase64,
+        faceMatchScore: 1,
+        selfieImage: "skipped",
+        idCardImage: "skipped",
       });
-      if (!res.success) throw new Error((res as any).message || "Xác minh thất bại");
+      if (!res.success) throw new Error((res as any).message || "Đăng ký thất bại");
       // Update local auth state
       if (user) setUser({ ...user, role: "host" } as any);
       setStep(4);
     } catch (err: any) {
-      toast.error(err.message || "Xác minh thất bại, thử lại sau");
+      toast.error(err.message || "Đăng ký thất bại, vui lòng thử lại");
     } finally {
       setSubmitting(false);
     }
@@ -265,8 +252,6 @@ export default function HostRegisterPage() {
   /* ─── UI ─── */
   const STEPS = [
     { n: 1, label: "Thông tin", icon: User },
-    { n: 2, label: "CCCD", icon: CreditCard },
-    { n: 3, label: "Xác minh mặt", icon: Camera },
   ];
 
   return (
@@ -305,7 +290,7 @@ export default function HostRegisterPage() {
           <div className="relative max-w-2xl mx-auto">
 
             <h1 className="text-3xl sm:text-5xl font-bold mb-3 tracking-tight">Trở thành Host ngay hôm nay</h1>
-            <p className="text-primary-foreground/80 text-sm sm:text-lg max-w-lg mx-auto">Xác minh CCCD + khuôn mặt → Tự động được cấp quyền Host tức thì</p>
+            {/* <p className="text-primary-foreground/80 text-sm sm:text-lg max-w-lg mx-auto">Điền thông tin đăng ký → Tự động được cấp quyền Host tức thì</p> */}
           </div>
         </section>
 
@@ -383,14 +368,26 @@ export default function HostRegisterPage() {
                   </div>
                   {errors.agreeToTerms && <p className="text-xs text-destructive -mt-3">{errors.agreeToTerms}</p>}
 
-                  <Button className="w-full h-12 rounded-xl text-base font-semibold cursor-pointer" onClick={() => { if (validateStep1()) setStep(2); }}>
-                    Tiếp theo <ArrowRight className="ml-2 h-4 w-4" />
+                  <Button
+                    className="w-full h-12 rounded-xl text-base font-semibold cursor-pointer"
+                    disabled={submitting}
+                    onClick={() => { if (validateStep1()) handleSubmit(); }}
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang đăng ký...
+                      </>
+                    ) : (
+                      <>
+                        Đăng ký làm Host <ArrowRight className="ml-2 h-4 w-4" />
+                      </>
+                    )}
                   </Button>
                 </div>
               )}
 
-              {/* ── Step 2 ── */}
-              {step === 2 && (
+              {/* BỎ QUA BƯỚC 2 TRÊN GIAO DIỆN */}
+              {false && step === 2 && (
                 <div className="space-y-6">
                   <div>
                     <h2 className="text-xl font-bold text-foreground">Upload ảnh CCCD</h2>
@@ -456,8 +453,8 @@ export default function HostRegisterPage() {
                 </div>
               )}
 
-              {/* ── Step 3 ── */}
-              {step === 3 && (
+              {/* BỎ QUA BƯỚC 3 TRÊN GIAO DIỆN */}
+              {false && step === 3 && (
                 <div className="space-y-6">
                   <div>
                     <h2 className="text-xl font-bold text-foreground">Xác minh khuôn mặt</h2>

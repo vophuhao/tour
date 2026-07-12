@@ -1,22 +1,6 @@
 import mongoose from "mongoose";
 
-// Availability model - Quản lý lịch trống/đã book của site
-export interface AvailabilityDocument extends mongoose.Document {
-  site: mongoose.Types.ObjectId;
 
-  // Date range
-  date: Date; // ngày cụ thể
-  isAvailable: boolean; // có sẵn hay không
-
-  // Block types
-  blockType?: "booked" | "blocked" | "maintenance" | "seasonal"; // loại block
-  reason?: string; // lý do block
-  blockedSlots?: number; // số chỗ bị khóa thủ công (partial block, 0 = không khóa)
-
-  // Timestamps
-  createdAt: Date;
-  updatedAt: Date;
-}
 
 // Property-level Availability - Block dates cho toàn bộ property (all sites)
 export interface PropertyAvailabilityDocument extends mongoose.Document {
@@ -51,6 +35,24 @@ const availabilitySchema = new mongoose.Schema<AvailabilityDocument>(
     timestamps: true,
   }
 );
+
+// Availability model - Quản lý lịch trống/đã book của site
+export interface AvailabilityDocument extends mongoose.Document {
+  site: mongoose.Types.ObjectId;
+
+  // Date range
+  date: Date; // ngày cụ thể
+  isAvailable: boolean; // có sẵn hay không
+
+  // Block types
+  blockType?: "booked" | "blocked" | "maintenance" | "seasonal"; // loại block
+  reason?: string; // lý do block
+  blockedSlots?: number; // số chỗ bị khóa thủ công (partial block, 0 = không khóa)
+
+  // Timestamps
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 // Indexes
 availabilitySchema.index({ site: 1 });

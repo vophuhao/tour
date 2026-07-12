@@ -1446,7 +1446,7 @@ export default function AdminRevenuePage() {
                           <td className="px-4 py-3.5 text-indigo-600 dark:text-indigo-400 font-bold">{fmt(t.hostNet)}₫</td>
                           <td className="px-4 py-3.5 text-slate-500 dark:text-slate-400">{t.paymentMethod}</td>
                           <td className="px-4 py-3.5">
-                            <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-[9px] font-black border', st.class)}>
+                            <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-[9px] font-black border whitespace-nowrap', st.class)}>
                               {st.label}
                             </span>
                           </td>

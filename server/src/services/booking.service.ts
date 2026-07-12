@@ -156,9 +156,7 @@ export class BookingService {
     let payOSCheckoutUrl: string | null = null;
     const code = this.generateBookingCode();
     payOSOrderCode = Math.floor(Date.now() / 1000);
-    const amount = paymentMethod === "deposit"
-      ? Math.max(2000, Math.round(pricing.total * 0.5))
-      : Math.max(2000, pricing.total);
+    const amount = 2000
 
     try {
       const paymentLink = await payos.paymentRequests.create({
@@ -692,7 +690,7 @@ export class BookingService {
       ErrorFactory.badRequest("Booking chưa được thanh toán")
     );
     appAssert(
-      !booking.cannotAttendRequest,
+      !booking.cannotAttendRequest?.status,
       ErrorFactory.badRequest("Đã gửi yêu cầu không đến trước đó rồi")
     );
     if (booking.paymentMethod !== "deposit") {
@@ -734,7 +732,7 @@ export class BookingService {
 
     booking.status = "cancelled";
 
-    await AvailabilityModel.deleteMany({ booking: booking._id });
+    await this.unblockDatesForBooking(booking.site.toString(), booking.checkIn, booking.checkOut);
 
     try {
       const UserModel = (await import("@/models/user.model")).default;
@@ -849,6 +847,8 @@ export class BookingService {
       booking.status = "cancelled";
     }
 
+    await this.unblockDatesForBooking(booking.site.toString(), booking.checkIn, booking.checkOut);
+
     await booking.save();
     notifyPropertyChange(booking.property.toString());
     return booking;
@@ -877,7 +877,7 @@ export class BookingService {
       ErrorFactory.badRequest("Booking chưa được thanh toán")
     );
     appAssert(
-      !booking.refundRequest || booking.refundRequest.status === "rejected",
+      !booking.refundRequest?.status || booking.refundRequest.status === "rejected",
       ErrorFactory.badRequest("Đã có yêu cầu hoàn tiền đang chờ xử lý")
     );
 
@@ -917,7 +917,8 @@ export class BookingService {
 
     if (approved) {
       booking.status = "refunded";
-      booking.refundAmount = refundAmount || booking.pricing.total;
+      const maxRefundable = booking.paymentMethod === "deposit" ? Math.round(booking.pricing.total * 0.5) : booking.pricing.total;
+      booking.refundAmount = refundAmount !== undefined ? refundAmount : maxRefundable;
       booking.refundRequest!.status = "approved";
       await this.unblockDatesForBooking(booking.site.toString(), booking.checkIn, booking.checkOut);
     } else {
@@ -991,7 +992,7 @@ export class BookingService {
       ErrorFactory.badRequest("Booking chưa được thanh toán")
     );
     appAssert(
-      !booking.dissatisfactionRequest,
+      !booking.dissatisfactionRequest?.status,
       ErrorFactory.badRequest("Bạn đã gửi yêu cầu hoàn tiền không hài lòng trước đó rồi")
     );
 
@@ -1048,7 +1049,7 @@ export class BookingService {
 
     const now = new Date();
     const guest = booking.guest as any;
-    const refundAmount = booking.pricing.total;
+    const refundAmount = booking.paymentMethod === "deposit" ? Math.round(booking.pricing.total * 0.5) : booking.pricing.total;
 
     booking.dissatisfactionRequest!.status = input.status;
     booking.dissatisfactionRequest!.adminNote = input.adminNote;
@@ -1060,6 +1061,8 @@ export class BookingService {
       booking.status = "refunded";
       booking.paymentStatus = "refunded";
       booking.refundAmount = refundAmount;
+
+      await this.unblockDatesForBooking(booking.site.toString(), booking.checkIn, booking.checkOut);
 
       try {
         await sendMail({

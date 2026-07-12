@@ -293,10 +293,10 @@ export default function BookingsPage() {
                                                 className="object-cover"
                                             />
                                             <div className="absolute top-3 left-3 flex flex-col gap-1.5">
-                                                <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_LABELS[booking.status]?.color || "bg-gray-100 text-gray-700"}`}>
+                                                <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${STATUS_LABELS[booking.status]?.color || "bg-gray-100 text-gray-700"}`}>
                                                     {STATUS_LABELS[booking.status]?.label || booking.status}
                                                 </span>
-                                                <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${PAYMENT_STATUS_LABELS[booking.paymentStatus]?.color || "bg-gray-100 text-gray-700"}`}>
+                                                <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${PAYMENT_STATUS_LABELS[booking.paymentStatus]?.color || "bg-gray-100 text-gray-700"}`}>
                                                     {PAYMENT_STATUS_LABELS[booking.paymentStatus]?.label || booking.paymentStatus}
                                                 </span>
                                             </div>

@@ -175,6 +175,16 @@ interface BookingData {
     requestedAt: string;
     status: 'pending' | 'approved' | 'rejected';
     refundAmount?: number;
+    reason?: string;
+    phone?: string;
+    email?: string;
+    bankAccountName?: string;
+    bankAccountNumber?: string;
+    bankName?: string;
+    evidenceImages?: string[];
+    adminNote?: string;
+    processedAt?: string;
+    processedBy?: string;
   };
   cancellationReason?: string;
   refundAmount?: number;
@@ -462,7 +472,7 @@ export default function ConfirmationPage() {
       refund_requested: 'Đang yêu cầu hoàn tiền',
     };
     return (
-      <Badge className={`${styles[status]} px-3 py-1`}>{labels[status]}</Badge>
+      <Badge className={`${styles[status]} px-3 py-1 whitespace-nowrap`}>{labels[status]}</Badge>
     );
   };
 
@@ -509,10 +519,10 @@ export default function ConfirmationPage() {
     booking.campsite?.checkOutTime ||
     '12:00';
 
-  // Check if cancellable (only pending/confirmed bookings can be cancelled)
   const isCancellable =
     ['pending', 'confirmed'].includes(booking.status) && new Date(booking.checkIn) > new Date() &&
-    booking.paymentStatus !== 'pending';
+    booking.paymentStatus !== 'pending' &&
+    booking.paymentMethod !== 'deposit';
 
   // Calculate payment amounts
   const totalAmount = booking.pricing?.total || 0;
@@ -702,6 +712,48 @@ export default function ConfirmationPage() {
                           </div> */}
                         </>
                       )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Dissatisfaction Pending Refund Alert Card */}
+            {booking.dissatisfactionRequest?.status === 'pending' && (
+              <Card className="mb-6 border-2 border-orange-300 bg-gradient-to-r from-orange-50 to-amber-50">
+                <CardContent className="pt-6">
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-orange-500">
+                        <Clock className="h-6 w-6 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-orange-950">
+                          Yêu cầu hoàn tiền đang chờ xét duyệt
+                        </h3>
+                        <p className="mt-1 text-sm text-orange-900">
+                          Bạn đã gửi yêu cầu hoàn tiền (không hài lòng về dịch vụ). Ban quản trị đang tiến hành xem xét và xử lý.
+                        </p>
+                      </div>
+                    </div>
+
+                    <Separator className="bg-orange-200" />
+
+                    <div className="space-y-2.5 text-xs text-orange-900">
+                      <div>
+                        <strong>Lý do gửi:</strong> <span className="italic">"{booking.dissatisfactionRequest.reason}"</span>
+                      </div>
+                      {booking.dissatisfactionRequest.requestedAt && (
+                        <div>
+                          <strong>Thời gian gửi:</strong> {new Date(booking.dissatisfactionRequest.requestedAt).toLocaleString('vi-VN')}
+                        </div>
+                      )}
+                      <div className="bg-white/60 p-3 rounded-xl border border-orange-200/60 mt-1 space-y-1">
+                        <div className="font-semibold text-orange-950 mb-1">Tài khoản nhận tiền hoàn (Nếu được phê duyệt)</div>
+                        <div><strong>Chủ tài khoản:</strong> {booking.dissatisfactionRequest.bankAccountName || '—'}</div>
+                        <div><strong>Ngân hàng:</strong> {booking.dissatisfactionRequest.bankName || '—'}</div>
+                        <div><strong>Số tài khoản:</strong> {booking.dissatisfactionRequest.bankAccountNumber || '—'}</div>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -910,12 +962,6 @@ export default function ConfirmationPage() {
                 )}
 
 
-              {/* Trạng thái đang chờ xét duyệt hoàn tiền */}
-              {booking.dissatisfactionRequest?.status === 'pending' && (
-                <div className="flex-1 rounded-lg border border-orange-200 bg-orange-50 p-3 text-center text-sm text-orange-800">
-                  ⏳ Yêu cầu hoàn tiền không hài lòng đang chờ xét duyệt
-                </div>
-              )}
 
               {/* Show Complete Trip button for confirmed bookings after checkout */}
               {booking.status === 'confirmed' && booking.paymentStatus === "paid" &&

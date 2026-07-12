@@ -244,7 +244,14 @@ export class BookingQueryService {
     if (cannotAttendStatus) {
       query["cannotAttendRequest.status"] = cannotAttendStatus;
     } else {
-      if (status) query.status = status;
+      if (status === "refund_requested") {
+        query.$or = [
+          { status: "refund_requested" },
+          { "refundRequest.status": "pending" }
+        ];
+      } else if (status) {
+        query.status = status;
+      }
     }
 
     if (paymentStatus) query.paymentStatus = paymentStatus;

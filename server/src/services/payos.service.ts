@@ -78,7 +78,7 @@ export default class PayOSService {
         if (booking.paymentMethod === "deposit") {
           try {
             const walletService = new WalletService();
-            const paidAmount = data.data?.amount || Math.round(booking.pricing.total * 0.5);
+            const paidAmount = Math.round(booking.pricing.total * 0.5);
             await walletService.creditHostWalletDeposit(
               booking.host.toString(),
               booking._id.toString(),

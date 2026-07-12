@@ -79,13 +79,13 @@ export default function AdminBookingsPage() {
       monday.setDate(now.getDate() + diffToMonday);
       const sunday = new Date(monday);
       sunday.setDate(monday.getDate() + 6);
-      
+
       start = formatLocalDate(monday);
       end = formatLocalDate(sunday);
     } else if (range === 'month') {
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
       const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      
+
       start = formatLocalDate(firstDay);
       end = formatLocalDate(lastDay);
     }
@@ -232,6 +232,10 @@ export default function AdminBookingsPage() {
         await API.post(`/bookings/admin/${bookingId}/process-cannot-attend`, { approved: true, ...body });
       } else if (type === 'cannot-attend-reject') {
         await API.post(`/bookings/admin/${bookingId}/process-cannot-attend`, { approved: false, ...body });
+      } else if (type === 'dissatisfaction-approve') {
+        await API.post(`/bookings/${bookingId}/dissatisfaction/process`, { status: 'approved', ...body });
+      } else if (type === 'dissatisfaction-reject') {
+        await API.post(`/bookings/${bookingId}/dissatisfaction/process`, { status: 'rejected', ...body });
       }
       toast.success('Thao tác thành công');
       setModal(null);
@@ -498,12 +502,12 @@ export default function AdminBookingsPage() {
                         {fmt(b.pricing?.total || 0)}₫
                       </td>
                       <td className="px-4 py-3.5">
-                        <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-extrabold border', st.class)}>
+                        <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-extrabold border whitespace-nowrap', st.class)}>
                           {st.label}
                         </span>
                       </td>
                       <td className="px-4 py-3.5">
-                        <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-extrabold', pt.class)}>
+                        <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-extrabold whitespace-nowrap', pt.class)}>
                           {pt.label}
                         </span>
                       </td>
@@ -577,103 +581,107 @@ export default function AdminBookingsPage() {
                   Chi Tiết Đơn Đặt Chỗ
                 </h3>
               </div>
-              <button onClick={() => setDetail(null)} className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                <X className="h-5 w-5" />
+              <button
+                onClick={() => setDetail(null)}
+                className="p-1.5 rounded-xl border border-slate-250 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors cursor-pointer"
+              >
+                <X className="h-5 w-5 text-slate-500" />
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[60vh] overflow-y-auto pr-1">
-              {/* Left Column: General & Customer Info */}
-              <div className="space-y-5">
-                <div className="bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-4">
-                  <h4 className="text-xs font-black text-slate-450 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                    <Info className="h-3.5 w-3.5 text-primary" /> Thông tin chung
-                  </h4>
-                  <div className="space-y-2.5 text-xs">
-                    <div className="flex justify-between"><span className="text-slate-400">Trạng thái booking:</span>
-                      <span className={cn('font-extrabold px-2 py-0.5 rounded-full text-[10px]', (STATUS_MAP[detail.status] as any)?.class)}>
-                        {(STATUS_MAP[detail.status] as any)?.label ?? detail.status}
-                      </span>
-                    </div>
-                    <div className="flex justify-between"><span className="text-slate-400">Thanh toán:</span>
-                      <span className={cn('font-extrabold px-2 py-0.5 rounded-full text-[10px]', (PAYMENT_MAP[detail.paymentStatus] as any)?.class)}>
-                        {(PAYMENT_MAP[detail.paymentStatus] as any)?.label ?? detail.paymentStatus}
-                      </span>
-                    </div>
-                    <div className="flex justify-between"><span className="text-slate-400">Phương thức:</span>
-                      <span className="font-semibold text-slate-700 dark:text-slate-350">{detail.paymentMethod === 'full' ? 'Trả toàn bộ' : 'Đặt cọc/Trả sau'}</span>
-                    </div>
-                    <div className="flex justify-between"><span className="text-slate-400">Ngày tạo đơn:</span>
-                      <span className="font-semibold text-slate-700 dark:text-slate-350">{fmtDateTime(detail.createdAt)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-4">
-                  <h4 className="text-xs font-black text-slate-450 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                    <Users className="h-3.5 w-3.5 text-primary" /> Khách hàng
-                  </h4>
-                  <div className="space-y-2.5 text-xs">
-                    <div className="flex justify-between"><span className="text-slate-400">Họ và tên:</span> <span className="font-bold text-slate-800 dark:text-slate-200">{detail.fullnameGuest || detail.guest?.username || '—'}</span></div>
-                    <div className="flex justify-between"><span className="text-slate-400">Email:</span> <span className="font-semibold text-slate-700 dark:text-slate-300">{detail.email || detail.guest?.email || '—'}</span></div>
-                    <div className="flex justify-between"><span className="text-slate-400">Số điện thoại:</span> <span className="font-semibold text-slate-700 dark:text-slate-300">{detail.phone || '—'}</span></div>
-                    {detail.guestMessage && (
-                      <div className="pt-2 border-t border-slate-200/40 dark:border-slate-800/40">
-                        <span className="text-slate-400 block mb-1">Lời nhắn của khách:</span>
-                        <p className="bg-white dark:bg-slate-900 p-2 rounded-lg text-slate-600 dark:text-slate-300 text-[11px] italic">
-                          "{detail.guestMessage}"
-                        </p>
+            <div className="max-h-[70vh] overflow-y-auto pr-1 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Left Column: General & Customer Info */}
+                <div className="space-y-5">
+                  <div className="bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-4">
+                    <h4 className="text-xs font-black text-slate-450 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <Info className="h-3.5 w-3.5 text-primary" /> Thông tin chung
+                    </h4>
+                    <div className="space-y-2.5 text-xs">
+                      <div className="flex justify-between"><span className="text-slate-400">Trạng thái booking:</span>
+                        <span className={cn('font-extrabold px-2 py-0.5 rounded-full text-[10px]', (STATUS_MAP[detail.status] as any)?.class)}>
+                          {(STATUS_MAP[detail.status] as any)?.label ?? detail.status}
+                        </span>
                       </div>
-                    )}
+                      <div className="flex justify-between"><span className="text-slate-400">Thanh toán:</span>
+                        <span className={cn('font-extrabold px-2 py-0.5 rounded-full text-[10px]', (PAYMENT_MAP[detail.paymentStatus] as any)?.class)}>
+                          {(PAYMENT_MAP[detail.paymentStatus] as any)?.label ?? detail.paymentStatus}
+                        </span>
+                      </div>
+                      <div className="flex justify-between"><span className="text-slate-400">Phương thức:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-350">{detail.paymentMethod === 'full' ? 'Trả toàn bộ' : 'Đặt cọc/Trả sau'}</span>
+                      </div>
+                      <div className="flex justify-between"><span className="text-slate-400">Ngày tạo đơn:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-350">{fmtDateTime(detail.createdAt)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-4">
+                    <h4 className="text-xs font-black text-slate-450 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <Users className="h-3.5 w-3.5 text-primary" /> Khách hàng
+                    </h4>
+                    <div className="space-y-2.5 text-xs">
+                      <div className="flex justify-between"><span className="text-slate-400">Họ và tên:</span> <span className="font-bold text-slate-800 dark:text-slate-200">{detail.fullnameGuest || detail.guest?.username || '—'}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">Email:</span> <span className="font-semibold text-slate-700 dark:text-slate-300">{detail.email || detail.guest?.email || '—'}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">Số điện thoại:</span> <span className="font-semibold text-slate-700 dark:text-slate-300">{detail.phone || '—'}</span></div>
+                      {detail.guestMessage && (
+                        <div className="pt-2 border-t border-slate-200/40 dark:border-slate-800/40">
+                          <span className="text-slate-400 block mb-1">Lời nhắn của khách:</span>
+                          <p className="bg-white dark:bg-slate-900 p-2 rounded-lg text-slate-600 dark:text-slate-300 text-[11px] italic">
+                            "{detail.guestMessage}"
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Right Column: Campsite & Cost Breakdown */}
-              <div className="space-y-5">
-                <div className="bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-4">
-                  <h4 className="text-xs font-black text-slate-450 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                    <Tent className="h-3.5 w-3.5 text-primary" /> Khu cắm trại & Site
-                  </h4>
-                  <div className="space-y-2.5 text-xs">
-                    <div className="flex justify-between"><span className="text-slate-400">Khu cắm trại:</span> <span className="font-bold text-slate-800 dark:text-slate-200">{detail.property?.name || '—'}</span></div>
-                    <div className="flex justify-between"><span className="text-slate-400">Vị trí (Site):</span> <span className="font-semibold text-slate-700 dark:text-slate-300">{detail.site?.name || '—'}</span></div>
-                    <div className="flex justify-between"><span className="text-slate-400">Chủ vườn (Host):</span> <span className="font-semibold text-slate-700 dark:text-slate-300">{detail.host?.username || '—'} ({detail.host?.email})</span></div>
-                    <div className="flex justify-between"><span className="text-slate-400">Thời gian đi:</span> <span className="font-extrabold text-primary">{fmtDate(detail.checkIn)} → {fmtDate(detail.checkOut)}</span></div>
-                    <div className="flex justify-between"><span className="text-slate-400">Số đêm:</span> <span className="font-semibold text-slate-700 dark:text-slate-300">{detail.nights} đêm</span></div>
-                    <div className="flex justify-between"><span className="text-slate-400">Thành viên:</span> <span className="font-semibold text-slate-700 dark:text-slate-300">{detail.numberOfGuests} khách, {detail.numberOfPets || 0} thú cưng, {detail.numberOfVehicles || 0} xe</span></div>
+                {/* Right Column: Campsite & Cost Breakdown */}
+                <div className="space-y-5">
+                  <div className="bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-4">
+                    <h4 className="text-xs font-black text-slate-450 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <Tent className="h-3.5 w-3.5 text-primary" /> Khu cắm trại & Site
+                    </h4>
+                    <div className="space-y-2.5 text-xs">
+                      <div className="flex justify-between"><span className="text-slate-400">Khu cắm trại:</span> <span className="font-bold text-slate-800 dark:text-slate-200">{detail.property?.name || '—'}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">Vị trí (Site):</span> <span className="font-semibold text-slate-700 dark:text-slate-300">{detail.site?.name || '—'}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">Chủ vườn (Host):</span> <span className="font-semibold text-slate-700 dark:text-slate-300">{detail.host?.username || '—'} ({detail.host?.email})</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">Thời gian đi:</span> <span className="font-extrabold text-primary">{fmtDate(detail.checkIn)} → {fmtDate(detail.checkOut)}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">Số đêm:</span> <span className="font-semibold text-slate-700 dark:text-slate-300">{detail.nights} đêm</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">Thành viên:</span> <span className="font-semibold text-slate-700 dark:text-slate-300">{detail.numberOfGuests} khách, {detail.numberOfPets || 0} thú cưng, {detail.numberOfVehicles || 0} xe</span></div>
+                    </div>
                   </div>
-                </div>
 
-                <div className="bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-4">
-                  <h4 className="text-xs font-black text-slate-450 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                    <DollarSign className="h-3.5 w-3.5 text-primary" /> Chi tiết chi phí
-                  </h4>
-                  <div className="space-y-2 text-xs">
-                    <div className="flex justify-between"><span className="text-slate-400">Giá cơ bản:</span> <span className="font-semibold text-slate-700 dark:text-slate-300">{fmt(detail.pricing?.basePrice || 0)}₫</span></div>
-                    {detail.pricing?.cleaningFee > 0 && (
-                      <div className="flex justify-between"><span className="text-slate-400">Phí dọn dẹp:</span> <span className="font-semibold text-slate-700 dark:text-slate-300">{fmt(detail.pricing.cleaningFee)}₫</span></div>
-                    )}
-                    {detail.pricing?.petFee > 0 && (
-                      <div className="flex justify-between"><span className="text-slate-400">Phí thú cưng:</span> <span className="font-semibold text-slate-700 dark:text-slate-300">{fmt(detail.pricing.petFee)}₫</span></div>
-                    )}
-                    {detail.pricing?.extraGuestFee > 0 && (
-                      <div className="flex justify-between"><span className="text-slate-400">Phí khách thêm:</span> <span className="font-semibold text-slate-700 dark:text-slate-300">{fmt(detail.pricing.extraGuestFee)}₫</span></div>
-                    )}
-                    <div className="pt-2 border-t border-slate-200/40 dark:border-slate-800/40 flex justify-between items-center">
-                      <span className="font-black text-slate-900 dark:text-slate-100">Tổng chi phí:</span>
-                      <span className="font-black text-md text-emerald-600 dark:text-emerald-450">{fmt(detail.pricing?.total || 0)}₫</span>
+                  <div className="bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-4">
+                    <h4 className="text-xs font-black text-slate-450 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <DollarSign className="h-3.5 w-3.5 text-primary" /> Chi tiết chi phí
+                    </h4>
+                    <div className="space-y-2 text-xs">
+                      <div className="flex justify-between"><span className="text-slate-400">Giá cơ bản:</span> <span className="font-semibold text-slate-700 dark:text-slate-350">{fmt(detail.pricing?.basePrice || 0)}₫</span></div>
+                      {detail.pricing?.cleaningFee > 0 && (
+                        <div className="flex justify-between"><span className="text-slate-400">Phí dọn dẹp:</span> <span className="font-semibold text-slate-700 dark:text-slate-350">{fmt(detail.pricing.cleaningFee)}₫</span></div>
+                      )}
+                      {detail.pricing?.petFee > 0 && (
+                        <div className="flex justify-between"><span className="text-slate-400">Phí thú cưng:</span> <span className="font-semibold text-slate-700 dark:text-slate-350">{fmt(detail.pricing.petFee)}₫</span></div>
+                      )}
+                      {detail.pricing?.extraGuestFee > 0 && (
+                        <div className="flex justify-between"><span className="text-slate-400">Phí khách thêm:</span> <span className="font-semibold text-slate-700 dark:text-slate-350">{fmt(detail.pricing.extraGuestFee)}₫</span></div>
+                      )}
+                      <div className="pt-2 border-t border-slate-200/40 dark:border-slate-800/40 flex justify-between items-center">
+                        <span className="font-black text-slate-900 dark:text-slate-100">Tổng chi phí:</span>
+                        <span className="font-black text-md text-emerald-600 dark:text-emerald-450">{fmt(detail.pricing?.total || 0)}₫</span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Cannot-attend admin panel */}
-            {detail.cannotAttendRequest && detail.cannotAttendRequest.status && (
-              <div className="mt-6 p-5 rounded-2xl bg-rose-50/30 dark:bg-rose-950/5 border border-rose-100 dark:border-rose-900/20 shadow-inner">
-                <h4 className="text-xs font-black text-rose-700 dark:text-rose-450 uppercase tracking-wider mb-4 flex items-center gap-2">
-                  <Ban className="h-4.5 w-4.5 text-rose-500" /> Yêu cầu hoàn tiền (Khách báo không thể đến / Hủy đặt)
+              {/* Cannot-attend admin panel */}
+              {detail.cannotAttendRequest && detail.cannotAttendRequest.status && (
+              <div className="mt-6 p-5 rounded-2xl bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800">
+                <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <Ban className="h-4.5 w-4.5 text-slate-500" /> Yêu cầu hoàn tiền (Khách báo không thể đến / Hủy đặt)
                 </h4>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -717,7 +725,7 @@ export default function AdminBookingsPage() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-400">Ngân hàng:</span>
-                      <span className="font-semibold text-slate-700 dark:text-slate-300">{detail.cannotAttendRequest.bankName || '—'}</span>
+                      <span className="font-semibold text-slate-700 dark:text-slate-350">{detail.cannotAttendRequest.bankName || '—'}</span>
                     </div>
                   </div>
                 </div>
@@ -725,6 +733,7 @@ export default function AdminBookingsPage() {
                 {/* Refund calculation breakdown */}
                 {(() => {
                   const total = detail.pricing?.total || 0;
+                  const actualPaid = detail.paymentMethod === 'deposit' ? Math.round(total * 0.5) : total;
                   const reqAt = detail.cannotAttendRequest.requestedAt ? new Date(detail.cannotAttendRequest.requestedAt) : new Date();
                   const checkIn = detail.checkIn ? new Date(detail.checkIn) : new Date();
                   const diffDays = (checkIn.getTime() - reqAt.getTime()) / (1000 * 60 * 60 * 24);
@@ -736,37 +745,37 @@ export default function AdminBookingsPage() {
                     hostRate = 0.2;
                   }
 
-                  const refundAmt = Math.round(total * refundRate);
-                  const hostAmt = Math.round(total * hostRate);
-                  const platformAmt = total - refundAmt - hostAmt;
+                  const refundAmt = Math.round(actualPaid * refundRate);
+                  const hostAmt = Math.round(actualPaid * hostRate);
+                  const platformAmt = actualPaid - refundAmt - hostAmt;
 
                   return (
-                    <div className="bg-gradient-to-br from-primary/5 via-slate-50/50 to-orange-50/5 dark:from-primary/5 dark:via-slate-900/10 dark:to-orange-950/5 border border-slate-200 dark:border-slate-850 rounded-xl p-4 mb-4">
-                      <div className="text-xs font-black text-primary mb-3 flex items-center justify-between">
+                    <div className="bg-slate-50/50 dark:bg-slate-950/20 border border-slate-150 dark:border-slate-800 rounded-xl p-4 mb-4">
+                      <div className="text-xs font-black text-slate-700 dark:text-slate-350 mb-3 flex items-center justify-between">
                         <span>TÍNH TOÁN PHÂN CHIA HỦY BOOKING</span>
-                        <span className="text-[10px] font-bold text-slate-450 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
-                          Khoảng cách: {diffDays.toFixed(1)} ngày
+                        <span className="text-[10px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                          {detail.paymentMethod === 'deposit' ? 'Đã cọc 50%' : 'Đã thanh toán 100%'} | Khoảng cách: {diffDays.toFixed(1)} ngày
                         </span>
                       </div>
 
                       <div className="grid grid-cols-3 gap-4 text-center">
-                        <div className="bg-white/80 dark:bg-slate-950/40 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
+                        <div className="bg-white dark:bg-slate-900/60 p-2.5 rounded-lg border border-slate-150 dark:border-slate-800">
                           <div className="text-[10px] text-slate-400 font-bold mb-1">HOÀN GUEST ({Math.round(refundRate * 100)}%)</div>
-                          <div className="font-extrabold text-md text-emerald-600 dark:text-emerald-400">{fmt(refundAmt)}₫</div>
+                          <div className="font-extrabold text-md text-slate-850 dark:text-slate-200">{fmt(refundAmt)}₫</div>
                           <div className="text-[9px] text-slate-450 mt-1 font-semibold">
                             {diffDays >= 2 ? '≥ 2 ngày (70%)' : '< 2 ngày (50%)'}
                           </div>
                         </div>
 
-                        <div className="bg-white/80 dark:bg-slate-950/40 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
+                        <div className="bg-white dark:bg-slate-900/60 p-2.5 rounded-lg border border-slate-150 dark:border-slate-800">
                           <div className="text-[10px] text-slate-400 font-bold mb-1">HOST NHẬN ({Math.round(hostRate * 100)}%)</div>
-                          <div className="font-extrabold text-md text-purple-600 dark:text-purple-400">{fmt(hostAmt)}₫</div>
+                          <div className="font-extrabold text-md text-slate-850 dark:text-slate-200">{fmt(hostAmt)}₫</div>
                           <div className="text-[9px] text-slate-450 mt-1 font-semibold">Cộng trực tiếp vào ví</div>
                         </div>
 
-                        <div className="bg-white/80 dark:bg-slate-950/40 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
+                        <div className="bg-white dark:bg-slate-900/60 p-2.5 rounded-lg border border-slate-150 dark:border-slate-800">
                           <div className="text-[10px] text-slate-400 font-bold mb-1">PLATFORM GIỮ ({Math.round((1 - refundRate - hostRate) * 100)}%)</div>
-                          <div className="font-extrabold text-md text-slate-700 dark:text-slate-300">{fmt(platformAmt)}₫</div>
+                          <div className="font-extrabold text-md text-slate-850 dark:text-slate-200">{fmt(platformAmt)}₫</div>
                           <div className="text-[9px] text-slate-450 mt-1 font-semibold">Phần còn lại</div>
                         </div>
                       </div>
@@ -800,10 +809,128 @@ export default function AdminBookingsPage() {
               </div>
             )}
 
+            {/* Dissatisfaction refund admin panel */}
+            {detail.dissatisfactionRequest && detail.dissatisfactionRequest.status && (
+              <div className="mt-6 p-5 rounded-2xl bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800">
+                <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <Ban className="h-4.5 w-4.5 text-slate-500" /> Yêu cầu hoàn tiền (Khách không hài lòng)
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  {/* Left Box: Request details */}
+                  <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-150 dark:border-slate-800 space-y-2 text-xs">
+                    <div className="font-bold text-slate-800 dark:text-slate-200 mb-1 border-b border-slate-100 dark:border-slate-800 pb-1 flex justify-between items-center">
+                      <span>Chi tiết yêu cầu</span>
+                      <span className={cn('font-extrabold px-2.5 py-0.5 rounded-full text-[9px] uppercase tracking-wider border',
+                        detail.dissatisfactionRequest.status === 'approved' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' :
+                          detail.dissatisfactionRequest.status === 'rejected' ? 'bg-rose-50 border-rose-200 text-rose-700' :
+                            'bg-amber-50 border-amber-200 text-amber-700'
+                      )}>
+                        {detail.dissatisfactionRequest.status === 'approved' ? 'Đã duyệt' :
+                          detail.dissatisfactionRequest.status === 'rejected' ? 'Đã từ chối' : 'Đang xử lý'}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-slate-400 font-medium">Lý do khách gửi:</span>
+                      <span className="font-semibold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 p-2.5 rounded-lg italic">
+                        "{detail.dissatisfactionRequest.reason}"
+                      </span>
+                    </div>
+                    <div className="flex justify-between pt-1">
+                      <span className="text-slate-400">Thời điểm gửi:</span>
+                      <span className="font-semibold text-slate-700 dark:text-slate-350">{fmtDateTime(detail.dissatisfactionRequest.requestedAt)}</span>
+                    </div>
+                  </div>
+
+                  {/* Right Box: Bank Details */}
+                  <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-150 dark:border-slate-800 space-y-2.5 text-xs">
+                    <div className="font-bold text-slate-800 dark:text-slate-200 mb-1 border-b border-slate-100 dark:border-slate-800 pb-1">
+                      Tài khoản nhận tiền hoàn
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Chủ tài khoản:</span>
+                      <span className="font-bold text-slate-700 dark:text-slate-200 uppercase">{detail.dissatisfactionRequest.bankAccountName || '—'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Số tài khoản:</span>
+                      <span className="font-mono font-bold text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-950 px-1.5 py-0.5 rounded">{detail.dissatisfactionRequest.bankAccountNumber || '—'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Ngân hàng:</span>
+                      <span className="font-semibold text-slate-700 dark:text-slate-350">{detail.dissatisfactionRequest.bankName || '—'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Evidence Images */}
+                {detail.dissatisfactionRequest.evidenceImages && detail.dissatisfactionRequest.evidenceImages.length > 0 && (
+                  <div className="mb-4 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-150 dark:border-slate-800 space-y-2 text-xs">
+                    <div className="font-bold text-slate-800 dark:text-slate-200 mb-2">Hình ảnh minh chứng (Tối thiểu 5 ảnh)</div>
+                    <div className="flex flex-wrap gap-2">
+                      {detail.dissatisfactionRequest.evidenceImages.map((img: string, idx: number) => (
+                        <a key={idx} href={img} target="_blank" rel="noreferrer" className="relative w-20 h-20 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 hover:opacity-80 transition-opacity">
+                          <img src={img} alt="Evidence" className="object-cover w-full h-full" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Refund calculation breakdown */}
+                {(() => {
+                  const total = detail.pricing?.total || 0;
+                  const actualPaid = detail.paymentMethod === 'deposit' ? Math.round(total * 0.5) : total;
+                  return (
+                    <div className="bg-slate-50/50 dark:bg-slate-950/20 border border-slate-150 dark:border-slate-800 rounded-xl p-4 mb-4">
+                      <div className="text-xs font-black text-slate-700 dark:text-slate-350 mb-3 flex items-center justify-between">
+                        <span>TÍNH TOÁN PHÂN CHIA HỦY BOOKING</span>
+                        <span className="text-[10px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                          {detail.paymentMethod === 'deposit' ? 'Hoàn cọc 50%' : 'Hoàn 100%'}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2 text-center">
+                        <div className="bg-white dark:bg-slate-900/60 p-3 rounded-lg border border-slate-150 dark:border-slate-800">
+                          <div className="text-[10px] text-slate-400 font-bold mb-1">TỔNG SỐ TIỀN HOÀN CHO GUEST</div>
+                          <div className="font-extrabold text-lg text-slate-850 dark:text-slate-200">{fmt(actualPaid)}₫</div>
+                          <div className="text-[9px] text-slate-500 mt-1 font-semibold">Khách không hài lòng về cơ sở vật chất</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {detail.dissatisfactionRequest.status === 'pending' && (
+                  <div className="flex justify-end gap-3 border-t border-slate-200/40 dark:border-slate-800/40 pt-4 mt-1">
+                    <button
+                      onClick={() => setModal({ type: 'dissatisfaction-reject', booking: detail })}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-rose-200 bg-rose-50 dark:bg-rose-950/20 text-rose-650 hover:bg-rose-100 transition-colors cursor-pointer text-xs font-extrabold"
+                    >
+                      <XCircle className="h-4 w-4" /> Từ chối hoàn tiền
+                    </button>
+                    <button
+                      onClick={() => setModal({ type: 'dissatisfaction-approve', booking: detail })}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 hover:bg-emerald-100 transition-colors cursor-pointer text-xs font-extrabold"
+                    >
+                      <CheckCircle2 className="h-4 w-4" /> Phê duyệt hoàn tiền
+                    </button>
+                  </div>
+                )}
+
+                {detail.dissatisfactionRequest.adminNote && (
+                  <div className="text-xs text-slate-500 mt-3 bg-slate-550/10 p-2.5 rounded-lg border border-slate-200/40 dark:border-slate-800/40">
+                    <span className="font-bold text-slate-600 dark:text-slate-350 block">Phản hồi của Admin:</span>
+                    <p className="mt-0.5">{detail.dissatisfactionRequest.adminNote}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Host Cancellation Refund Panel */}
-            {((detail.status === 'cancelled' || detail.status === 'refunded') && 
-              !(detail.cannotAttendRequest && detail.cannotAttendRequest.status)) && (() => {
-                const isCancelledByHost = !detail.cancelledBy 
+            {((detail.status === 'cancelled' || detail.status === 'refunded' || detail.status === 'refund_requested') &&
+              !(detail.cannotAttendRequest && detail.cannotAttendRequest.status) &&
+              !(detail.dissatisfactionRequest && detail.dissatisfactionRequest.status)) && (() => {
+                const isCancelledByHost = !detail.cancelledBy
                   ? (detail.cancellationReason?.toLowerCase().includes('chủ nhà') || detail.cancellationReason?.toLowerCase().includes('host'))
                   : (typeof detail.cancelledBy === 'object' ? detail.cancelledBy._id : detail.cancelledBy) === (typeof detail.host === 'object' ? detail.host._id : detail.host);
 
@@ -841,9 +968,9 @@ export default function AdminBookingsPage() {
                 }
 
                 return (
-                  <div className="mt-6 p-5 rounded-2xl bg-amber-50/30 dark:bg-amber-950/5 border border-amber-100 dark:border-amber-900/20 shadow-inner">
-                    <h4 className="text-xs font-black text-amber-700 dark:text-orange-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                      <Ban className="h-4.5 w-4.5 text-amber-500" /> Thông tin hủy đặt & Hoàn tiền (Do Host hủy - Hoàn 100%)
+                  <div className="mt-6 p-5 rounded-2xl bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800">
+                    <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider mb-4 flex items-center gap-2">
+                      <Ban className="h-4.5 w-4.5 text-slate-500" /> Thông tin hủy đặt & Hoàn tiền (Do Host hủy)
                     </h4>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -909,22 +1036,30 @@ export default function AdminBookingsPage() {
                     </div>
 
                     {/* Refund calculation breakdown */}
-                    <div className="bg-gradient-to-br from-emerald-50/50 via-slate-50/50 to-primary/5 dark:from-emerald-950/10 dark:via-slate-900/10 dark:to-primary/5 border border-slate-200 dark:border-slate-850 rounded-xl p-4 mb-4">
-                      <div className="text-xs font-black text-emerald-600 dark:text-emerald-450 mb-3 flex items-center justify-between">
-                        <span>TÍNH TOÁN PHÂN CHIA HỦY BOOKING</span>
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-full">
-                          Hoàn trả 100%
-                        </span>
-                      </div>
+                    {(() => {
+                      const total = detail.pricing?.total || 0;
+                      const actualPaid = detail.paymentMethod === 'deposit' ? Math.round(total * 0.5) : total;
+                      return (
+                        <div className="bg-slate-50/50 dark:bg-slate-950/20 border border-slate-150 dark:border-slate-800 rounded-xl p-4 mb-4">
+                          <div className="text-xs font-black text-slate-700 dark:text-slate-350 mb-3 flex items-center justify-between">
+                            <span>TÍNH TOÁN PHÂN CHIA HỦY BOOKING</span>
+                            <span className="text-[10px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                              {detail.paymentMethod === 'deposit' ? 'Hoàn cọc 50%' : 'Hoàn 100%'}
+                            </span>
+                          </div>
 
-                      <div className="grid grid-cols-1 gap-2 text-center">
-                        <div className="bg-white/80 dark:bg-slate-950/40 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
-                          <div className="text-[10px] text-slate-400 font-bold mb-1">TỔNG SỐ TIỀN HOÀN CHO GUEST</div>
-                          <div className="font-extrabold text-lg text-emerald-600 dark:text-emerald-450">{fmt(detail.pricing?.total || 0)}₫</div>
-                          <div className="text-[9px] text-slate-450 mt-1 font-semibold">Do Host chủ động hủy đặt chỗ</div>
+                          <div className="grid grid-cols-1 gap-2 text-center">
+                            <div className="bg-white dark:bg-slate-900/60 p-3 rounded-lg border border-slate-150 dark:border-slate-800">
+                              <div className="text-[10px] text-slate-400 font-bold mb-1">TỔNG SỐ TIỀN HOÀN CHO GUEST</div>
+                              <div className="font-extrabold text-lg text-slate-850 dark:text-slate-200">{fmt(actualPaid)}₫</div>
+                              <div className="text-[9px] text-slate-500 mt-1 font-semibold">
+                                {detail.status === 'refund_requested' ? 'Yêu cầu hoàn trả số tiền thực tế khách đã thanh toán' : 'Do Host chủ động hủy đặt chỗ'}
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                      );
+                    })()}
 
                     {detail.refundRequest?.adminNote && (
                       <div className="text-xs text-slate-500 mt-3 bg-slate-550/10 p-2.5 rounded-lg border border-slate-200/40 dark:border-slate-800/40">
@@ -932,12 +1067,23 @@ export default function AdminBookingsPage() {
                         <p className="mt-0.5">{detail.refundRequest.adminNote}</p>
                       </div>
                     )}
+
+                    {detail.refundRequest?.status === 'pending' && (
+                      <div className="flex justify-end gap-3 border-t border-slate-200/40 dark:border-slate-800/40 pt-4 mt-4">
+                        <button
+                          onClick={() => setModal({ type: 'refund-approve', booking: detail })}
+                          className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 hover:bg-emerald-100 transition-colors cursor-pointer text-xs font-extrabold"
+                        >
+                          <CheckCircle2 className="h-4 w-4" /> Phê duyệt hoàn tiền
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })()}
 
             {/* Refund request administrative panel */}
-            {detail.status === 'refund_requested' && (
+            {detail.status === 'refund_requested' && !detail.dissatisfactionRequest?.status && (
               <div className="mt-6 p-4 rounded-2xl bg-orange-50/50 dark:bg-orange-950/10 border border-orange-200/60 dark:border-orange-900/30">
                 <h4 className="text-xs font-black text-orange-700 dark:text-orange-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <AlertCircle className="h-4 w-4" /> Yêu cầu hoàn tiền cần xử lý
@@ -963,6 +1109,8 @@ export default function AdminBookingsPage() {
                 </div>
               </div>
             )}
+
+            </div>
 
             <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
               <button
@@ -1001,9 +1149,23 @@ export default function AdminBookingsPage() {
                 Booking mã: <strong className="text-slate-700 dark:text-slate-200 font-bold">{modal.booking.code}</strong> — Giá trị: <strong className="text-primary font-bold">{fmt(modal.booking.pricing?.total || 0)}₫</strong>
               </p>
 
-              {/* Cannot-attend refund summary */}
-              {(modal.type === 'cannot-attend-approve') && (() => {
+              {(modal.type === 'cannot-attend-approve' || modal.type === 'dissatisfaction-approve') && (() => {
                 const total = modal.booking.pricing?.total || 0;
+                const actualPaid = modal.booking.paymentMethod === 'deposit' ? Math.round(total * 0.5) : total;
+                const isDissatisfaction = modal.type === 'dissatisfaction-approve';
+
+                if (isDissatisfaction) {
+                  return (
+                    <div className="p-3 rounded-xl bg-primary/10 dark:bg-primary/20 border border-primary/20 text-xs">
+                      <div className="font-black text-primary mb-2">Tóm tắt xử lý ({modal.booking.paymentMethod === 'deposit' ? 'Đã cọc 50%' : 'Đã thanh toán 100%'})</div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between"><span className="text-slate-400">Hoàn cho khách (100% cọc/đầy đủ):</span> <span className="font-bold text-primary">{fmt(actualPaid)}₫</span></div>
+                        <div className="flex justify-between border-t border-slate-200/60 dark:border-slate-700/40 pt-1 mt-1"><span className="text-slate-400">Platform giữ (0%):</span> <span className="font-bold text-slate-650">0₫</span></div>
+                      </div>
+                    </div>
+                  );
+                }
+
                 const reqAt = modal.booking.cannotAttendRequest?.requestedAt ? new Date(modal.booking.cannotAttendRequest.requestedAt) : new Date();
                 const checkIn = modal.booking.checkIn ? new Date(modal.booking.checkIn) : new Date();
                 const diffDays = (checkIn.getTime() - reqAt.getTime()) / (1000 * 60 * 60 * 24);
@@ -1013,15 +1175,15 @@ export default function AdminBookingsPage() {
                   refundRate = 0.7;
                   hostRate = 0.2;
                 }
-                const refundAmt = Math.round(total * refundRate);
-                const hostAmt = Math.round(total * hostRate);
+                const refundAmt = Math.round(actualPaid * refundRate);
+                const hostAmt = Math.round(actualPaid * hostRate);
                 return (
                   <div className="p-3 rounded-xl bg-primary/10 dark:bg-primary/20 border border-primary/20 text-xs">
-                    <div className="font-black text-primary mb-2">Tóm tắt xử lý</div>
+                    <div className="font-black text-primary mb-2">Tóm tắt xử lý ({modal.booking.paymentMethod === 'deposit' ? 'Đã cọc 50%' : 'Đã thanh toán 100%'})</div>
                     <div className="space-y-1">
                       <div className="flex justify-between"><span className="text-slate-400">Hoàn cho khách ({Math.round(refundRate * 100)}%):</span> <span className="font-bold text-primary">{fmt(refundAmt)}₫</span></div>
                       <div className="flex justify-between"><span className="text-slate-400">Ví host nhận ({Math.round(hostRate * 100)}%):</span> <span className="font-bold text-purple-600">{fmt(hostAmt)}₫</span></div>
-                      <div className="flex justify-between border-t border-slate-200/60 dark:border-slate-700/40 pt-1 mt-1"><span className="text-slate-400">Platform giữ ({Math.round((1 - refundRate - hostRate) * 100)}%):</span> <span className="font-bold text-slate-600">{fmt(total - refundAmt - hostAmt)}₫</span></div>
+                      <div className="flex justify-between border-t border-slate-200/60 dark:border-slate-700/40 pt-1 mt-1"><span className="text-slate-400">Platform giữ ({Math.round((1 - refundRate - hostRate) * 100)}%):</span> <span className="font-bold text-slate-600">{fmt(actualPaid - refundAmt - hostAmt)}₫</span></div>
                     </div>
                   </div>
                 );
@@ -1031,6 +1193,13 @@ export default function AdminBookingsPage() {
                 <div className="p-3 rounded-xl bg-orange-50/50 dark:bg-orange-950/10 border border-orange-200/60 dark:border-orange-900/30 text-xs text-slate-700 dark:text-slate-350">
                   <span className="font-bold text-orange-700 dark:text-orange-400 block mb-0.5">Lý do hoàn tiền của khách:</span>
                   {modal.booking.refundRequest.reason}
+                </div>
+              )}
+
+              {modal.type === 'dissatisfaction-approve' && modal.booking.dissatisfactionRequest?.reason && (
+                <div className="p-3 rounded-xl bg-orange-50/50 dark:bg-orange-950/10 border border-orange-200/60 dark:border-orange-900/30 text-xs text-slate-700 dark:text-slate-350">
+                  <span className="font-bold text-orange-700 dark:text-orange-400 block mb-0.5">Lý do hoàn tiền của khách:</span>
+                  {modal.booking.dissatisfactionRequest.reason}
                 </div>
               )}
 
@@ -1058,7 +1227,7 @@ export default function AdminBookingsPage() {
             <div className="flex gap-2.5 justify-end mt-6">
               <button
                 onClick={() => { setModal(null); setActionNote(''); }}
-                className="px-4 py-2 rounded-xl border border-slate-250 dark:border-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+                className="px-4 py-2 rounded-xl border border-slate-250 dark:border-slate-800 text-xs font-bold text-slate-650 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
               >
                 Đóng
               </button>
@@ -1067,7 +1236,7 @@ export default function AdminBookingsPage() {
                 disabled={acting}
                 className={cn(
                   'px-4 py-2 rounded-xl text-xs font-extrabold text-white transition-all shadow-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
-                  (modal.type === 'refund-reject' || modal.type === 'cannot-attend-reject')
+                  (modal.type === 'refund-reject' || modal.type === 'cannot-attend-reject' || modal.type === 'dissatisfaction-reject')
                     ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/10'
                     : 'bg-primary hover:bg-primary/90 shadow-primary/10'
                 )}

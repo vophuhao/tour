@@ -19,7 +19,7 @@ export const createReviewSchema = z.object({
   }),
 
   // Review content
-  title: z.string().min(5).max(100).optional(),
+  title: z.union([z.string().min(5).max(100), z.literal("")]).optional(),
   comment: z.string().min(10).max(2000),
   pros: z.array(z.string().max(200)).max(10).optional(),
   cons: z.array(z.string().max(200)).max(10).optional(),
@@ -92,7 +92,7 @@ export const updateReviewSchema = z.object({
     amenities: z.number().int().min(1).max(5),
   }).optional(),
 
-  title: z.string().min(5).max(100).optional(),
+  title: z.union([z.string().min(5).max(100), z.literal("")]).optional(),
   comment: z.string().min(10).max(2000).optional(),
   pros: z.array(z.string().max(200)).max(10).optional(),
   cons: z.array(z.string().max(200)).max(10).optional(),

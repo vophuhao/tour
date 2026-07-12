@@ -485,14 +485,16 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc trong block co
     appAssert(name, ErrorFactory.badRequest("Thiếu họ tên"));
     appAssert(gmail, ErrorFactory.badRequest("Thiếu email"));
     appAssert(idNumber, ErrorFactory.badRequest("Thiếu số CCCD"));
+    /* BỎ QUA XÁC MINH ẢNH CHO BƯỚC 2 & 3
     appAssert(selfieImage, ErrorFactory.badRequest("Thiếu ảnh selfie"));
     appAssert(idCardImage, ErrorFactory.badRequest("Thiếu ảnh mặt trước CCCD"));
+    */
 
     // Validate CCCD format (12 digits)
     const cccdRegex = /^\d{12}$/;
     appAssert(cccdRegex.test(idNumber.replace(/\s/g, "")), ErrorFactory.badRequest("Số CCCD không hợp lệ (cần 12 chữ số)"));
 
-    // Validate CCCD front image using Gemini OCR/Verification
+    /* BỎ QUA XÁC MINH CCCD QUA GEMINI
     const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
@@ -502,10 +504,10 @@ Hãy phân tích hình ảnh mặt trước của thẻ căn cước được cu
 
 Trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc trong block code \`\`\`json, không chứa bất kỳ lời giải thích nào khác ngoài JSON) có định dạng như sau:
 {
-  "isVNIDCard": boolean, // true nếu là mặt trước của CCCD/Thẻ Căn cước Việt Nam hợp lệ, false nếu không phải (ví dụ: ảnh phong cảnh, ảnh người thông thường, bằng lái xe, hoặc CMND cũ/nước ngoài...)
-  "idNumber": "string | null", // Số CCCD gồm 12 chữ số được trích xuất từ ảnh. Ghi null nếu không tìm thấy.
-  "fullName": "string | null", // Họ và tên đầy đủ viết hoa (ví dụ: "NGUYỄN VĂN A") trích xuất từ ảnh. Ghi null nếu không tìm thấy.
-  "reason": "string" // Lý do nếu không phải CCCD Việt Nam, hoặc mô tả kết quả nếu đúng.
+  "isVNIDCard": boolean,
+  "idNumber": "string | null",
+  "fullName": "string | null",
+  "reason": "string"
 }`;
 
       const geminiResponse = await axios.post(geminiUrl, {
@@ -541,7 +543,6 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc trong block co
         ErrorFactory.badRequest(result.reason || "Ảnh tải lên không phải là ảnh mặt trước Căn cước công dân (CCCD) Việt Nam hợp lệ. Vui lòng chụp rõ nét mặt trước CCCD.")
       );
 
-      // Verify that the ID number matches the user-inputted ID number
       if (result.idNumber) {
         const userCccd = idNumber.replace(/\s/g, "");
         const ocrCccd = result.idNumber.replace(/\s/g, "");
@@ -557,37 +558,20 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc trong block co
       }
       throw ErrorFactory.badRequest("Không thể xác thực ảnh CCCD. Vui lòng chụp rõ nét, đủ ánh sáng và thử lại.");
     }
+    */
 
     const cccd = idNumber.replace(/\s/g, "");
 
     // Parse birth year from CCCD 12 digits
-    // Format: [3-digit province][1-digit gender+decade][2-digit year][6-digit sequence]
-    // Digit 4 (index 3): 0=male 190x, 1=male 199x, 2=male 200x, 3=female 190x, 4=female 199x, 5=female 200x, 6=male 201x, 7=female 201x, 8=male 201x+, 9=female 201x+
     const decadeCode = parseInt(cccd[3], 10);
     const yearSuffix = cccd.slice(4, 6); // 2 digits
 
     let birthYear: number;
-    if (decadeCode === 0) birthYear = 1900 + parseInt(yearSuffix, 10);
-    else if (decadeCode === 1) birthYear = 1900 + parseInt(yearSuffix, 10); // 199x
-    else if (decadeCode === 2) birthYear = 2000 + parseInt(yearSuffix, 10);
-    else if (decadeCode === 3) birthYear = 1900 + parseInt(yearSuffix, 10);
-    else if (decadeCode === 4) birthYear = 1900 + parseInt(yearSuffix, 10); // 199x female
-    else if (decadeCode === 5) birthYear = 2000 + parseInt(yearSuffix, 10);
-    else if (decadeCode === 6) birthYear = 2010 + parseInt(yearSuffix, 10);
-    else if (decadeCode === 7) birthYear = 2010 + parseInt(yearSuffix, 10);
-    else birthYear = 2000 + parseInt(yearSuffix, 10);
-
-    // Refine: decade 0 = 190x, 1 = 199x (not 190x)
-    // Vietnamese CCCD: digit[3] encodes gender+decade-of-birth
-    // 0: male, 1900-1909... but realistically:
-    // We trust the 2-digit year suffix directly with the decade hint
     if (decadeCode <= 2) {
-      // Male
       if (decadeCode === 0) birthYear = 1900 + parseInt(yearSuffix, 10);
       else if (decadeCode === 1) birthYear = 1900 + parseInt(yearSuffix, 10);
       else birthYear = 2000 + parseInt(yearSuffix, 10);
     } else if (decadeCode <= 5) {
-      // Female
       if (decadeCode === 3) birthYear = 1900 + parseInt(yearSuffix, 10);
       else if (decadeCode === 4) birthYear = 1900 + parseInt(yearSuffix, 10);
       else birthYear = 2000 + parseInt(yearSuffix, 10);
@@ -600,12 +584,13 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc trong block co
 
     appAssert(age >= 18, ErrorFactory.badRequest(`Bạn chưa đủ 18 tuổi. Năm sinh được xác định: ${birthYear}`));
 
-    // Validate face match score (sent from client-side face-api comparison)
+    /* BỎ QUA SO KHỚP GƯƠNG MẶT
     const matchScore = parseFloat(faceMatchScore ?? "0");
     appAssert(
       matchScore >= 0.5,
       ErrorFactory.badRequest("Khuôn mặt không khớp với ảnh CCCD. Vui lòng thử lại với ánh sáng tốt hơn.")
     );
+    */
 
     // Check if user already is a host
     const user = await UserModel.findById(userId);

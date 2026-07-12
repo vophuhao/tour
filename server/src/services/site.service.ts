@@ -409,6 +409,7 @@ export class SiteService {
       site: siteId,
       date: { $gte: start, $lte: end },
       isAvailable: false,
+      blockType: { $ne: "booked" },
     }).lean();
 
     // Get all bookings that overlap with the date range
@@ -542,6 +543,7 @@ export class SiteService {
       site: siteId,
       date: { $gte: checkInDate, $lt: checkOutDate },
       isAvailable: false,
+      blockType: { $ne: "booked" },
     });
 
     if (blockedDates.length > 0) {
@@ -625,6 +627,7 @@ export class SiteService {
     const blockedSites = await AvailabilityModel.find({
       date: { $gte: checkInDate, $lt: checkOutDate },
       isAvailable: false,
+      blockType: { $ne: "booked" },
     }).distinct("site");
 
     // Combine and deduplicate
@@ -991,7 +994,6 @@ export class SiteService {
         isAvailable: bl.isAvailable,
         blockType: bl.blockType,
         reason: bl.reason,
-        price: bl.price,
         blockedSlots: bl.blockedSlots || 0,
       })),
     };

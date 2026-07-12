@@ -702,7 +702,7 @@ function BookingCard({ booking, formatPrice, formatDate, onAction, onDetail }: a
           <Image src={booking.site?.photos?.[0]?.url || '/placeholder.jpg'} alt={booking.site?.name || ''} fill className="object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent lg:bg-gradient-to-r" />
           <div className="absolute top-3 left-3 flex flex-col gap-1.5">
-            <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold', status.color)}>
+            <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap', status.color)}>
               <span className={cn('h-1.5 w-1.5 rounded-full', status.dot)} />
               {status.label}
             </span>

@@ -317,7 +317,7 @@ export default class BookingController {
    */
   processDissatisfaction = catchErrors(async (req, res) => {
     const { id } = req.params;
-    const adminId = mongoIdSchema.parse(req.userId);
+    const adminId = mongoIdSchema.parse(req.userId?.toString());
     const input = processDissatisfactionSchema.parse(req.body);
 
     const booking = await this.bookingService.processDissatisfaction(adminId, id || "", input);
